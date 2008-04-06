@@ -17,8 +17,9 @@ my $builder = Module::Build->new(
 	'Test::Differences' => 0,
         'version'    => 0,
     },
-	pm_files => \%pm_files,
-	test_files => Module::Build->rscan_dir('web/cgi-bin/yatt.lib/t', qr{\.t}),
+    pm_files => \%pm_files,
+    test_files => Module::Build->rscan_dir('web/cgi-bin/yatt.lib/t', qr{\.t}),
+    script_files => {'scripts/yatt-driver.zsh' => 'bin/yatt-driver.zsh'},
     add_to_cleanup      => [ qw(YATT-* *.tmp) ],
 );
 

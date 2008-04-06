@@ -17,17 +17,23 @@ default_dir=(
     darwin  /Library/WebServer/CGI-Executables
 )
 
+yatt_sf=https://yatt-pm.svn.sourceforge.net/svnroot
+yatt_bb=https://buribullet.net/svn
+
 typeset -A repository
 repository=(
-  stable https://yatt-pm.svn.sourceforge.net/svnroot/yatt-pm/trunk/yatt.t1
-  devel  https://buribullet.net/svn/yatt-pm
+  stable $yatt_sf/yatt-pm/trunk/yatt-pm/web
+  devel  $yatt_bb/yatt-pm/web
 )
 
 #========================================
 typeset -A help
 
-help[install]='[-d DEST_DIR] [-u sudo] [-n] [//stable | //devel | URL]
-Install YATT from Subversion repository.'
+help[install]='[-d DEST_DIR] [-u USER] [-n] [//stable | //devel | URL]
+Install YATT from Subversion repository.
+ -u $USER -- use sudo -u USER
+ -d $DIR  -- Create yatt-$N.instd in $DIR.
+'
 function cmd_install {
     local opts; zparseopts -D -A opts d: h u: n
     (($+opts[-h])) && cmd_help ${0//cmd_/}
