@@ -1,0 +1,29 @@
+FILE: doc/.htyattrc
+IN:
+ use YATT::ArgMacro test1 => qw(cf_foo);
+ use YATT::LRXML::Node;
+ 
+ ArgMacro_test1->define(handle => sub {
+   (my ArgMacro_test1 $macro, my ($trans, $scope, $node)) = @_;
+   my ($x, $y) = split /,/, node_body($macro->{cf_foo});
+   $node->add_attribute(x => $x);
+   $node->add_attribute(y => $y);
+   $node;
+ });
+
+TITLE: argmacro
+IN:
+ <!yatt:args>
+ <yatt:hello foo='3,8'>world!</yatt:hello>
+ 
+ <!yatt:widget hello x y
+  -- You can write comments here. --
+   %test1;
+ >
+ <h2>Hello <yatt:body/></h2>
+ &perl:x; x &perl:y; = <?perl= $x * $y?>
+OUT:
+ <h2>Hello world!</h2>
+ 3 x 8 = 24
+ 
+# eol.

@@ -1,0 +1,61 @@
+=encoding utf-8
+
+=head1 NAME (ja)
+
+YATT::LRXML - Loose But Recursive XML.
+
+=head1 DESCRIPTION
+
+=head2 名前空間をマーカーとする
+
+LRXML は XML 系のテキストの構造化・テンプレート化のための
+構文です。タグ C<< <TAG> >>、エンティティ参照 C<< &ENTITY; >>、
+処理命令 C<< <?processing-instruction?> >> 、
+コメント C<< <!--comment--> >> の全てについて、指定した
+名前空間・接頭辞を持つものだけを目印にし、これらのみで
+構文木を作ります。 DTD は一切必要ありません。
+
+  # 名前空間 yatt: を使う例:
+
+  <yatt:record>
+    ...any text... <yatt:subrecord /> ....
+    ...
+    ...&yatt:entity-reference;...
+    ...
+  </yatt:record>
+
+=head2 属性タグ (属性を表すタグ)
+
+『情報を属性で表すか、タグで表すか』問題に終止符を打つため、
+属性情報をタグとして記述する構文を用意しました。
+(Common Lisp の :keyword パラメータと同じように見てください)
+
+  <yatt:person name="hkoba" interest="prog-lang anime manga">
+    <yatt:product name="YATT"/>
+  </yatt:person>
+  # ↓
+  <yatt:person>
+    <:yatt:name>hkoba</:yatt:name>
+    <:yatt:interest>prog-lang anime manga</:yatt:interest>
+    <yatt:product>
+      <:yatt:name>YATT</:yatt:name>
+    </yatt:product>
+  </yatt:person>
+  # 又は
+  <yatt:person>
+    <yatt:product>
+      <:yatt:name>YATT
+    </yatt:product>
+    <:yatt:name/>hkoba
+    <:yatt:interest/>prog-lang anime manga
+  </yatt:person>
+
+=head2 テンプレート向きの拡張記法を公式に許可。
+
+属性の中でも C<< <> >> を使えるので、条件式を読みやすく書けます。
+
+  <yatt:event if="x > 0">....</yatt:event>
+
+=head1 AUTHOR
+
+"KOBAYASI, Hiroaki" (小林 弘明) hkoba at cpan.org

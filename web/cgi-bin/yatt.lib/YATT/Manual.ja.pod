@@ -1,0 +1,186 @@
+=encoding utf-8
+
+=head1 NAME (ja)
+
+YATT::Manual - YATT マニュアル 日本語版
+
+=head1 SYNOPSIS
+
+現在、仕様を大幅に変更中です。
+
+  #
+  # ファイル "index.html" にて
+  #
+
+  <perl:foo:bar:moe title="test">
+    My first YATT App! <?perl= scalar localtime time?>
+  </perl:foo:bar:moe>
+
+  #
+  # ファイル "foo/bar.html" にて
+  #
+  <!perl:widget moe title=html>
+    <h2>&perl:title;</h2>
+    &perl:body();
+
+  # ↓ 変換結果は…
+  #
+  # <h2>test</h2>
+  #
+  #   My first YATT App! Sun Sep  2 19:37:42 2007
+
+=head1 DESCRIPTION
+
+YATT (Yet Another Template Toolkit) は動的な Webサイトの構築を
+容易にするための、テンプレート・ライブラリです。特徴は、
+
+=over 4
+
+=item * ユーザ独自のタグ(Widget)を定義できる
+
+HTML タグを書き慣れた人であれば、その感覚の延長で、
+再利用の容易な画面部品(widget)を作成できます。
+
+=item * ロジックの埋め込みと、その括り出しを両方支援している。
+
+開発初期・末期の Dirty work を阻まないために、Processing Instruction
+C<< <?perl?> >> スタイルのコード埋め込みを許可しています。
+
+しかも、そうしたロジックをテンプレート外部へ括り出すための、
+ロジック専用ファイル F<.htyattrc> をディレクトリ毎に持つことも出来ます。
+
+=item * スクリプトへの変換メカニズムを容易に拡張できる。
+
+html ファイルは各々 Perl のクラスへと変換されます。
+クラス同士の継承関係は自由に設定可能です。
+スクリプトへの変換ルールも拡張可能です。
+
+将来的には Perl 以外の言語への変換も計画しています。
+
+=back
+
+テンプレートの構文は XML に似ていますが、XML よりも再帰性を改善した、
+独自の構文 L<LRXML|YATT::LRXML> を採用しています。
+
+=head1 TUTORIAL
+
+まず最も一般的な、Apache と CGI の組み合わせで YATT を試す方法を解説します。
+
+XXX: 前提として、Apache の設定を .htaccess で制御可能である
+必要が有ります。(Allow override All)
+
+XXX: 以下の説明では Bourne 系の Shell を用います。
+
+=head2 INSTALL
+
+準備
+
+  APP_URL=/myapp
+  APP_DIR=/var/www/html$APP_URL
+  YOUR_HOST=`hostname`
+
+  umask 022
+
+  mkdir -p $APP_DIR
+  cd $APP_DIR
+
+YATT は将来 CPAN に upload される予定ですが、今は pre alpha 段階です。
+インストールには直接 Subversion を使ってください。
+
+  svn co https://yatt-pm.svn.sourceforge.net/svnroot/yatt-pm/trunk/cgi-bin
+  # もしくは、開発サイト:
+  # svn co https://buribullet.net/svn/yatt-pm/cgi-bin
+
+checkout に成功したら、お好みのブラウザでアクセスしてみましょう。
+
+  w3m http://$YOUR_HOST$APP_URL/cgi-bin/yatt.cgi
+
+場合によっては、以下の操作が必要かもしれません。
+
+  chmod 755 cgi-bin
+  chmod -R g-w cgi-bin
+
+.htaccess の使用や、その中の Options 指定が禁止されている場合、
+まだエラーが出るでしょう。その場合は cgi-bin/.htaccess を削除し、
+手動で Apache の設定をしてください C<< (>_<) >>
+
+=head1 DESCRIPTION
+
+=head2 widget の定義と呼び出し
+
+widget を定義するには、(a) 同じファイルの中で、
+C<< <!perl:widget > >> 宣言を書く方法と、
+(b) ファイルを作り、C<< <!perl:args > >> 宣言を書く方法があります。
+
+=head3 (a) C<< <!perl:widget NAME ARG1 ARG2=TYPE?DEFAULT ...> >>
+
+NAME という名前の widget を定義します。widget の中で引数を参照するには
+C<< &perl:ARG1; >> のように、entity 参照の構文を使います。
+
+定義した widget を呼び出すときには、
+
+  <perl:NAME ARG1="..." ARG2="..." />
+
+又は
+
+  <perl:NAME ARG1="...foo..." ARG2="...bar...">
+    ...baz...
+  </perl:NAME>
+
+の二種類の書き方が可能です。後者の場合、...baz... の部分が
+暗黙の引数 body として渡されます。これを
+呼び出すときには C<< &perl:body(); >> と書きます。
+
+  *: default の話
+  *: 型の話
+  *: <:perl:ARG1/> の話、 <:perl:ARG1>...</:perl:ARG1> も。
+
+=head3 (b) C<< <!perl:args ARG1 ARG2=TYPE?DEFAULT ...> >>
+
+ファイル全体を一つの widget にします。widget の名前はファイル名と同じです。
+
+=head2 .htyattrc と entity path 式 - ロジックの括り出しと呼び出し
+
+  Entity NAME => sub {
+  };
+
+=head2 宣言
+
+=head3 C<< <!perl:base "base_template" /> >>
+
+=head2 組込み widget
+
+=head3 perl:my
+
+=head3 perl:foreach
+
+=head3 perl:if, :perl:else
+
+=head2 型
+
+=head3 text
+
+=head3 value
+
+=head3 code
+
+=head3 html
+
+=head3 attr
+
+=head2 SYNTAX
+
+=head3 element (tag)
+
+=head3 entity path
+
+=head1 AUTHOR
+
+"KOBAYASI, Hiroaki" (小林 弘明) hkoba at cpan.org
+
+=head1 LICENSE
+
+This library is free software; you may redistribute it and/or modify
+it under the same terms as Perl itself.
+
+=cut

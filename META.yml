@@ -1,0 +1,59 @@
+---
+name: YATT
+version: 0.0.2
+author:
+  - '"KOBAYASI, Hiroaki" <hkoba@cpan.org>'
+abstract: Yet Another Template Toolkit
+license: perl
+resources:
+  license: http://dev.perl.org/licenses/
+requires:
+  Test::Differences: 0
+  Test::More: 0
+  version: 0
+provides:
+  YATT:
+    file: lib/YATT.pm
+    version: 0.0.2
+  YATT::Class::ArrayScanner:
+    file: lib/YATT/Class/ArrayScanner.pm
+  YATT::Class::Configurable:
+    file: lib/YATT/Class/Configurable.pm
+  YATT::Class::Hierarchy:
+    file: lib/YATT/Class/Hierarchy.pm
+  YATT::Fields:
+    file: lib/YATT/Fields.pm
+  YATT::LRXML:
+    file: lib/YATT/LRXML.pm
+  YATT::LRXML::Builder:
+    file: lib/YATT/LRXML.pm
+  YATT::LRXML::MetaInfo:
+    file: lib/YATT/LRXML/MetaInfo.pm
+  YATT::LRXML::Node:
+    file: lib/YATT/LRXML/Node.pm
+  YATT::LRXML::NodeCursor:
+    file: lib/YATT/LRXML/NodeCursor.pm
+  YATT::LRXML::NodeCursor::Path:
+    file: lib/YATT/LRXML/NodeCursor.pm
+  YATT::LRXML::Parser:
+    file: lib/YATT/LRXML/Parser.pm
+  YATT::LRXML::Scanner:
+    file: lib/YATT/LRXML.pm
+  YATT::Util:
+    file: lib/YATT/Util.pm
+  YATT::Util::Cache:
+    file: lib/YATT/Util/Cache.pm
+  YATT::Util::DirTreeBuilder:
+    file: lib/YATT/Util/DirTreeBuilder.pm
+  YATT::Util::Enum:
+    file: lib/YATT/Util/Enum.pm
+  YATT::Util::Finalizer:
+    file: lib/YATT/Util/Finalizer.pm
+  YATT::Util::Symbol:
+    file: lib/YATT/Util/Symbol.pm
+  YATT::Util::Taint:
+    file: lib/YATT/Util/Taint.pm
+generated_by: Module::Build version 0.2808
+meta-spec:
+  url: http://module-build.sourceforge.net/META-spec-v1.2.html
+  version: 1.2

@@ -1,0 +1,109 @@
+# -*- coding: utf-8 -*-
+
+TITLE: (static) var in toplevel
+IN:
+ &yatt:x;
+ERROR: ^No such variable 'x' \(.*\), at file \S+ line 1\n$
+
+TITLE: (static) var in widget
+IN:
+ <yatt:foo/>
+ <!yatt:widget foo>
+ &yatt:x;
+ERROR: ^No such variable 'x' \(.*\), at file \S+ line 3\n$
+
+TITLE: (static) var in body
+IN:
+ <yatt:foo>
+  &yatt:y;
+ </yatt:foo>
+ 
+ <!yatt:widget foo body = [code x]>
+ <yatt:body/>
+ERROR: ^No such variable 'y' \(.*\), at file \S+ line 2\n$
+
+TITLE: (static) var after macro
+IN:
+ <!yatt:args x=value>
+ <html>
+ <body>
+ <yatt:if if="&yatt:x; > 1">
+ foo
+ bar
+ baz
+ </yatt:if>
+ hoe
+ &yatt:z;
+ moe
+ERROR: ^No such variable 'z' \(.*\), at file \S+ line 10\n$
+
+TITLE: (static) empty element.
+# x のエラーメッセージを作るときに y の行番号が計算される
+IN:
+ <yatt:y/>
+ <yatt:x/>
+ 
+ <!yatt:widget y>
+ <h2>y</h2>
+ERROR: ^No such widget \(<yatt:x />\), at file \S+ line 2\n$
+
+
+TITLE: (static) after long declaration
+IN:
+ <!yatt:args
+   x
+   y
+   z
+ >
+ &yatt:w;
+ERROR: ^No such variable 'w' \(.*\), at file \S+ line 6\n$
+
+TITLE: (static) after long element
+IN:
+ <yatt:foo
+   x="bar"
+   y="baz"
+ />
+ &yatt:z;
+ 
+ <!yatt:widget foo x y>
+ <h2>foo</h2>
+ERROR: ^No such variable 'z' \(.*\), at file \S+ line 5\n$
+
+TITLE: (runtime) var in toplevel
+IN:
+ <!yatt:args x=html>
+ &yatt:x;
+PARAM[
+]
+ERROR: ^Use of uninitialized value in print at \S+ line 2\.\n$
+
+TITLE: (runtime) var in widget
+IN:
+ <yatt:foo/>
+ <!yatt:widget foo x=html>
+ &yatt:x;
+ERROR: ^Use of uninitialized value in print at \S+ line 3\.\n$
+
+TITLE: (runtime) var in body
+SKIP: #line is correct. but, ...
+IN:
+ <yatt:foo>
+  &yatt:x;
+ </yatt:foo>
+ 
+ <!yatt:widget foo body = [code x=html]>
+ <yatt:body/>
+ERROR: ^Use of uninitialized value in print at \S+ line 2\.\n$
+
+TITLE: (runtime) var after long widget call.
+SKIP: not yet solved.
+IN:
+ <!yatt:args x=html>
+ <yatt:foo
+ 
+ />
+ &yatt:x;
+ <!yatt:widget foo>
+ERROR: ^Use of uninitialized value in print at \S+ line 5\.\n$
+

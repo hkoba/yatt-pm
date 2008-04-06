@@ -1,0 +1,62 @@
+# -*- coding: utf-8 -*-
+
+TITLE: foreach
+IN:
+ <!yatt:args x=list>
+ <ul>
+ <yatt:foreach my=i "@{&yatt:x;}"><li>&yatt:i;</li>
+ </yatt:foreach></ul>
+PARAM[
+[
+- 1
+- 2
+- 3
+]
+]
+OUT:
+ <ul>
+ <li>1</li>
+ <li>2</li>
+ <li>3</li>
+ </ul>
+
+TITLE: block, Can have same name vars.
+IN:
+ <yatt:block><?perl my $var?></yatt:block>
+ <yatt:block><?perl my $var?></yatt:block>
+ ok
+OUT:
+ 
+ 
+ ok
+
+TITLE: block, Can isolate vars (static)
+IN:
+ <yatt:block>
+   <yatt:my x />
+ </yatt:block>
+ &yatt:x;
+ERROR: ^No such variable 'x' \(.*\)
+
+TITLE: my html
+BREAK: 1
+IN:
+ <yatt:my x><h2>foo</h2></yatt:my>
+ <b>&yatt:x;</b>
+OUT:
+ 
+ <b><h2>foo</h2></b>
+
+TITLE: my text
+IN:
+ <!yatt:args x y>
+ <yatt:my foo=&yatt:x; bar=&yatt:y;/>
+ &yatt:foo; &yatt:bar;
+PARAM[
+- <h2>foo</h2>
+- &bar
+]
+OUT:
+ 
+ &lt;h2&gt;foo&lt;/h2&gt; &amp;bar
+

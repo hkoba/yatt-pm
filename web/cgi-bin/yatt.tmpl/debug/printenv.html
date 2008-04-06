@@ -1,0 +1,10 @@
+<perl:args envref=value border/>
+<?perl $envref ||= \%ENV ?>
+<table border=&perl:border;>
+<perl:foreach my=key list="sort keys %$envref"
+><tr><td>&perl:key;</td><td>&perl:envref:$key;</td></tr>
+</perl:foreach>
+</table>
+
+<perl:widget test />
+foobar
