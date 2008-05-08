@@ -4,7 +4,7 @@ TITLE: foreach
 IN:
  <!yatt:args x=list>
  <ul>
- <yatt:foreach my=i "@{&yatt:x;}"><li>&yatt:i;</li>
+ <yatt:foreach my=i "&yatt:x:expand();"><li>&yatt:i;</li>
  </yatt:foreach></ul>
 PARAM[
 [
@@ -60,3 +60,28 @@ OUT:
  
  &lt;h2&gt;foo&lt;/h2&gt; &amp;bar
 
+
+FILE: doc/envelope.html
+IN:
+ <!yatt:args %yatt:no_last_newline;>
+ <div><yatt:body/></div>
+
+TITLE: my should not corrupt outer scope.
+IN:
+ <yatt:envelope>
+ <yatt:my x="foo"/>
+ <yatt:wrap />
+ </yatt:envelope>
+ 
+ <!yatt:widget wrap>
+ <yatt:envelope>
+ <yatt:my x="bar"/>
+ &yatt:x;
+ </yatt:envelope>
+OUT:
+ <div>
+ <div>
+ bar
+ </div>
+ 
+ </div>

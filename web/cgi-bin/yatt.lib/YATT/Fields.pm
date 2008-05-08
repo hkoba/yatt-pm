@@ -31,13 +31,15 @@ sub import {
     }
     if ($slot =~ s/^([\^=]+)((?:cf_)?)//) {
       my $func_name = $slot;
-      $slot = "$2$slot";
+      my $cf_slot = "$2$slot";
       foreach my $ch (split //, $1) {
-	push @public, [$func_name, $slot] if $ch eq '^';
-	push @setter, [$func_name, $slot] if $ch eq '=';
+	push @public, [$func_name, $cf_slot] if $ch eq '^';
+	push @setter, [$func_name, $cf_slot] if $ch eq '=';
       }
+      push @FIELDS, $cf_slot;
+    } else {
+      push @FIELDS, $slot;
     }
-    push @FIELDS, $slot;
     if (defined $default) {
       *{globref($callpack, "default_$slot")} = $default;
     }
@@ -50,9 +52,11 @@ sub MY () {__PACKAGE__}
 END
 
   $script .= join "", map {sprintf <<'END', @$_} @public;
-sub %s {
+sub %1$s {
   my MY $self = shift;
-  $self->{%s}
+  return $self->{%2$s} if defined $self->{%2$s};
+  return undef unless my $sub = $self->can('default_%1$s');
+  $self->{%2$s} = $sub->();
 }
 END
 
@@ -64,7 +68,7 @@ sub set_%s {
 }
 END
 
-  eval $script;
+  eval qq{#line 1 "/dev/null"\n}.$script;
   die "$@\n$script" if $@;
 }
 

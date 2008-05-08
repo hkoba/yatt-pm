@@ -4,17 +4,22 @@ MANIFEST
 META.yml			# Will be created by "make dist"
 README
 scripts/yatt-driver.zsh
-scripts/yatt.lib
+scripts/yatt-libs.zsh
+scripts/yatt-test
 scripts/yatt.server
 scripts/yatt.tcl
 web/.htaccess
 web/.htyattroot
 web/cgi-bin/.htaccess
 web/cgi-bin/yatt.cgi
+web/cgi-bin/yatt.docs/.htyattrc
 web/cgi-bin/yatt.docs/index.html
 web/cgi-bin/yatt.docs/test/t2/.htyattrc
 web/cgi-bin/yatt.docs/test/t2/index.html
 web/cgi-bin/yatt.docs/test/y1hello.html
+web/cgi-bin/yatt.docs/util/.htyattrc
+web/cgi-bin/yatt.docs/util/mkhtaccess.html
+web/cgi-bin/yatt.docs/util/widgetlist.html
 web/cgi-bin/yatt.fcgi
 web/cgi-bin/yatt.lib/.htaccess
 web/cgi-bin/yatt.lib/t/covered-runtests.zsh
@@ -26,10 +31,8 @@ web/cgi-bin/yatt.lib/t/runtests.zsh
 web/cgi-bin/yatt.lib/t/tokenize.t
 web/cgi-bin/yatt.lib/t/topcgi-direct.t
 web/cgi-bin/yatt.lib/t/topcgi-redirect.t
-web/cgi-bin/yatt.lib/t/trans.t
 web/cgi-bin/yatt.lib/t/transperl.t
 web/cgi-bin/yatt.lib/t/transperl/1-basic.xhf
-web/cgi-bin/yatt.lib/t/transperl/10-types.xhf
 web/cgi-bin/yatt.lib/t/transperl/2-argmacro.xhf
 web/cgi-bin/yatt.lib/t/transperl/3-lookup.xhf
 web/cgi-bin/yatt.lib/t/transperl/4-ifelse.xhf
@@ -38,6 +41,7 @@ web/cgi-bin/yatt.lib/t/transperl/6-if.xhf
 web/cgi-bin/yatt.lib/t/transperl/7-html.xhf
 web/cgi-bin/yatt.lib/t/transperl/8-errline.xhf
 web/cgi-bin/yatt.lib/t/transperl/9-entpath.xhf
+web/cgi-bin/yatt.lib/t/transperl/10-types.xhf
 web/cgi-bin/yatt.lib/t/use.t
 web/cgi-bin/yatt.lib/t/util.t
 web/cgi-bin/yatt.lib/t/xhf.t
@@ -46,7 +50,7 @@ web/cgi-bin/yatt.lib/YATT/ArgMacro.pm
 web/cgi-bin/yatt.lib/YATT/ArgTypes.pm
 web/cgi-bin/yatt.lib/YATT/Class/ArrayScanner.pm
 web/cgi-bin/yatt.lib/YATT/Class/Configurable.pm
-web/cgi-bin/yatt.lib/YATT/Class/Hierarchy.pm
+web/cgi-bin/yatt.lib/YATT/Exception.pm
 web/cgi-bin/yatt.lib/YATT/Fields.pm
 web/cgi-bin/yatt.lib/YATT/Inc.pm
 web/cgi-bin/yatt.lib/YATT/LRXML.ja.pod
@@ -60,11 +64,12 @@ web/cgi-bin/yatt.lib/YATT/Manual.ja.pod
 web/cgi-bin/yatt.lib/YATT/Registry.pm
 web/cgi-bin/yatt.lib/YATT/Test.pm
 web/cgi-bin/yatt.lib/YATT/Toplevel/CGI.pm
+web/cgi-bin/yatt.lib/YATT/Toplevel/FCGI.pm
 web/cgi-bin/yatt.lib/YATT/Toplevel/Server.pm
 web/cgi-bin/yatt.lib/YATT/Translator/Perl.pm
 web/cgi-bin/yatt.lib/YATT/Types.pm
 web/cgi-bin/yatt.lib/YATT/Util.pm
-web/cgi-bin/yatt.lib/YATT/Util/Cache.pm
+web/cgi-bin/yatt.lib/YATT/Util/DictOrder.pm
 web/cgi-bin/yatt.lib/YATT/Util/DirTreeBuilder.pm
 web/cgi-bin/yatt.lib/YATT/Util/Enum.pm
 web/cgi-bin/yatt.lib/YATT/Util/Finalizer.pm
@@ -76,5 +81,6 @@ web/cgi-bin/yatt.tmpl/.htaccess
 web/cgi-bin/yatt.tmpl/debug/cgi_param.html
 web/cgi-bin/yatt.tmpl/debug/printenv.html
 web/cgi-bin/yatt.tmpl/normal/envelope.html
+web/cgi-bin/yatt.tmpl/normal/error.html
 web/samples/t00debug/index.html
 web/test/y1hello.html

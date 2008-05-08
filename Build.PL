@@ -13,9 +13,12 @@ my $builder = Module::Build->new(
     dist_author         => '"KOBAYASI, Hiroaki" <hkoba@cpan.org>',
     dist_version_from   => 'web/cgi-bin/yatt.lib/YATT.pm',
     requires => {
+        'perl'       => '5.7.2',
+        'version'    => 0,
+        'File::Remove' => 0,
+        'List::Util' => 0,
         'Test::More' => 0,
 	'Test::Differences' => 0,
-        'version'    => 0,
     },
     pm_files => \%pm_files,
     test_files => Module::Build->rscan_dir('web/cgi-bin/yatt.lib/t', qr{\.t}),

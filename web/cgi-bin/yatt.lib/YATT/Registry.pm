@@ -4,9 +4,11 @@ package YATT::Registry;
 use strict;
 use warnings FATAL => qw(all);
 use Carp;
+use UNIVERSAL;
 
 # Debugging aid.
 require YATT;
+use YATT::Exception;
 
 {
   package YATT::Registry::NS; use YATT::Inc;
@@ -21,7 +23,7 @@ require YATT;
   # This causes "Pseudo-hashes are deprecated"
 
   use YATT::Types
-    ([Dir => [qw(cf_base_template), [cf_namespace => qw(yatt perl)]]
+    ([Dir => [qw(cf_base_template)]
       , 'Dir'
       , [Template => [qw(tree cf_base_template ^widget_list
 			 ^cf_metainfo)]]
@@ -41,7 +43,7 @@ use YATT::Registry::NS;
 use YATT::Util::Symbol;
 
 use base Dir;
-use YATT::Fields qw(^Loader NS next_nsid
+use YATT::Fields qw(^Loader NS last_nsid
 		    cf_auto_reload
 		    cf_type_map
 		    cf_debug_registry
@@ -49,8 +51,11 @@ use YATT::Fields qw(^Loader NS next_nsid
 		    cf_template_global
 		    cf_no_lineinfo
 		    current_parser
+		    cf_default_base_class
+		    nspattern
 		  )
-  , [cf_app_prefix => "::"]
+  , ['^cf_namespace' => qw(yatt perl)]
+  , ['^cf_app_prefix' => "::"]
   ;
 
 sub new {
@@ -62,7 +67,6 @@ sub new {
   }
 
   # $root->{NS}{$nsid} = $root; # ← サイクルするってば。
-  $root->{next_nsid} = $nsid + 1;
   # 一回、空呼び出し。
   $root->get_package($root);
 
@@ -84,6 +88,12 @@ sub configure_DIR {
   (my Root $root, my ($dir)) = @_;
   $root->{Loader} = $root->default_loader->DIR->new($dir);
   $root->{cf_loadkey} = $dir;
+}
+
+sub after_configure {
+  (my Root $root) = @_;
+  my $nspat = join("|" , @{$root->namespace});
+  $root->{nspattern} = qr{^(?:$nspat)$};
 }
 
 #========================================
@@ -131,39 +141,19 @@ sub configure_DIR {
 
     my $fields = $CURRENT->fields_hash;
     while (my ($name, $value) = splice @_, 0, 2) {
-      if ($fields->{"cf_$name"}) {
-	$CURRENT->{"cf_$name"} = $value;
-      } elsif (my $sub = $modpack->can("import_$name")) {
+      if (my $sub = $modpack->can("import_$name")) {
 	$sub->($modpack, $callpack, $value);
+      } elsif ($sub = $CURRENT->can("configure_$name")) {
+	$sub->($CURRENT, $value);
+      } elsif ($fields->{"cf_$name"}) {
+	$CURRENT->{"cf_$name"} = $value;
       } else {
 	croak "Unknown YATT::Registry parameter: $name";
       }
     }
   }
 
-  sub Entity (*$) {
-    my ($name, $sub) = @_;
-    my ($instClass) = caller;
-    *{globref($instClass, "entity_$name")} = $sub;
-  }
-
-  sub ElementMacro (*$) {
-    my ($name, $sub) = @_;
-    my ($instClass) = caller;
-    *{globref($instClass, "macro_$name")} = $sub;
-  }
-
-  sub list_builtins { qw(Entity ElementMacro) }
-
-  sub install_builtins {
-    my ($modpack, $destpack) = @_;
-    foreach my $name ($modpack->list_builtins) {
-      my $sub = $modpack->can($name)
-	or die "Can't find builtin: $name";
-      *{globref($destpack, $name)} = $sub;
-    }
-  }
-
+  # Root 以外の Dir では、こちらが呼ばれる(はず)
   sub import_base {
     croak "Can't find current registry" unless defined $ROOT;
     my ($modpack, $targetClass, $vpath) = @_;
@@ -174,26 +164,61 @@ sub configure_DIR {
   }
 }
 
-sub _lined {
-  my $i = 1;
-  my $result;
-  foreach my $line (split /\n/, $_[0]) {
-    if ($line =~ /^\#line (\d+)/) {
-      $i = $1;
-      $result .= $line . "\n";
-    } else {
-      $result .= sprintf "% 3d  %s\n", $i++, $line;
-    }
+# これが呼ばれるのは Root の時だけ。
+sub configure_base {
+  (my MY $root, my $realdir) = @_;
+  unless (-d $realdir) {
+    croak "No such directory for base='$realdir'";
   }
-  $result
+
+  my $base_nsid = $root->createNS
+    (Dir => loadkey => untaint_any($realdir));
+
+  $root->{cf_base_nsid} = $base_nsid;
+  lift_isa_to($root->get_package(my $base = $root->nsobj($base_nsid))
+	      , $root->get_package($root));
+
+  $root->refresh($base);
+
+  $root;
+}
+
+#----------------------------------------
+
+sub Entity (*$) {
+  my ($name, $sub) = @_;
+  my ($instClass) = caller;
+  *{globref($instClass, "entity_$name")} = $sub;
+}
+
+sub ElementMacro (*$) {
+  my ($name, $sub) = @_;
+  my ($instClass) = caller;
+  *{globref($instClass, "macro_$name")} = $sub;
+}
+
+sub list_builtins { qw(Entity ElementMacro) }
+
+sub install_builtins {
+  my ($modpack, $destpack) = @_;
+  foreach my $name ($modpack->list_builtins) {
+    my $sub = $modpack->can($name)
+      or die "Can't find builtin: $name";
+    *{globref($destpack, $name)} = $sub;
+  }
 }
 
 #========================================
 
+sub next_nsid {
+  my Root $root = shift;
+  ++$root->{last_nsid};
+}
+
 sub createNS {
   (my Root $root, my ($type)) = splice @_, 0, 2;
   # class_id は？
-  my $nsid = $root->{next_nsid}++;
+  my $nsid = $root->next_nsid;
   my NS $nsobj = $root->{NS}{$nsid} = $root->$type->new(nsid => $nsid, @_);
   my $pkg = $root->get_package($nsobj);
   foreach my $name (map {defined $_ ? @$_ : ()} $root->{cf_rc_global}) {
@@ -213,13 +238,16 @@ sub nsobj {
 
 sub get_package {
   (my Root $root, my NS $nsobj, my ($sep)) = @_;
+  # nsid のまま渡しても良いように。
+  $nsobj = $root->nsobj($nsobj) unless ref $nsobj;
+
   $nsobj->{cf_pkg} ||= do {
     my $pkg = do {
       if ($root == $nsobj) {
-	$root->{cf_app_prefix}
+	$root->{cf_app_prefix} || '::'
       } else {
 	join $sep || "::"
-	  , $root->{cf_app_prefix}
+	  , $root->{cf_app_prefix} || '::'
 	    , sprintf '%.1s%d', $nsobj->type_name
 	      , $nsobj->{cf_nsid};
       }
@@ -270,9 +298,21 @@ sub get_widget {
 }
 
 sub get_widget_from_template {
-  (my Root $root, my Template $tmpl) = splice @_, 0, 2;
+  (my Root $root, my Template $tmpl, my ($nsname)) = splice @_, 0, 3;
+  my $widget;
 
-  $tmpl->lookup_widget($root, @_);
+  # Relative lookup.
+  $widget = $tmpl->lookup_widget($root, @_)
+    and return $widget;
+
+  # Absolute, ns-specific lookup.
+  if ($root->has_ns($root, $nsname)) {
+    $widget = $root->get_widget_from_dir($root, $nsname, @_)
+      and return $widget;
+  }
+
+  # Absolute, general lookup.
+  return $root->get_widget_from_dir($root, @_);
 }
 
 sub get_widget_from_dir {
@@ -292,42 +332,33 @@ sub get_widget_from_dir {
 }
 
 {
+  # For relative lookup.
   sub YATT::Registry::NS::Template::lookup_widget {
     (my Template $tmpl, my Root $root) = splice @_, 0, 2;
     croak "lookup_widget: argument type mismatch for \$root."
       unless defined $root and ref $root and $root->isa(Root);
-    my $is_sysns = $root->shift_sysns(\@_);
-#   XXX: 無くてもよいの?
-#    if (@_ > 1) {
-#      $root->shift_sysns(\@_, qr{^$tmpl->{cf_name}});
-#    }
     return unless @_;
-    # Dir, Template, Widget
 
-    # 1. 自分
-    # 2. base_template → その rc は、検索する? しない？
-    #     ←ここではしない。ただし、起点がそこなら、今度は検索。
-    # 3. 同一ディレクトリ内のファイル・ディレクトリ
-    # 4. rc で指定した, 別ディレクトリのファイル・ディレクトリ
+    foreach my NS $start ($tmpl, $root->nsobj($tmpl->{cf_parent_nsid})) {
+      my @elempath = @_;
 
-    my NS $ns = do {
-      if (@_ > 2) {
-	$tmpl->lookup_dir($root, splice @_, 0, $#_ - 2);
-      } else {
-	$tmpl
-      }
-    };
+      my NS $ns = do {
+	if (@elempath <= 2) {
+	  $start;
+	} else {
+	  $start->lookup_dir($root, splice @elempath, 0, @elempath - 2);
+	}
+      };
 
-    if (@_ == 2) {
-      return $tmpl->widget_by_nsname($root, @_);
-    } else {
-      return $tmpl->widget_by_name($root, @_);
+      my $found = do {
+	if (@elempath == 2) {
+	  $ns->widget_by_nsname($root, @elempath);
+	} else {
+	  $ns->widget_by_name($root, @elempath);
+	}
+      };
+      return $found if $found;
     }
-  }
-
-  sub YATT::Registry::NS::Template::get_namespace {
-    (my Template $tmpl, my Root $root) = @_;
-    $root->nsobj($tmpl->{cf_parent_nsid})->get_namespace;
   }
 
   sub YATT::Registry::NS::Template::lookup_template {
@@ -335,9 +366,21 @@ sub get_widget_from_dir {
     $root->nsobj($tmpl->{cf_parent_nsid})->lookup_template($root, $name)
   }
 
-  sub YATT::Registry::NS::Dir::get_namespace {
-    (my Dir $dir) = @_;
-    $dir->{cf_namespace};
+  sub YATT::Registry::NS::Template::lookup_dir {
+    (my Template $tmpl, my Root $root) = splice @_, 0, 2;
+    $root->nsobj($tmpl->{cf_parent_nsid})->lookup_dir($root, @_);
+  }
+
+  sub YATT::Registry::NS::Dir::has_ns {
+    (my Dir $dir, my Root $root, my ($nsname)) = @_;
+    my $nsid;
+
+    $nsid = $dir->{Dir}{$nsname} || $dir->{Template}{$nsname}
+      and return $root->nsobj($nsid);
+
+    return unless $dir->{cf_base_nsid};
+
+    $root->nsobj($dir->{cf_base_nsid})->has_ns($root, $nsname);
   }
 
   sub YATT::Registry::NS::Dir::lookup_template {
@@ -353,14 +396,20 @@ sub get_widget_from_dir {
   }
 
   use Carp;
-  use UNIVERSAL;
   sub YATT::Registry::NS::Dir::lookup_dir {
     (my Dir $dir, my Root $root, my (@nspath)) = @_;
     croak "argtype mismatch! not a Root." unless UNIVERSAL::isa($root, Root);
+    return $root unless @nspath;
+    (my Dir $start, my (@orig)) = ($dir, @nspath);
     $root->refresh($dir);
     while ($dir and defined (my $ns = shift @nspath)) {
       $dir = $root and next if $ns eq '';
-      return unless my $nsid = $dir->{Dir}{$ns};
+      my $nsid = $dir->{Dir}{$ns};
+      unless ($nsid) {
+	return $start->{cf_base_nsid}
+	  ? $root->nsobj($start->{cf_base_nsid})->lookup_dir($root, @orig)
+	    : undef;
+      }
       $dir = $root->nsobj($nsid);
       $root->refresh($dir);
     }
@@ -403,9 +452,23 @@ sub get_widget_from_dir {
     $dir;
   }
 
+  sub YATT::Registry::NS::Dir::after_rc_loaded {
+    (my Dir $dir, my Root $root) = @_;
+    if (defined(my $base = $dir->{cf_base_nsid})) {
+      foreach my Template $tmpl (map {$root->nsobj($_)}
+				 values %{$dir->{Template}}) {
+	$tmpl->{cf_base_nsid} = $base;
+      }
+    }
+  }
+
   sub YATT::Registry::NS::Dir::widget_by_nsname {
     (my Dir $dir, my Root $root, my ($ns, $name)) = @_;
     $root->refresh($dir);
+    if (defined $dir->{cf_name} and $dir->{cf_name} eq $ns) {
+      my $widget = $dir->widget_by_name($root, $name);
+      return $widget if $widget;
+    }
     # [1] dir:template
     # [2] template:widget
     foreach my $type (qw(Dir Template)) {
@@ -431,42 +494,93 @@ sub get_widget_from_dir {
 
   sub YATT::Registry::NS::Template::widget_by_nsname {
     (my Template $tmpl, my Root $root, my ($ns, $name)) = @_;
-    $root->nsobj($tmpl->{cf_parent_nsid})
-      ->widget_by_nsname($root, $ns, $name);
+    if ($tmpl->{cf_name} eq $ns) {
+      my $widget = $tmpl->widget_by_name($root, $name);
+      return $widget if $widget;
+    }
+    my Dir $parent = $root->nsobj($tmpl->{cf_parent_nsid});
+    if (defined $parent->{cf_name} and $parent->{cf_name} eq $ns) {
+      my $widget = $tmpl->widget_by_name($root, $name);
+      return $widget if $widget;
+    }
+    $parent->widget_by_nsname($root, $ns, $name);
   }
 
   sub YATT::Registry::NS::Template::widget_by_name {
     (my Template $tmpl, my Root $root, my ($name)) = @_;
     $root->refresh($tmpl);
-    $tmpl->{Widget}{$name}
-      || $tmpl->{cf_base_template}
-	&& $root->nsobj($tmpl->{cf_base_template})
-	  ->widget_by_name($root, $name)
-	    || $root->nsobj($tmpl->{cf_parent_nsid})
-	      ->widget_by_name($root, $name);
+    my $widget;
+    $widget = $tmpl->{Widget}{$name}
+      and return $widget;
+
+    # 同一ディレクトリのテンプレートを先に検索するため。
+    # XXX: しかし、継承順序に問題が出ているはず。
+    $widget = $root->nsobj($tmpl->{cf_parent_nsid})
+      ->widget_by_name($root, $name)
+	and return $widget;
+
+    if ($tmpl->{cf_base_template}) {
+      $widget = $root->nsobj($tmpl->{cf_base_template})
+	->widget_by_name($root, $name)
+	  and return $widget;
+    }
+
+    if ($tmpl->{cf_base_nsid}) {
+      $widget = $root->nsobj($tmpl->{cf_base_nsid})
+	->widget_by_name($root, $name)
+	  and return $widget;
+    }
+
+    return;
   }
 }
 
 sub node_error {
   (my Root $root, my ($node, $fmt)) = splice @_, 0, 3;
+  $root->node_error_obj($node
+			, error_fmt => ref $fmt ? join(" ", $fmt) : $fmt
+			, error_param => [@_]
+			, caller => [caller]);
+}
+
+sub node_error_obj {
+  (my Root $root, my ($node, @param)) = @_;
   # XXX: $root->{cf_backtrace} なら longmess も append, とか。
   # XXX: Error オブジェクトにするべきかもね。でも依存は嫌。
   #  ← die を $root->raise で wrap すれば良い？
-  # XXX: 残るはタグの内容。
   my $stringify = $root->checked(stringify => "(Can't stringify: %s)", $node);
   my $filename = $root->checked(filename => "(Can't get filename %s)", $node);
   my $linenum = $root->checked(linenum => "(Can't get linenum %s)", $node);
-  sprintf($fmt, @_)
-    . sprintf(" (%s), at file %s line %s\n"
-	      , $stringify, $filename, $linenum);
+  $root->Exception->new(@param
+			, node_obj => $node
+			, node => $stringify, file => $filename
+			, line => $linenum);
 }
 
-sub shift_sysns {
-  shift;
-  my $list = shift;
-  my $pattern = shift || qr/^(yatt|perl)$/;
+sub node_nimpl {
+  (my Root $root, my ($node, $msg)) = @_;
+  my $caller = [my ($pack, $file, $line) = caller];
+  $root->node_error_obj($node
+			, error_fmt => join(' '
+					    , ($msg || "Not yet implemented")
+					    , "(perl file $file line $line)")
+			, caller => $caller);
+}
+
+sub strip_ns {
+  (my Root $root, my ($list)) = @_;
+  $root->shift_ns_by($root->{nspattern}, $list);
+}
+
+sub shift_ns_by {
+  (my Root $root, my ($pattern, $list)) = @_;
   return unless @$list;
-  return unless $list->[0] =~ $pattern;
+  return unless defined $pattern;
+  if (ref $pattern) {
+    return unless $list->[0] =~ $pattern
+  } else {
+    return unless $list->[0] eq $pattern;
+  }
   shift @$list;
 }
 
@@ -529,20 +643,31 @@ sub fake_cursor {
   $cursor->clone($cursor->Path->new($node, $cursor->cget('path')));
 }
 
+sub fake_cursor_to_build {
+  (my MY $root, my Builder $builder, my Scanner $scan
+   , my ($elem)) = @_;
+  $root->fake_cursor($builder->{cf_widget}
+		     , $builder->{cf_template}->metainfo
+		     ->clone(startline => $scan->{cf_linenum})
+		     , $elem);
+}
+
 sub new_decl_builder {
   (my MY $root, my Builder $builder, my Scanner $scan
    , my ($elem, $parser)) = @_;
-  my $sysns = $root->shift_sysns(my $path = [node_path($elem)])
-    or die "NIMPL";
-  if (@$path == 1 && (my $handler = $root->can("declare_$path->[0]"))) {
-    my $nc = $root->fake_cursor($builder->{cf_widget},
-				$builder->{cf_template}->metainfo
-				->clone(startline => $scan->{cf_linenum})
-				, $elem)->open;
-    $handler->($root, $builder, $scan, $nc, $parser);
-  } else {
-    die "Unknown declarator: $path->[0]";
+  foreach my $shift (0, 1) {
+    my $path = [node_path($elem)];
+    $root->strip_ns($path) if $shift;
+    my $handler_name = join("_", declare => @$path);
+
+    if (my $handler = $root->can($handler_name)) {
+      my $nc = $root->fake_cursor_to_build($builder, $scan, $elem)->open;
+      return $handler->($root, $builder, $scan, $nc, $parser);
+    }
   }
+
+  die $root->node_error($root->fake_cursor_to_build($builder, $scan, $elem)
+			, "Unknown declarator");
 }
 
 sub declare_base {
@@ -745,6 +870,14 @@ sub create_var {
 
     ++$dir->{cf_age};
 
+    # RC 読み込みの前に、 default_base_class を設定。
+    if ($root->{cf_default_base_class}) {
+      # XXX: add_isa じゃなくて ensure_isa だね。
+      $root->checked_eval(qq{require $root->{cf_default_base_class}});
+      $root->add_isa(my $pkg = $root->get_package($dir)
+		     , $root->{cf_default_base_class});
+    }
+
     # RC 読み込みは、最後に
     my $rcfile = $loader->catfile($dirname, $loader->RCFILE);
     if (-r $rcfile) {
@@ -754,6 +887,8 @@ sub create_var {
       &YATT::break_rc;
       $root->eval_in_dir($dir, $lineinfo . $script);
       &YATT::break_after_rc;
+
+      $dir->after_rc_loaded($root);
     }
 
     $dir;
@@ -772,13 +907,15 @@ sub create_var {
 	  ||= $root->createNS(Dir => name => $name
 			      , loadkey => untaint_any($path)
 			      , parent_nsid => $dir->{cf_nsid}
-			      , namespace => copy_array($dir->{cf_namespace})
+			      , base_nsid   => $dir->{cf_base_nsid}
 			     );
       } elsif ($name =~ /^(\w+)\.html?$/) {
 	$dir->{Template}{$1} ||= $loader->{Cache}{$path}
 	  ||= $root->createNS(Template => name => $1
 			      , loadkey => untaint_any($path)
-			      , parent_nsid => $dir->{cf_nsid});
+			      , parent_nsid => $dir->{cf_nsid}
+			      , base_nsid   => $dir->{cf_base_nsid}
+			     );
       }
     }
     # XXX: 無くなったファイルの開放は?
@@ -802,9 +939,8 @@ sub create_var {
       $cleaner->($root, $tmpl);
     }
 
-    my $pkg = $root->get_package($tmpl);
-    $root->add_isa($pkg, $root->get_package
-		   ($root->nsobj($tmpl->{cf_parent_nsid})));
+    $root->add_isa(my $pkg = $root->get_package($tmpl)
+		   , $root->get_package($tmpl->{cf_parent_nsid}));
     foreach my $name (map {defined $_ ? @$_ : ()}
 		      $root->{cf_template_global}) {
       *{globref($pkg, $name)} = *{globref($root->{cf_app_prefix}, $name)};
@@ -821,7 +957,7 @@ sub create_var {
 
     $tmpl->{cf_metainfo} = $parser->configure_metainfo
       (nsid => $tmpl->{cf_nsid}
-       , namespace => $tmpl->get_namespace($root)
+       , namespace => $root->namespace
        , filename => $path);
 
     $tmpl->{tree} = $parser->parse_handle($fh);
@@ -829,6 +965,22 @@ sub create_var {
     # XXX: ついでに <!yatt:widget> を解釈. ← parser に前倒し。
     # $root->process_declarations($tmpl);
   }
+}
+
+#========================================
+
+sub _lined {
+  my $i = 1;
+  my $result;
+  foreach my $line (split /\n/, $_[0]) {
+    if ($line =~ /^\#line (\d+)/) {
+      $i = $1;
+      $result .= $line . "\n";
+    } else {
+      $result .= sprintf "% 3d  %s\n", $i++, $line;
+    }
+  }
+  $result
 }
 
 1;

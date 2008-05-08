@@ -18,7 +18,7 @@ IN:
  <!perl:bar>
  <!perl:widget bar>bar
  <!perl:widget baz>baz
-ERROR: ^Unknown declarator: bar at
+ERROR: ^Unknown declarator \(<!perl:bar >\), at
 
 TITLE: one template, bodyless
 IN:
@@ -72,24 +72,6 @@ OUT:
  <h2>Hello foo world! bar</h2>
  
 
-TITLE: body pass thru, 3level
-IN:
- <yatt:listx>bar(&yatt:label;)</yatt:listx>
- 
- <!yatt:widget listx body=[code label]>
- <b><yatt:list body/></b>
- 
- <!yatt:widget list body=[code row]>
- <ul>
- <yatt:body row="foo"/>
- </ul>
-OUT:
- <b><ul>
- bar(foo)
- </ul>
- </b>
- 
-
 TITLE: Misplaced widget declaration.
 IN:
  <form>
@@ -124,6 +106,26 @@ OUT:
    </body>
  </html>
 # XXX: 改行に不満あり
+
+TITLE: required arg !
+IN:
+ <yatt:foo y="hoehoe"/>
+ <!yatt:widget foo x=! y>
+ &yatt:x; &yatt:y;
+PARAM[
+- 
+- 
+]
+ERROR: ^Argument 'x' is missing \(<yatt:foo y="hoehoe" />\)
+
+TITLE: runtime error for required arg !
+IN:
+ <!yatt:args x=!>
+ &yatt:x;
+PARAM[
+]
+ERROR: ^Argument 'x' is undef!
+
 
 TITLE: arg default |
 IN:
@@ -257,7 +259,7 @@ TITLE: entvar(list)
 IN:
  <yatt:foo x="3 .. 5, 'six'"/>
  <!yatt:widget foo x=list>
- <h2><?yatt= join ", ", @&yatt:x;?></h2>
+ <h2><?perl= join ", ", @&yatt:x;?></h2>
 OUT:
  <h2>3, 4, 5, six</h2>
  
@@ -285,8 +287,7 @@ OUT:
  <div id="foobar">
    <h2><b>B</b>old</h2>
    <div class="article">
-      
- <span class="emph">foobar</span>
+      <span class="emph">foobar</span>
  
    </div>
    <div class="footer">
@@ -319,8 +320,7 @@ OUT:
  <div id="foobar">
    <h2><b>B</b>old</h2>
    <div class="article">
-      
- <span class="emph">foobar</span>
+      <span class="emph">foobar</span>
  
    </div>
    <div class="footer">
@@ -353,8 +353,7 @@ OUT:
  <div id="foobar">
    <h2><b>B</b>old</h2>
    <div class="article">
-      
- <span class="emph">foobar</span>
+      <span class="emph">foobar</span>
  
    </div>
    <div class="footer">
@@ -362,6 +361,29 @@ OUT:
  
    </div>
  </div>
+ 
+
+TITLE: bareword argument as pass thru.
+BREAK: 1
+IN:
+ <!yatt:args x=text>
+ <yatt:foo y=x/>
+ <!yatt:widget foo y>
+ <h2>&yatt:y;</h2>
+PARAM[
+- foo
+]
+OUT:
+ <h2>foo</h2>
+ 
+
+TITLE: valueless arg -> 1
+IN:
+ <yatt:foo x y z body/>
+ <!yatt:widget foo x y=scalar z=list body=html>
+ &yatt:x; &yatt:y; &yatt:z[0]; &yatt:body;
+OUT:
+ 1 1 1 1
  
 
 TITLE: valueless arg pass thrue (text -> html)
@@ -389,5 +411,23 @@ PARAM[
 ]
 OUT:
  <h2><b>foo</b></h2>
+ 
+
+TITLE: body pass thru, 3level
+IN:
+ <yatt:listx>bar(&yatt:label;)</yatt:listx>
+ 
+ <!yatt:widget listx body=[code label]>
+ <b><yatt:list body/></b>
+ 
+ <!yatt:widget list body=[code row]>
+ <ul>
+ <yatt:body row="foo"/>
+ </ul>
+OUT:
+ <b><ul>
+ bar(foo)
+ </ul>
+ </b>
  
 

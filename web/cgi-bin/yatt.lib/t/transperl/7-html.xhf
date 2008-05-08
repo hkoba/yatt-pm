@@ -65,3 +65,28 @@ IN:
  <input ()$\ >
 OUT:
  <input ()$\ />
+
+TITLE: form attlist with onlyone space
+IN:
+ <!yatt:args type=attr name=attr value=attr>
+ <input &yatt:type;&yatt:name;&yatt:value;>
+PARAM[
+- radio
+- q
+- 1
+]
+OUT:
+ <input  type="radio" name="q" value="1" />
+
+TITLE: form attlist without space
+SKIP: still buggy.
+IN:
+ <!yatt:args type=attr name=attr value=attr>
+ <input&yatt:type;&yatt:name;&yatt:value;>
+PARAM[
+- radio
+- q
+- 1
+]
+OUT:
+ <input type="radio" name="q" value="1" />

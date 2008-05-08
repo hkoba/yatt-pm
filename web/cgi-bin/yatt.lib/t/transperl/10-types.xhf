@@ -50,7 +50,7 @@ OUT:
 TITLE: assign -> print. type list
 IN:
  <!yatt:args x=list y=list>
- <yatt:foo x='join(",", @{&yatt:x;}, @{&yatt:y;})'/>
+ <yatt:foo x='join(",", &yatt:x:expand();, &yatt:y:expand();)'/>
  <!yatt:widget foo x=list>
  <h2>&yatt:x[0];</h2>
 PARAM[
@@ -67,3 +67,20 @@ OUT:
  <h2>1,2,3,4</h2>
  
 
+
+TITLE: attr(other,value)
+BREAK: 1
+IN:
+ <!yatt:args color=attr?class>
+ <div&yatt:color(bar,baz);></div>
+PARAM[
+- foo
+]
+OUT:
+ <div class="foo bar baz"></div>
+
+PARAM[
+]
+OUT:
+ <div class="bar baz"></div>
+# In case of missing value

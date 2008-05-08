@@ -3,6 +3,8 @@ package YATT::Widget;
 use strict;
 use warnings FATAL => qw(all);
 
+use Exporter qw(import);
+
 use base qw(YATT::Class::Configurable);
 use YATT::Fields qw(^=arg_dict
 		    ^=arg_order
@@ -14,6 +16,7 @@ use YATT::Fields qw(^=arg_dict
 		    cf_decl_start
 		    cf_body_start
 		    cf_template_nsid
+		    ^cf_no_last_newline
 		  );
 
 use YATT::Types qw(:export_alias)

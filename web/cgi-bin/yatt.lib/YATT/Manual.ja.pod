@@ -6,22 +6,20 @@ YATT::Manual - YATT マニュアル 日本語版
 
 =head1 SYNOPSIS
 
-現在、仕様を大幅に変更中です。
-
   #
   # ファイル "index.html" にて
   #
 
-  <perl:foo:bar:moe title="test">
-    My first YATT App! <?perl= scalar localtime time?>
-  </perl:foo:bar:moe>
+  <yatt:foo:bar:moe title="test">
+    My first YATT App! <?yatt= scalar localtime time?>
+  </yatt:foo:bar:moe>
 
   #
   # ファイル "foo/bar.html" にて
   #
-  <!perl:widget moe title=html>
-    <h2>&perl:title;</h2>
-    &perl:body();
+  <!yatt:widget moe title=html>
+    <h2>&yatt:title;</h2>
+    &yatt:body();
 
   # ↓ 変換結果は…
   #
@@ -44,7 +42,7 @@ HTML タグを書き慣れた人であれば、その感覚の延長で、
 =item * ロジックの埋め込みと、その括り出しを両方支援している。
 
 開発初期・末期の Dirty work を阻まないために、Processing Instruction
-C<< <?perl?> >> スタイルのコード埋め込みを許可しています。
+C<< <?yatt?> >> スタイルのコード埋め込みを許可しています。
 
 しかも、そうしたロジックをテンプレート外部へ括り出すための、
 ロジック専用ファイル F<.htyattrc> をディレクトリ毎に持つことも出来ます。
@@ -87,13 +85,13 @@ XXX: 以下の説明では Bourne 系の Shell を用います。
 YATT は将来 CPAN に upload される予定ですが、今は pre alpha 段階です。
 インストールには直接 Subversion を使ってください。
 
-  svn co https://yatt-pm.svn.sourceforge.net/svnroot/yatt-pm/trunk/cgi-bin
+  svn co https://yatt-pm.svn.sourceforge.net/svnroot/yatt-pm/trunk/yatt-pm/web/cgi-bin
   # もしくは、開発サイト:
-  # svn co https://buribullet.net/svn/yatt-pm/cgi-bin
+  # svn co https://buribullet.net/svn/yatt-pm/web/cgi-bin
 
 checkout に成功したら、お好みのブラウザでアクセスしてみましょう。
 
-  w3m http://$YOUR_HOST$APP_URL/cgi-bin/yatt.cgi
+  w3m http://$YOUR_HOST$APP_URL/cgi-bin/yatt.cgi/
 
 場合によっては、以下の操作が必要かもしれません。
 
@@ -104,38 +102,37 @@ checkout に成功したら、お好みのブラウザでアクセスしてみ�
 まだエラーが出るでしょう。その場合は cgi-bin/.htaccess を削除し、
 手動で Apache の設定をしてください C<< (>_<) >>
 
-=head1 DESCRIPTION
+=head1 SYNTAX
 
 =head2 widget の定義と呼び出し
 
-widget を定義するには、(a) 同じファイルの中で、
-C<< <!perl:widget > >> 宣言を書く方法と、
-(b) ファイルを作り、C<< <!perl:args > >> 宣言を書く方法があります。
+widget を定義するには、(a) C<< <!yatt:widget > >> 宣言を書く方法と、
+(b) ファイルを作り、C<< <!yatt:args > >> 宣言を書く方法があります。
 
-=head3 (a) C<< <!perl:widget NAME ARG1 ARG2=TYPE?DEFAULT ...> >>
+=head3 (a) C<< <!yatt:widget NAME ARG1 ARG2=TYPE?DEFAULT ...> >>
 
 NAME という名前の widget を定義します。widget の中で引数を参照するには
-C<< &perl:ARG1; >> のように、entity 参照の構文を使います。
+C<< &yatt:ARG1; >> のように、entity 参照の構文を使います。
 
 定義した widget を呼び出すときには、
 
-  <perl:NAME ARG1="..." ARG2="..." />
+  <yatt:NAME ARG1="..." ARG2="..." />
 
 又は
 
-  <perl:NAME ARG1="...foo..." ARG2="...bar...">
+  <yatt:NAME ARG1="...foo..." ARG2="...bar...">
     ...baz...
-  </perl:NAME>
+  </yatt:NAME>
 
 の二種類の書き方が可能です。後者の場合、...baz... の部分が
 暗黙の引数 body として渡されます。これを
-呼び出すときには C<< &perl:body(); >> と書きます。
+呼び出すときには C<< &yatt:body(); >> と書きます。
 
   *: default の話
   *: 型の話
-  *: <:perl:ARG1/> の話、 <:perl:ARG1>...</:perl:ARG1> も。
+  *: <:yatt:ARG1/> の話、 <:yatt:ARG1>...</:yatt:ARG1> も。
 
-=head3 (b) C<< <!perl:args ARG1 ARG2=TYPE?DEFAULT ...> >>
+=head3 (b) C<< <!yatt:args ARG1 ARG2=TYPE?DEFAULT ...> >>
 
 ファイル全体を一つの widget にします。widget の名前はファイル名と同じです。
 
@@ -144,35 +141,31 @@ C<< &perl:ARG1; >> のように、entity 参照の構文を使います。
   Entity NAME => sub {
   };
 
-=head2 宣言
+=head2 その他の宣言
 
-=head3 C<< <!perl:base "base_template" /> >>
+=head3 C<< <!yatt:base "base_template" /> >>
 
 =head2 組込み widget
 
-=head3 perl:my
+=head3 yatt:my
 
-=head3 perl:foreach
+=head3 yatt:foreach
 
-=head3 perl:if, :perl:else
+=head3 yatt:if, :yatt:else
 
-=head2 型
+=head2 変数の型
 
 =head3 text
 
-=head3 value
+=head3 scalar
+
+=head3 list
 
 =head3 code
 
 =head3 html
 
 =head3 attr
-
-=head2 SYNTAX
-
-=head3 element (tag)
-
-=head3 entity path
 
 =head1 AUTHOR
 

@@ -17,6 +17,7 @@ use YATT::Fields
 	^cf_filename
 	cf_nsid
 	cf_iolayer
+	^cf_caller_widget
       )
    );
 

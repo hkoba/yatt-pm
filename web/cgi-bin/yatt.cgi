@@ -27,8 +27,28 @@ sub catch (&@) {
 
 sub breakpoint {}
 
-use lib map {-d $_ ? untaint_anything($_) : ()}
-  rootname(__FILE__, qr{\.(f?cgi|pl)}) . ".lib";
+sub prog_libdirs {
+  my ($prog) = @_;
+  my $root = rootname($prog, qr{\.\w+});
+  my @libs;
+  if (-d (my $d = "$root.lib")) {
+    push @libs, $d;
+  }
+  if (-d (my $d = "$root.libs")) {
+    local *DIR;
+    if (opendir DIR, $d) {
+      push @libs,
+	map  { "$d/$$_[1]" }
+	sort { $$a[0] <=> $$b[0] }
+	map  { /^(\d+)/ ? [$1, $_] : () }
+	  readdir(DIR);
+      closedir DIR;
+    }
+  }
+  map {untaint_anything($_)} @libs;
+}
+
+use lib prog_libdirs(__FILE__);
 
 use YATT;
 
@@ -36,7 +56,8 @@ use YATT;
 if ($0 =~ /\.fcgi$/) {
   my $age = -M $0;
   my $load_error;
-  if (catch {require CGI::Fast} \$load_error) {
+  if (catch {require FCGI} \$load_error) {
+    # To avoid "massive (die -> restart) ==> restartDelay" blocking.
     print "\n\n$load_error";
     while (sleep 3) {
       last if -M $0 < $age;
@@ -44,8 +65,9 @@ if ($0 =~ /\.fcgi$/) {
     exit 1;
   }
   elsif (catch {require YATT::Toplevel::FCGI} \$load_error) {
-    # To avoid "massive (reload -> reload) ==> restartDelay" blocking.
-    while (new CGI::Fast) {
+    # This too.
+    my $req = FCGI::Request();
+    while ($req->Accept >= 0) {
       print "\n\n$load_error";
       last if -M $0 < $age;
     }
@@ -57,6 +79,7 @@ if ($0 =~ /\.fcgi$/) {
 }
 elsif ($ENV{LOCAL_COOKIE}) {
   # For w3m
+  die "w3m mode is not yet implemented.";
 }
 else {
   # For normal CGI
@@ -75,6 +98,6 @@ else {
   else {
     my $sub = eval qq{sub {require $class}};
     $sub->();
-    $class->run(template => @ARGV);
+    ($class . "::Batch")->run(files => @ARGV);
   }
 }

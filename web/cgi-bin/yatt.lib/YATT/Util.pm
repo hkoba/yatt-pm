@@ -28,6 +28,7 @@ BEGIN {
 	 &escape
 	 &decode_args
 	 &named_attr
+	 &attr
 	 &resume
 
 	 &checked
@@ -198,6 +199,13 @@ sub decode_args {
     }
     @args;
   }
+}
+
+sub attr {
+  my ($attname) = shift;
+  my @result = grep {defined $_ && $_ ne ''} @_;
+  return '' unless @result;
+  sprintf q{ %s="%s"}, $attname, join ' ', @result;
 }
 
 sub named_attr {

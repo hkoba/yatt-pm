@@ -2,9 +2,11 @@
 package YATT::Class::Configurable;
 use strict;
 use warnings FATAL => qw(all);
+
+our %FIELDS;
 use fields;
 sub MY () {__PACKAGE__}
-use YATT::Util::Symbol qw(fields_hash);
+use YATT::Util::Symbol qw(fields_hash globref);
 use Carp;
 
 sub new {
@@ -31,6 +33,10 @@ sub init {
     $self->after_configure;
   }
   $self;
+}
+
+sub refid {
+  $_[0] + 0;
 }
 
 sub stringify {
@@ -81,6 +87,12 @@ sub configkeys {
   } keys %$self;
 }
 
+sub can_configure {
+  (my MY $self, my ($name)) = @_;
+  my $fields = fields_hash($self);
+  exists $fields->{"cf_$name"} || $self->can("configure_$name");
+}
+
 sub configure {
   my MY $self = shift;
   my $fields = fields_hash($self);
@@ -127,4 +139,11 @@ sub after_configure {
     $self->{$cf} = $sub->();
   }
 }
+
+sub define {
+  my ($class, $method, $sub) = @_;
+  # XXX: API 以外の関数は弾くべきかもしれない。
+  *{globref($class, $method)} = $sub;
+}
+
 1;

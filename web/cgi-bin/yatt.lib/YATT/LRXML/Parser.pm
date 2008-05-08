@@ -478,9 +478,9 @@ sub re_attlist {
   my $sp = q{\s+};
   my $eq = q{\s* = \s*};
   if (defined $capture and $capture > 1) {
-    qr{($sp) (?:($name) ($eq))? $value}xs;
+    qr{($sp|\b) (?:($name) ($eq))? $value}xs;
   } else {
-    my $re = qr{$sp (?:$name $eq)? $value}xs;
+    my $re = qr{(?:$sp|\b) (?:$name $eq)? $value}xs;
     $capture ? qr{($re)} : $re;
   }
 }
@@ -627,7 +627,7 @@ sub re_prefix {
   $pre = '' unless defined $pre;
   $suf = '' unless defined $suf;
   if (defined $ns and $ns ne '') {
-    $ns = "($ns)" if $capture > 1;
+    $ns = "($ns)" if $capture && $capture > 1;
     qq{$pre$ns$suf};
   } else {
     ''

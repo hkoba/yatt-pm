@@ -337,11 +337,11 @@ my:bar='BAR'
     , 'unnamed bare att';
 
   $att->next;
-  is_deeply [scalar $att->node_name, $att->node_body], ['my:foo', undef]
+  is_deeply [[$att->node_path], $att->node_body], [[qw(my foo)], undef]
     , 'bare nsname attname';
 
   $att->next;
-  is_deeply [scalar $att->node_name, $att->node_body], ['my:bar', 'BAR']
+  is_deeply [[$att->node_path], $att->node_body], [[qw(my bar)], 'BAR']
     , 'nsname attname = value';
 
   $att->next;

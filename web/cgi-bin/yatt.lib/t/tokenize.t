@@ -191,18 +191,20 @@ ok(do {
 
 #----------------------------------------
 
-my @re_methods = grep(/^re_/ && $me->can($_),
-		      sort keys %YATT::Regexp::);
-ok(0 == grep(ref($me->$_()) ne 'Regexp' && $_, @re_methods),
-   'all ->re_ZZZ(0) returns Regexp obj');
+my %except = qw(re_ns 1 re_prefix 1);
+my @re_methods = grep(/^re_/ && $me->can($_) && ! $except{$_},
+		      sort keys %YATT::LRXML::Parser::);
+is_deeply [grep(ref($me->$_()) ne 'Regexp' && $_
+		, grep {$_ ne 're_arg_decls'} @re_methods)]
+  , [], 'all ->re_ZZZ(0) returns Regexp obj';
 
-ok(0 == grep(ref($me->$_(1)) ne 'Regexp' && $_, @re_methods),
-   'all ->re_ZZZ(1) returns Regexp obj');
+is_deeply [grep(ref($me->$_(1)) ne 'Regexp' && $_, @re_methods)]
+  , [], 'all ->re_ZZZ(1) returns Regexp obj';
 
-ok(0 == grep(ref($me->$_(2)) ne 'Regexp' && $_, @re_methods),
-   'all ->re_ZZZ(2) returns Regexp obj');
+is_deeply [grep(ref($me->$_(2)) ne 'Regexp' && $_, @re_methods)]
+  , [], 'all ->re_ZZZ(2) returns Regexp obj';
 
-if (0) {
+if (1) {
   my $splitter = $me->re_splitter(1, "yatt");
   is_deeply [split $splitter
 	     , $src = q(<li><input&yatt:type;&yatt:name;></li>)]

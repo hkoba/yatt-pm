@@ -65,6 +65,7 @@ sub expect {
 sub number_of_lines {
   (my MY $path, my ($pos)) = @_;
   $pos = $path->{cf_index} unless defined $pos;
+  return 0 unless @{$path->{cf_array}};
   defined (my $tok = $path->{cf_array}[$pos])
     or return undef;
   $tok =~ tr:\n::;

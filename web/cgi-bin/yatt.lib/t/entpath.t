@@ -76,7 +76,7 @@ sub is_entpath {
       ];
 
   is_entpath q{:foo[3][8]}
-    , [[var => 'foo'], [aref => '3'], [aref => '8']];
+    , [[var => 'foo'], [aref => [expr => '3']], [aref => [expr => '8']]];
 
   is_entpath q{:schema:resultset(Artist):all()}
     , [[var => 'schema']

@@ -22,18 +22,44 @@ use Carp;
 BEGIN {
   package YATT::LRXML::NodeCursor::Path;
   use base qw(YATT::Class::ArrayScanner);
-  use YATT::Fields qw(cf_path);
+  use YATT::Fields qw(cf_path cur_postype prev_postype);
+
+  use YATT::LRXML::Node qw(node_type ATTRIBUTE_TYPE);
+
+  use YATT::Util::Enum -prefix => 'POSTYPE_', qw(UNKNOWN ATTLIST BODY);
 
   sub init {
     my ($self, $array, $path, $index0) = splice @_, 0, 4;
     $self->SUPER::init(array => $array
 		       , index => ($index0 || 0)
 		       + YATT::LRXML::Node::_BODY
-		       , path => $path, @_);
+		       , path => $path, @_)
+      ->after_next;
   }
 
   sub parent {
     my MY $path = shift; $path->{cf_path}
+  }
+
+  sub after_next {
+    (my MY $path) = @_;
+    return $path unless defined $path->{cf_index}
+      and $path->{cf_index} <= $#{$path->{cf_array}};
+    my $val = $path->{cf_array}->[$path->{cf_index}];
+    $path->{prev_postype} = $path->{cur_postype};
+    if (not defined $path->{cur_postype}
+	or $path->{cur_postype} == POSTYPE_ATTLIST) {
+      $path->{cur_postype} = ref $val && node_type($val) == ATTRIBUTE_TYPE
+	? POSTYPE_ATTLIST : POSTYPE_BODY;
+    }
+    $path
+  }
+
+  sub is_beginning {
+    (my MY $path) = @_;
+    return 1 unless defined $path->{prev_postype};
+    return unless $path->{cur_postype} == POSTYPE_BODY;
+    $path->{prev_postype} == POSTYPE_ATTLIST;
   }
 }
 
@@ -293,6 +319,14 @@ BEGIN {
   }
 }
 
+sub rewind {
+  my MY $self = shift;
+  if (my Path $path = $self->{cf_path}) {
+    $path->{cf_index} = YATT::LRXML::Node::_BODY;
+  }
+  $self
+}
+
 sub readable {
   my MY $self = shift;
   defined $self->{cf_path} && $self->{cf_path}->readable;
@@ -338,30 +372,39 @@ sub startline {
 }
 
 sub linenum {
-  my MY $self = shift;
+  (my MY $self, my ($offset)) = @_;
   my $linenum = $self->startline;
   my Path $path = $self->{cf_path};
   while ($path) {
-    foreach my $i (YATT::LRXML::Node::_BODY .. $path->{cf_index} - 1) {
-      unless (defined (my $item = $path->{cf_array}[$i])) {
-	# !!: 起きてはいけない。
-      } elsif (ref $item) {
-	# !!: node_nlines だと、delegator が呼ばれてしまうので。
-	$linenum += YATT::LRXML::Node::node_nlines($item);
-      } else {
-	$linenum += $item =~ tr:\n::;
-      }
-    }
+    $linenum += $self->count_lines_of(map {
+      $path->{cf_array}[$_]
+    } YATT::LRXML::Node::_BODY .. $path->{cf_index} - 1 + ($offset || 0));
     $path = $path->{cf_path};
   }
   $linenum;
 }
 
+sub count_lines_of {
+  # XXX: 他でも使うように。
+  my ($pack) = shift;
+  my $sum = 0;
+  foreach my $item (@_) {
+    next unless defined $item;
+    $sum += do {
+      if (ref $item) {
+	YATT::LRXML::Node::node_nlines($item);
+      } else {
+	$item =~ tr:\n::;
+      }
+    };
+  }
+  $sum;
+}
+
 sub node_is_beginning {
   my MY $self = shift;
   my Path $path = $self->{cf_path} or return;
-  defined $path->{cf_index} or return;
-  $path->{cf_index} == YATT::LRXML::Node::_BODY;
+  $path->is_beginning;
 }
 
 sub node_is_end {
@@ -413,7 +456,7 @@ sub parse_typespec {
   my ($head, @rest) = $self->node_children;
   unless (defined $head) {
     ()
-  } elsif ($head =~ s{^(\w+)?(?:([|/?])(.*))?}{}s) {
+  } elsif ($head =~ s{^(\w+)?(?:([|/?!])(.*))?}{}s) {
     # $1 can undef.
     ($1, default => @rest ? [defined $3 ? ($3) : (), @rest] : $3
      , default_mode => $2)

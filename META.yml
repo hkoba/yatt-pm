@@ -13,46 +13,78 @@ requires:
   version: 0
 provides:
   YATT:
-    file: lib/YATT.pm
+    file: web/cgi-bin/yatt.lib/YATT.pm
     version: 0.0.2
+  YATT::ArgMacro:
+    file: web/cgi-bin/yatt.lib/YATT/ArgMacro.pm
+  YATT::ArgTypes:
+    file: web/cgi-bin/yatt.lib/YATT/ArgTypes.pm
   YATT::Class::ArrayScanner:
-    file: lib/YATT/Class/ArrayScanner.pm
+    file: web/cgi-bin/yatt.lib/YATT/Class/ArrayScanner.pm
   YATT::Class::Configurable:
-    file: lib/YATT/Class/Configurable.pm
+    file: web/cgi-bin/yatt.lib/YATT/Class/Configurable.pm
   YATT::Class::Hierarchy:
-    file: lib/YATT/Class/Hierarchy.pm
+    file: web/cgi-bin/yatt.lib/YATT/Class/Hierarchy.pm
   YATT::Fields:
-    file: lib/YATT/Fields.pm
+    file: web/cgi-bin/yatt.lib/YATT/Fields.pm
+  YATT::Inc:
+    file: web/cgi-bin/yatt.lib/YATT/Inc.pm
   YATT::LRXML:
-    file: lib/YATT/LRXML.pm
+    file: web/cgi-bin/yatt.lib/YATT/LRXML.pm
   YATT::LRXML::Builder:
-    file: lib/YATT/LRXML.pm
+    file: web/cgi-bin/yatt.lib/YATT/LRXML.pm
+  YATT::LRXML::EntityPath:
+    file: web/cgi-bin/yatt.lib/YATT/LRXML/EntityPath.pm
   YATT::LRXML::MetaInfo:
-    file: lib/YATT/LRXML/MetaInfo.pm
+    file: web/cgi-bin/yatt.lib/YATT/LRXML/MetaInfo.pm
   YATT::LRXML::Node:
-    file: lib/YATT/LRXML/Node.pm
+    file: web/cgi-bin/yatt.lib/YATT/LRXML/Node.pm
   YATT::LRXML::NodeCursor:
-    file: lib/YATT/LRXML/NodeCursor.pm
+    file: web/cgi-bin/yatt.lib/YATT/LRXML/NodeCursor.pm
   YATT::LRXML::NodeCursor::Path:
-    file: lib/YATT/LRXML/NodeCursor.pm
+    file: web/cgi-bin/yatt.lib/YATT/LRXML/NodeCursor.pm
   YATT::LRXML::Parser:
-    file: lib/YATT/LRXML/Parser.pm
+    file: web/cgi-bin/yatt.lib/YATT/LRXML/Parser.pm
   YATT::LRXML::Scanner:
-    file: lib/YATT/LRXML.pm
+    file: web/cgi-bin/yatt.lib/YATT/LRXML.pm
+  YATT::Registry:
+    file: web/cgi-bin/yatt.lib/YATT/Registry.pm
+  YATT::Registry::Loader:
+    file: web/cgi-bin/yatt.lib/YATT/Registry.pm
+  YATT::Registry::Loader::DIR:
+    file: web/cgi-bin/yatt.lib/YATT/Registry.pm
+  YATT::Registry::NS:
+    file: web/cgi-bin/yatt.lib/YATT/Registry.pm
+  YATT::Test:
+    file: web/cgi-bin/yatt.lib/YATT/Test.pm
+  YATT::Toplevel::CGI:
+    file: web/cgi-bin/yatt.lib/YATT/Toplevel/CGI.pm
+  YATT::Toplevel::CGI::Batch:
+    file: web/cgi-bin/yatt.lib/YATT/Toplevel/CGI.pm
+  YATT::Toplevel::Server:
+    file: web/cgi-bin/yatt.lib/YATT/Toplevel/Server.pm
+  YATT::Translator::Perl:
+    file: web/cgi-bin/yatt.lib/YATT/Translator/Perl.pm
+  YATT::Types:
+    file: web/cgi-bin/yatt.lib/YATT/Types.pm
   YATT::Util:
-    file: lib/YATT/Util.pm
+    file: web/cgi-bin/yatt.lib/YATT/Util.pm
   YATT::Util::Cache:
-    file: lib/YATT/Util/Cache.pm
+    file: web/cgi-bin/yatt.lib/YATT/Util/Cache.pm
   YATT::Util::DirTreeBuilder:
-    file: lib/YATT/Util/DirTreeBuilder.pm
+    file: web/cgi-bin/yatt.lib/YATT/Util/DirTreeBuilder.pm
   YATT::Util::Enum:
-    file: lib/YATT/Util/Enum.pm
+    file: web/cgi-bin/yatt.lib/YATT/Util/Enum.pm
   YATT::Util::Finalizer:
-    file: lib/YATT/Util/Finalizer.pm
+    file: web/cgi-bin/yatt.lib/YATT/Util/Finalizer.pm
   YATT::Util::Symbol:
-    file: lib/YATT/Util/Symbol.pm
+    file: web/cgi-bin/yatt.lib/YATT/Util/Symbol.pm
   YATT::Util::Taint:
-    file: lib/YATT/Util/Taint.pm
+    file: web/cgi-bin/yatt.lib/YATT/Util/Taint.pm
+  YATT::Widget:
+    file: web/cgi-bin/yatt.lib/YATT/Widget.pm
+  YATT::XHF:
+    file: web/cgi-bin/yatt.lib/YATT/XHF.pm
 generated_by: Module::Build version 0.2808
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.2.html

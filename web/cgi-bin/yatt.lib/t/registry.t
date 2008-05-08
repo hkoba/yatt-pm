@@ -9,9 +9,11 @@ use lib "$FindBin::Bin/..";
 use YATT::Test qw(no_plan);
 
 require_ok('YATT::Registry');
+&YATT::break_translator;
 
 my $TMPDIR = tmpbuilder(rootname($0) . ".tmp");
 
+my $SESSION = 1;
 {
   my $DIR = $TMPDIR->([DIR => 'foo'
 		       , [FILE => 'bar.html', q{<h2>bar.html</h2>}]],
@@ -20,28 +22,31 @@ my $TMPDIR = tmpbuilder(rootname($0) . ".tmp");
 
   my $root = new YATT::Registry(loader => [DIR => $DIR]
 			       , auto_reload => 1);
-  is $root->cget('age'), 1, 'root age';
-  is_deeply [$root->list_ns], [qw(foo)], "list_ns";
-  run('wid_by_nsname - no error', sub {
+  is $root->cget('age'), 1, "[$SESSION] root age";
+  is_deeply [$root->list_ns], [qw(foo)], "[$SESSION] list_ns";
+  run("[$SESSION] wid_by_nsname - no error", sub {
 	is defined($root->widget_by_nsname($root, qw(foo bar))), 1
-	  , 'wid_by_nsname';
+	  , "[$SESSION] wid_by_nsname";
       });
-  
-  is $root->cget('age'), 1, 'root age';
+
+  is $root->cget('age'), 1, "[$SESSION] root age";
 }
 
-my $SESSION = 1;
+# [2]
 {
+  $SESSION++;
   my $DIR = $TMPDIR->([DIR => 'app'
 		       , [FILE => 'foo.html', q{<h2>foo</h2>}]],
 		      [DIR => 'lib1'
 		       , [FILE => 'bar.html', q{<h2>bar</h2>}]]);
 
-  my $root = new YATT::Registry(loader => [DIR => "$DIR/app", LIB => "$DIR/lib1"]
+  my $root = new YATT::Registry(loader => [DIR => "$DIR/app"
+					   , LIB => "$DIR/lib1"]
 			       , auto_reload => 1);
-  is_deeply [sort $root->list_ns], [qw(bar foo)], "list_ns";
+  is_deeply [sort $root->list_ns], [qw(bar foo)], "[$SESSION] list_ns";
 }
 
+# [3]
 {
   $SESSION++;
   my $DIR = $TMPDIR->
@@ -58,17 +63,20 @@ my $SESSION = 1;
     (loader => [DIR => "$DIR/app", LIB => "$DIR/lib1"]
      , app_prefix => "MyApp$SESSION"
      , auto_reload => 1);
-  is_deeply [sort $root->list_ns], [qw(index normal)], "base => /normal";
+  is_deeply [sort $root->list_ns], [qw(index normal)]
+    , "[$SESSION] base => /normal";
 
-  isnt my $index = $root->get_ns(['index']), undef, 'index';
-  isnt $root->get_widget_from_template($index, 'bar'), undef, 'bar';
+  isnt my $index = $root->get_ns(['index']), undef, "[$SESSION] index";
+  isnt $root->get_widget_from_template($index, qw(yatt bar)), undef
+    , "[$SESSION] bar";
 
   my $top = $root->get_package($root);
-  is_can [$top, 'foo'], "FOO", "top->foo";
-  is_can [$top, 'bar'], "BAR", "top->bar";
-  is $top, "MyApp$SESSION", "top == class app_prefix";
+  is_can [$top, 'foo'], "FOO", "[$SESSION] top->foo";
+  is_can [$top, 'bar'], "BAR", "[$SESSION] top->bar";
+  is $top, "MyApp$SESSION", "[$SESSION] top == class app_prefix";
 }
 
+# [4]
 {
   $SESSION++;
   my $DIR = $TMPDIR->
@@ -84,11 +92,13 @@ my $SESSION = 1;
      , app_prefix => "MyApp$SESSION"
      , auto_reload => 1);
 
-  isnt my $index = $root->get_ns(['index']), undef, 'index';
-  isa_ok $index, $root->Template, 'index';
-  isnt $root->get_widget_from_template($index, 'foo'), undef, 'foo';
+  isnt my $index = $root->get_ns(['index']), undef, "[$SESSION] index";
+  isa_ok $index, $root->Template, "[$SESSION] index";
+  isnt $root->get_widget_from_template($index, qw(yatt foo)), undef
+    , "[$SESSION] foo";
 }
 
+# [5]
 {
   $SESSION++;
   my $DIR = $TMPDIR->
@@ -105,8 +115,8 @@ my $SESSION = 1;
      , app_prefix => "MyApp$SESSION"
      , auto_reload => 1);
 
-  isnt my $index = $root->get_ns(['index']), undef, 'index';
-  isa_ok $index, $root->Template, 'index';
+  isnt my $index = $root->get_ns(['index']), undef, "[$SESSION] index";
+  isa_ok $index, $root->Template, "[$SESSION] index";
   isnt $root->get_widget_from_template
-    ($index, qw(simple widget)), undef, 'simple widget';
+    ($index, qw(yatt simple widget)), undef, "[$SESSION] simple widget";
 }

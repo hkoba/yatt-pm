@@ -76,17 +76,16 @@ IN:
  &yatt:x;
 PARAM[
 ]
-ERROR: ^Use of uninitialized value in print at \S+ line 2\.\n$
+ERROR: ^Use of uninitialized value (?:\$html_x )?in print at \S+ line 2\.\n$
 
 TITLE: (runtime) var in widget
 IN:
  <yatt:foo/>
  <!yatt:widget foo x=html>
  &yatt:x;
-ERROR: ^Use of uninitialized value in print at \S+ line 3\.\n$
+ERROR: ^Use of uninitialized value (?:\$html_x )?in print at \S+ line 3\.\n$
 
 TITLE: (runtime) var in body
-SKIP: #line is correct. but, ...
 IN:
  <yatt:foo>
   &yatt:x;
@@ -94,16 +93,63 @@ IN:
  
  <!yatt:widget foo body = [code x=html]>
  <yatt:body/>
-ERROR: ^Use of uninitialized value in print at \S+ line 2\.\n$
+ERROR: ^Use of uninitialized value (?:\$html_x )?in print at \S+ line 2\.\n$
+
+TITLE: (runtime) var in nested body 
+BREAK: 1
+IN:
+ <yatt:foo>
+ <yatt:bar>
+ &yatt:x;
+ </yatt:bar>
+ </yatt:foo>
+ 
+ <!yatt:widget foo>
+ <yatt:body/>
+ <!yatt:widget bar body = [code x=html]>
+ <yatt:body/>
+ERROR: ^Use of uninitialized value (?:\$html_x )?in print at \S+ line 3\.\n$
+
+TITLE: (runtime) pi var in body
+IN:
+ <yatt:foo>
+ <?perl===&yatt:x;?>
+ </yatt:foo>
+ 
+ <!yatt:widget foo body = [code x=html]>
+ <yatt:body/>
+ERROR: ^Use of uninitialized value (?:\$html_x )?in print at \S+ line 2\.\n$
 
 TITLE: (runtime) var after long widget call.
-SKIP: not yet solved.
+IN:
+ <!yatt:args x=html>
+ <yatt:foo a='
+ ' b="
+ " />
+ &yatt:x;
+ <!yatt:widget foo a b >
+ERROR: ^Use of uninitialized value (?:\$html_x )?in print at \S+ line 5\.\n$
+
+TITLE: (runtime) var after newlined widget call w/o body.
+IN:
+ <!yatt:args x=html>
+ <yatt:foo 
+ 
+ />
+ &yatt:x;
+ <!yatt:widget foo a b >
+ERROR: ^Use of uninitialized value (?:\$html_x )?in print at \S+ line 5\.\n$
+
+TITLE: (runtime) var after newlined widget call with body.
+SKIP: Not yet solved.
 IN:
  <!yatt:args x=html>
  <yatt:foo
  
- />
+ >
  &yatt:x;
- <!yatt:widget foo>
-ERROR: ^Use of uninitialized value in print at \S+ line 5\.\n$
+ </yatt:foo>
+ <!yatt:widget foo a b >
+ <yatt:body/>
+ERROR: ^Use of uninitialized value (?:\$html_x )?in print at \S+ line 5\.\n$
 

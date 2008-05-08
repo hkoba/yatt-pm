@@ -20,6 +20,7 @@ sub read {
 }
 
 sub after_read {}
+sub after_next {}
 
 sub current {
   (my MY $path, my ($offset)) = @_;
@@ -30,13 +31,16 @@ sub current {
 sub next {
   (my MY $path) = @_;
   return undef unless defined $path->{cf_index};
-  $path->{cf_array}->[$path->{cf_index}++];
+  my $val = $path->{cf_array}->[$path->{cf_index}++];
+  $path->after_next;
+  $val;
 }
 
 sub go_next {
   (my MY $path) = @_;
   return undef unless defined $path->{cf_index};
   $path->{cf_index}++;
+  $path->after_next;
   $path;
 }
 

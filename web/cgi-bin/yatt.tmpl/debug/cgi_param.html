@@ -1,4 +1,4 @@
-<perl:args url_param session border/>
+<!perl:args url_param session border>
 
 <table border=&perl:border;>
 <perl:foreach my=key list="&perl:top:param();">
@@ -25,7 +25,7 @@
 </perl:if>
 
 <perl:if if="&perl:session;">
-  <h3>&perl:session; <?perl= $$this->toplevel->session->id?></h3>
+  <h3>&perl:session; <?perl= $this->toplevel->session->id?></h3>
   <table border=&perl:border;>
     <perl:foreach my=key list="&perl:top:session();">
       <tr><td>&perl:key;</td><td>&perl:top:session($key);</td></tr>

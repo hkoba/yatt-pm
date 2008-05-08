@@ -139,6 +139,37 @@ IN:
  <h2>&yatt:x;</h2>
 
 #========================================
+FILE: doc/mix/envelope.html
+IN:
+ <!yatt:args title=html>
+ <div id="title">&yatt:title;</div>
+ <div id="contents">
+ <yatt:body/>
+ </div>
+
+FILE: doc/mix/mixbase/test.html
+IN:
+ <h2>test</h2>
+
+FILE: doc/mix/.htyattrc
+IN:
+ use YATT::Registry base => 'mixbase';
+
+TITLE: Direct element for dir which has base.
+FILE: doc/mix/index.html
+IN:
+ <yatt:envelope>
+ <:yatt:title>Mixed</:yatt:title>
+ <h4>ok?</4>
+OUT:
+ <div id="title">Mixed</div>
+ <div id="contents">
+ <h4>ok?</4>
+ 
+ </div>
+
+
+#========================================
 # XXX: 同一ファイル内の widget 参照
 # XXX: 継承を使わない、絶対参照 (dir, lib 共)
 # XXX: Registry base_template 指定(ディレクトリでなく、ファイルの継承)

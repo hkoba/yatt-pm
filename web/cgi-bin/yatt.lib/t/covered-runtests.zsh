@@ -32,7 +32,7 @@ fi
 
 export HARNESS_PERL_SWITCHES
 if ((!$+opts[-nocover])) {
-    cover_opt=()
+    cover_opt=(-ignore /dev/null)
     while ((ARGC >= 2)) && [[ $1 = [+-]* ]]; do
 	opts[$1]=$2
 	cover_opt+=($1 $2)

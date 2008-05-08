@@ -1,11 +1,20 @@
+#!/usr/bin/perl -w
 # -*- mode: perl; coding: utf-8 -*-
 package YATT;
+require 5.007_001; # For sprintf reordering.
+
 use strict;
 use warnings FATAL => qw(all);
-
 use version; our $VERSION = qv('0.0.2');
+use File::Basename;
 
-use YATT::Util qw(escape decode_args named_attr);
+BEGIN {
+  unless (caller(2)) {
+    unshift @INC, dirname(__PACKAGE__);
+  }
+}
+
+use YATT::Util qw(escape decode_args attr named_attr);
 use YATT::Util::Finalizer qw(capture);
 
 # for user
@@ -23,6 +32,10 @@ sub break_parser {}
 sub break_cursor {}
 
 sub break_eval {}
+
+unless (caller) {
+  
+}
 
 1;
 __END__

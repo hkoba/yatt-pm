@@ -107,6 +107,20 @@ sub new {
 # $pack->create_node($typeName, $nodeName, $nodeBody)
 # $pack->create_node([$typeName, $flag], [@nodePath], @nodeBody)
 
+sub sum_node_nlines {
+  my $nlines = 0;
+  foreach my $item (@_) {
+    unless (ref $item) {
+      $nlines += $item =~ tr,\n,,;
+    } elsif (defined (my $sub = $item->[_NLINES])) {
+      $nlines += $sub;
+    } else {
+      $nlines += sum_node_nlines(node_children($item));
+    }
+  }
+  $nlines;
+}
+
 sub create_node {
   my ($pack, $type, $name) = splice @_, 0, 3;
   my ($typename, $flag) = ref $type ? @$type : $type;
@@ -114,7 +128,7 @@ sub create_node {
   my $typeid = $NODE_TYPES{$typename};
   die "Unknown type: $typename" unless defined $typeid;
   # DEPEND_ALIGNMENT: SET_NLINES:
-  [$typeid, $flag, undef, undef, $name, @_];
+  [$typeid, $flag, sum_node_nlines(@_), undef, $name, @_];
 }
 
 sub create_node_from {
@@ -122,7 +136,7 @@ sub create_node_from {
   my ($typeid, $flag) = @{$orig}[_TYPE, _FLAG];
   $name = copy_array($$orig[_RAW_NAME]) unless defined $name;
   # DEPEND_ALIGNMENT: SET_NLINES:
-  [$typeid, $flag, undef, undef, $name, @_]
+  [$typeid, $flag, sum_node_nlines(@_), undef, $name, @_]
 }
 
 sub node_headings {
@@ -351,9 +365,11 @@ sub create_attlist {
 	 $parser->parse_entities($values[$found]));
       }
     };
+    my @typed = split /:/, $attname if defined $attname;
     # DEPEND_ALIGNMENT: SET_NLINES:
     push @result, [ATTRIBUTE_TYPE, $subtype, 0, undef
-		   , $attname, @attbody];
+		   , @typed > 1 ? \@typed : $attname
+		   , @attbody];
   }
   @result;
 }
@@ -383,7 +399,7 @@ sub node_attribute_format {
 sub attribute_stringify_as {
   my ($node) = @_;
   unless (defined $$node[_BODY]) {
-    $$node[_RAW_NAME];
+    ($$node[_RAW_NAME], '', '');
   } else {
     my $Q = $$node[_FLAG] ? @QUOTE_CHAR[$$node[_FLAG]] : "";
     my ($sep, $opn, $clo) = ref $Q ? (' ', @$Q) : ('', $Q, $Q);

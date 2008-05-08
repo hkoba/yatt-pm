@@ -43,3 +43,106 @@ IN:
  &sum(3,8);
 OUT:
  11
+
+TITLE: hashref
+IN:
+ <!yatt:args x=scalar y>
+ &yatt:x{foo}{:y};
+PARAM[
+{
+foo{
+bar: baz
+}
+}
+- bar
+]
+OUT:
+ baz
+
+TITLE: aref with var index
+IN:
+ <!yatt:args x=list y=scalar>
+ &yatt:x[:y];
+PARAM[
+[
+- 3
+- 4
+- 5
+]
+- 1
+]
+OUT:
+ 4
+
+TITLE: aref with call index
+IN:
+ <!yatt:args x=list >
+ &yatt:x[:sum(0,1,2)];
+PARAM[
+[
+- 3
+- 4
+- 5
+- 6
+]
+]
+OUT:
+ 6
+
+
+TITLE: aref nest
+IN:
+ <!yatt:args x=list y=scalar>
+ &yatt:x[0][:y][1];
+PARAM[
+[
+[
+- X
+[
+- x
+- o
+- y
+]
+]
+]
+- 1
+]
+OUT:
+ o
+
+TITLE: aref with var index
+IN:
+ <!yatt:args x=list y=list z=scalar>
+ &yatt:x[:y[0][:z]][1];
+PARAM[
+[
+- 3
+[
+- X
+- O
+]
+- 5
+]
+[
+[
+- 2
+- 1
+- 0
+]
+]
+- 1
+]
+OUT:
+ O
+
+TITLE: parse error (aref)
+IN:
+ <!yatt:args x=list y=scalar>
+ &yatt:x[0][0]][0];
+PARAM[
+[
+[
+]
+]
+]
+ERROR: ^Unexpected token '\]\[0\]'
