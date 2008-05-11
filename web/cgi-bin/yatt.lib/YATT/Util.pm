@@ -18,6 +18,7 @@ BEGIN {
 
 	 &require_and
 	 &call_type
+	 &load_type
 
 	 &default
 	 &defined_fmt
@@ -69,16 +70,22 @@ sub try_can {
   $sub->($obj, @_);
 }
 
-sub call_type {
-  my ($self, $typealias, $method) = splice @_, 0, 3;
+sub load_type {
+  my ($self, $typealias, $method) = @_;
   my $realclass = $self->$typealias();
-  unless ($realclass->can($method)) {
+  unless ($realclass->can($method || 'new')) {
     eval "require $realclass";
     die $@ if $@;
     if (my $break = YATT->can("break_\l$typealias")) {
       $break->();
     }
   }
+  $realclass;
+}
+
+sub call_type {
+  my ($self, $typealias, $method) = splice @_, 0, 3;
+  my $realclass = load_type($self, $typealias, $method);
   $realclass->$method(@_);
 }
 

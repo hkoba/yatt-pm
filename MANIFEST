@@ -6,6 +6,8 @@ README
 scripts/yatt-driver.zsh
 scripts/yatt-libs.zsh
 scripts/yatt-test
+scripts/yatt.genperl
+scripts/yatt.render
 scripts/yatt.server
 scripts/yatt.tcl
 web/.htaccess
@@ -33,6 +35,7 @@ web/cgi-bin/yatt.lib/t/topcgi-direct.t
 web/cgi-bin/yatt.lib/t/topcgi-redirect.t
 web/cgi-bin/yatt.lib/t/transperl.t
 web/cgi-bin/yatt.lib/t/transperl/1-basic.xhf
+web/cgi-bin/yatt.lib/t/transperl/10-types.xhf
 web/cgi-bin/yatt.lib/t/transperl/2-argmacro.xhf
 web/cgi-bin/yatt.lib/t/transperl/3-lookup.xhf
 web/cgi-bin/yatt.lib/t/transperl/4-ifelse.xhf
@@ -41,7 +44,6 @@ web/cgi-bin/yatt.lib/t/transperl/6-if.xhf
 web/cgi-bin/yatt.lib/t/transperl/7-html.xhf
 web/cgi-bin/yatt.lib/t/transperl/8-errline.xhf
 web/cgi-bin/yatt.lib/t/transperl/9-entpath.xhf
-web/cgi-bin/yatt.lib/t/transperl/10-types.xhf
 web/cgi-bin/yatt.lib/t/use.t
 web/cgi-bin/yatt.lib/t/util.t
 web/cgi-bin/yatt.lib/t/xhf.t
@@ -69,6 +71,7 @@ web/cgi-bin/yatt.lib/YATT/Toplevel/Server.pm
 web/cgi-bin/yatt.lib/YATT/Translator/Perl.pm
 web/cgi-bin/yatt.lib/YATT/Types.pm
 web/cgi-bin/yatt.lib/YATT/Util.pm
+web/cgi-bin/yatt.lib/YATT/Util/CmdLine.pm
 web/cgi-bin/yatt.lib/YATT/Util/DictOrder.pm
 web/cgi-bin/yatt.lib/YATT/Util/DirTreeBuilder.pm
 web/cgi-bin/yatt.lib/YATT/Util/Enum.pm

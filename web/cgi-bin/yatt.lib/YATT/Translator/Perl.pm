@@ -67,9 +67,11 @@ sub get_handler_to {
       @elpath = @{$elpath[0]};
     } else {
       @elpath = split '/', $elpath[0];
-      shift @elpath if !defined $elpath[0] || $elpath[0] eq '';
     }
   }
+
+  # root dir should be ignored.
+  shift @elpath if !defined $elpath[0] || $elpath[0] eq '';
 
   my @result;
   if (wantarray) {
@@ -79,7 +81,7 @@ sub get_handler_to {
   }
 
   unless (@result) {
-    carp "Can't find widget: " . join(":", @elpath);
+    croak "Can't find widget: " . join(":", @elpath);
   }
 
   wantarray ? @result : $result[0];
@@ -110,7 +112,9 @@ sub lookup_handler_to {
   my $handler = $pkg->can($funcname);
 
   return $handler unless wantarray;
-  ($handler, scalar $trans->get_package_from_widget($widget));
+  ($handler
+   , scalar $trans->get_package_from_widget($widget)
+  , $widget);
 }
 
 sub get_funcname_to {
@@ -624,6 +628,7 @@ sub genargs_static {
     # $args->is_quoted_by_element で判別せよ。
     $actual[$argdecl->argno] = do {
       if (my $var = $trans->has_pass_through_var($scope, $args, $name)) {
+	# XXX: early_escaped が一致するか、検査せよ。
 	$argdecl->early_escaped ? $var->as_escaped : $var->as_lvalue;
       } elsif (defined $args->node_body) {
 	$argdecl->gen_assignable_node($trans, $scope, $args);
@@ -815,7 +820,7 @@ use YATT::Types [VarType =>
 sub find_var {
   (my MY $trans, my ($scope, $varName)) = @_;
   for (; $scope; $scope = $scope->[1]) {
-    carp "Undefined varName!" unless defined $varName;
+    croak "Undefined varName!" unless defined $varName;
     if (defined (my $value = $scope->[0]{$varName})) {
       return $value;
     }

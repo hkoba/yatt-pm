@@ -1,0 +1,54 @@
+#!/usr/bin/perl -w
+use strict;
+use warnings FATAL => qw(all);
+
+use FindBin;
+use lib grep(-d
+	     , "$FindBin::Script.lib", "$FindBin::RealScript.lib"
+	     , "$FindBin::Bin/yatt.lib", "$FindBin::Bin/lib");
+
+use File::Basename;
+
+use base qw(YATT::Toplevel::CGI);
+sub MY () { __PACKAGE__ }
+
+MY->parse_opts(\@ARGV, \ my %opts);
+MY->parse_params(\@ARGV, \ my %common);
+
+my ($rootdir, $top) = do {
+  my $file = $ARGV[0]; # Keep original.
+
+  unless (defined $file and -r $file) {
+    die "Usage: $0 file ?name=value ...?\n"
+  }
+
+  my $dir = dirname($file);
+
+  # XXX: テンプレートディレクトリの指定も。
+  ($dir
+   , MY->new_translator([DIR => MY->rel2abs($dir)], %opts
+			, debug_translator => $ENV{DEBUG}));
+};
+
+# [1] Compile all.
+my @command;
+{
+  while (@ARGV) {
+    my $file = shift @ARGV;
+    my %param = %common;
+    MY->parse_params(\@ARGV, \%param);
+
+    # XXX: render 以外も。
+    my ($handler, $pkg, $widget) = $top->get_handler_to
+      (render => MY->widget_path_in($rootdir, $file));
+    push @command, [$handler, $pkg, scalar $widget->reorder_params(\%param)];
+  }
+}
+
+# [2] Execute all.
+
+foreach my $cmd (@command) {
+  my ($sub, @args) = @$cmd;
+  # XXX: die handler.
+  $sub->(@args);
+}

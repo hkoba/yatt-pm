@@ -57,7 +57,7 @@ sub read_as_hash {
 sub read_as {
   (my MY $reader, my ($type)) = @_;
   my $sub = $reader->can("organize_as_$type")
-    or carp("Unknown read_as type: $type");
+    or croak "Unknown read_as type: $type";
 
   local $/ = "";
   my $fh = $$reader{cf_FH};

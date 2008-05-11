@@ -842,7 +842,7 @@ sub create_var {
 
   sub checked_read_file {
     (my MY $loader, my ($fn, $layer)) = @_;
-    carp "Given path is tainted! $fn" if is_tainted($fn);
+    croak "Given path is tainted! $fn" if is_tainted($fn);
     open my $fh, '<' . ($layer || ''), $fn
       or die "Can't open $fn! $!";
     local $/;

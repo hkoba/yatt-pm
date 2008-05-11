@@ -20,8 +20,22 @@ use YATT::Util;
 use YATT::Util::Finalizer;
 use YATT::Util::Taint qw(untaint_any);
 use YATT::Util::Symbol;
+use YATT::Util::CmdLine;
 
 use YATT::Exception;
+
+#----------------------------------------
+use base qw(YATT::Class::Configurable);
+use YATT::Types -base => __PACKAGE__
+  , [Config => [qw(cf_registry
+		   cf_docs cf_tmpl
+		   cf_charset
+		   cf_app_prefix
+		   cf_translator_param
+		   cf_user_config
+		   cf_no_header
+		   cf_allow_unknown_config
+		 )]];
 
 #----------------------------------------
 
@@ -36,8 +50,10 @@ our @EXPORT = (qw(&use_env_vars
 		  &capture
 		), map {'*'.$_} our @env_vars);
 
+our Config $CONFIG;
 our ($CGI, $SESSION, %COOKIE, %HEADER);
-our @EXPORT_OK = (@EXPORT, qw(*CGI *SESSION *COOKIE *HEADER));
+sub rc_global () { qw(CONFIG CGI SESSION HEADER COOKIE) }
+our @EXPORT_OK = (@EXPORT, map {'*'.$_} rc_global);
 
 sub ROOT_CONFIG () {'.htyattroot'}
 
@@ -58,25 +74,36 @@ sub run {
 
 sub run_cgi {
   my $pack = shift;
-  my $cgi = do {
-    if (@_ == 1 && UNIVERSAL::isa($_, 'CGI')) {
-      shift;
-    } else {
-      $pack->new_cgi(@_);
-    }
-  };
+  my $cgi = $pack->new_cgi(shift);
 
-  my ($rootdir, $file, $loader, %param) = do {
-    if ($REDIRECT_STATUS and $PATH_TRANSLATED) {
+  local $CONFIG = my Config $config = $pack->new_config(shift);
+
+  my ($root, $file, $error);
+  if (catch {
+    ($pack, $root, $cgi, $file) = $pack->prepare_dispatch($cgi, $config);
+    } \ $error or catch {
+      $pack->dispatch($root, $cgi, $file);
+    } \ $error and not is_normal_end($error)) {
+    $pack->dispatch_error($root, $error
+			  , {phase => 'action', target => $file});
+  }
+}
+
+sub prepare_dispatch {
+  (my ($pack, $cgi), my Config $config) = @_;
+  my ($rootdir, $file, $loader) = do {
+    if ($config->{cf_docs}) {
+      # $config->try_load_config($config->{cf_docs});
+      ($config->{cf_docs}, $cgi->path_info
+       , [DIR => $config->{cf_docs}]);
+    } elsif ($REDIRECT_STATUS and $PATH_TRANSLATED) {
       ($pack->param_for_redirect($PATH_TRANSLATED
-				 , $SCRIPT_FILENAME || $0));
-    }
-    elsif ($PATH_INFO and $SCRIPT_FILENAME) {
+				 , $SCRIPT_FILENAME || $0, $config));
+    } elsif ($PATH_INFO and $SCRIPT_FILENAME) {
       (untaint_any(dirname($SCRIPT_FILENAME))
        , untaint_any($PATH_INFO)
-       , $pack->loader_for_script($SCRIPT_FILENAME));
-    }
-    else {
+       , $pack->loader_for_script($SCRIPT_FILENAME, $config));
+    } else {
       $pack->plain_error($cgi, <<END);
 None of PATH_TRANSLATED and PATH_INFO is given.
 END
@@ -101,35 +128,26 @@ END
     }
   }
 
-  $cgi->charset(delete $param{charset} || 'utf-8');
+  $cgi->charset($config->{cf_charset} || 'utf-8');
 
-  my @rc_global = qw(CGI SESSION HEADER COOKIE);
-
-  if (my $instpkg = delete $param{app_prefix}) {
+  if (my $instpkg = $config->{cf_app_prefix}) {
     $pack->add_isa($instpkg, $pack);
-    foreach my $name (@rc_global) {
+    foreach my $name ($pack->rc_global) {
       *{globref($instpkg, $name)} = *{globref(MY, $name)};
     }
     $pack = $instpkg;
   }
 
-  our %ROOT_CACHE;
-  my ($root, $error);
-  if (catch {
-    $root = $ROOT_CACHE{$rootdir} ||= $pack->new_translator
-      ($loader, %param
-       , rc_global => \@rc_global
-       , debug_translator => $ENV{DEBUG})
-    } \ $error or catch {
-      $pack->dispatch($root, $cgi, $file);
-    } \ $error and not is_normal_end($error)) {
-    $pack->dispatch_error($root, $error
-			  , {phase => 'action', target => $file});
-  }
+  my $root = $config->{cf_registry} ||= $pack->new_translator
+    ($loader, map($_ ? %$_ : (), $config->{cf_translator_param})
+     , rc_global => [$pack->rc_global]
+     , debug_translator => $ENV{DEBUG});
+
+  ($pack, $root, $cgi, $file);
 }
 
 sub run_template {
-  my ($pack, $file) = splice @_, 0, 2;
+  my ($pack, $file, $cgi, $config) = @_;
 
   if (defined $file and -r $file) {
     ($PATH_INFO, $REDIRECT_STATUS, $PATH_TRANSLATED) = ('', 200, $file);
@@ -137,7 +155,7 @@ sub run_template {
     die "really?" unless $ENV{PATH_TRANSLATED} eq $file;
   }
 
-  $pack->run_cgi(@_);
+  $pack->run_cgi($cgi, $config);
 }
 
 #========================================
@@ -205,6 +223,7 @@ sub dispatch_error {
 sub dispatch_action {
   my ($top, $root, $action, $pkg, @param) = @_;
   &YATT::break_handler;
+  # XXX: $CONFIG->{cf_no_header}
   my $html = capture { $action->($pkg, @param) };
   # XXX: SESSION, COOKIE, HEADER...
   print $CGI->header;
@@ -214,9 +233,9 @@ sub dispatch_action {
 
 sub plain_error {
   my ($pack, $cgi, $message) = @_;
-  print $cgi->header;
+  print $cgi->header if $cgi;
   print $message;
-  exit;
+  exit ($cgi ? 0 : 1);
 }
 
 #========================================
@@ -235,24 +254,32 @@ sub tmpl_for_driver {
   (LIB => $dir);
 }
 
+sub try_load_config {
+  (my Config $config, my ($dir)) = @_;
+  my $file = "$dir/" . $config->ROOT_CONFIG;
+  my @param = do {
+    require YATT::XHF;
+    my $parser = new YATT::XHF(filename => $file);
+    $parser->read_as('pairlist');
+  };
+  $config->classify_config_param(@param);
+}
+
 sub param_for_redirect {
-  my ($pack, $path_translated, $script_filename) = @_;
+  (my ($pack, $path_translated, $script_filename), my Config $cfobj) = @_;
   my $driver = untaint_any(rootname($script_filename));
   my @path = $pack->splitdir(untaint_any($path_translated));
   for (my $i = $#path - 1; $i >= 0; $i--) {
     my $dir = join "/", @path[0..$i];
-    my $config = "$dir/" . $pack->ROOT_CONFIG;
-    next unless -r $config;
-    my @param = do {
-      require YATT::XHF;
-      my $parser = new YATT::XHF(filename => $config);
-      $parser->read_as('pairlist');
-    };
+    my $file = "$dir/" . $pack->ROOT_CONFIG;
+    next unless -r $file;
     # Found.
     my $target = join "/", @path[$i+1 .. $#path];
     my @loader = (DIR => $dir
 		  , $pack->tmpl_for_driver($driver));
-    return ($dir, $target, \@loader, @param);
+    $cfobj->try_load_config($dir);
+
+    return ($dir, $target, \@loader);
   }
 
   die sprintf "Can't find root config for %s", $path_translated;
@@ -263,7 +290,7 @@ sub param_for_redirect {
 sub cgi_classes () { qw(CGI::Simple CGI) }
 
 sub new_cgi {
-  my ($pack) = shift;
+  my ($pack, $oldcgi) = @_;
   my $class;
   foreach my $c ($pack->cgi_classes) {
     eval qq{require $c};
@@ -278,11 +305,55 @@ sub new_cgi {
 
   # 1. To make sure passing 'public' parameters only.
   # 2. To avoid CGI::Simple eval()
-  if (@_ == 1 and UNIVERSAL::isa($_[0], $class)) {
-    $class->new($pack->extract_cgi_params($_[0]));
+  if (UNIVERSAL::isa($oldcgi, $class)) {
+    $class->new($pack->extract_cgi_params($oldcgi));
   } else {
-    $class->new(@_);
+    $class->new(defined $oldcgi ? $oldcgi : ());
   }
+}
+
+sub new_config {
+  my $pack = shift;
+  my $config = @_ == 1 ? shift : \@_;
+  return $config if defined $config
+    and ref $config and UNIVERSAL::isa($config, Config);
+
+  $pack->Config->new(do {
+    unless (defined $config) {
+      ()
+    } elsif (ref $config eq 'ARRAY') {
+      @$config
+    } elsif (ref $config eq 'HASH') {
+      %$config
+    } else {
+      $pack->plain_error(undef, <<END);
+Invalid configuration parameter: $config
+END
+    }
+  });
+}
+
+sub classify_config_param {
+  my Config $config = shift;
+  my $config_keys = $config->fields_hash;
+  my $trans_keys = $config->load_type('Translator')->fields_hash_of_class;
+  my (@mine, @trans, @unknown);
+  while (my ($name, $value) = splice @_, 0, 2) {
+    if ($config_keys->{"cf_$name"}) {
+      push @mine, $name, $value;
+    }
+    if ($trans_keys->{"cf_$name"}) {
+      push @trans, [$name, $value];
+    } else {
+      push @unknown, [$name, $value];
+    }
+  }
+  $config->configure(@mine) if @mine;
+  $config->{cf_translator_param}{$_->[0]} = $_->[1] for @trans;
+  if (@unknown and $config->{cf_allow_unknown_config}) {
+    $config->{cf_user_config}{$_->[0]} = $_->[1] for @unknown;
+  }
+  $config;
 }
 
 sub extract_cgi_params {
@@ -328,8 +399,23 @@ sub entity_param {
 sub canonicalize_html_filename {
   my $pack = shift;
   $_[0] .= "index" if $_[0] =~ m{/$};
-  $_[0] =~ s{\.html?$}{};
+  $_[0] =~ s{\.(html?|yatt?)$}{};
   $_[0]
+}
+
+sub widget_path_in {
+  my ($pack, $rootdir, $file) = @_;
+  unless (index($file, $rootdir) == 0) {
+    $pack->plain_error
+      (undef, "Requested file $file is not in rootdir $rootdir");
+  }
+
+  my @elempath
+    = split '/', $pack->canonicalize_html_filename
+      (substr($file, length($rootdir)));
+  shift @elempath if defined $elempath[0] and $elempath[0] eq '';
+
+  @elempath;
 }
 
 #========================================
@@ -339,28 +425,14 @@ use YATT::Util qw(catch);
 
 sub run_files {
   my $pack = shift;
-  my ($method, %opts);
-  while (@_ and $_[0] =~ /^--(?:([\w\.\-]+)(?:=(.*))?)?/) {
-    shift;
-    last unless defined $1;
-    unless (defined $method) {
-      $method = $1;
-    } else {
-      $opts{$1} = defined $2 ? $2 : 1;
-    }
-  }
-
-  my %param;
-  for (; @_ and $_[0] =~ /^([^=]+)=(.*)/; shift) {
-    $param{$1} = $2;
-  }
-
-  require File::Spec; import File::Spec;
+  my ($method, $flag, @opts) = $pack->parse_opts(\@_);
+  my $config = $pack->new_config(\@opts);
+  $pack->parse_params(\@_, \ my %param);
 
   foreach my $file (@_) {
     print "=== $file ===\n" if $ENV{VERBOSE};
     if (catch {
-      $pack->run_template(File::Spec->rel2abs($file), \%param);
+      $pack->run_template($pack->rel2abs($file), \%param, $config);
     } \ my $error) {
       print STDERR $error;
     }

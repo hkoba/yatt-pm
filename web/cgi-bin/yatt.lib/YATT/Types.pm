@@ -5,6 +5,7 @@ use warnings FATAL => qw(all);
 use Carp;
 use YATT::Util::Symbol;
 use YATT::Util qw(terse_dump);
+require YATT::Inc;
 
 sub Base () { 'YATT::Class::Configurable' }
 use base Base;
@@ -173,6 +174,7 @@ END
 
 sub make_class {
   my ($self, $class, $super, $slots) = @_;
+  YATT::Inc->add_inc($super);
   <<END . ($super ? <<END : "") . ($slots ? <<END : "") . "\n";
 package $class;
 END

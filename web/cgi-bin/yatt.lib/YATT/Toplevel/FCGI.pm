@@ -14,17 +14,16 @@ use YATT::Util;
 #========================================
 
 sub run {
-  my ($pack) = shift;
+  my ($pack, $request) = splice @_, 0, 2;
+  my $config = $pack->new_config(@_);
   my $age = -M $0;
-  my $request = FCGI::Request();
+  $request = FCGI::Request() unless defined $request;
   while ($request->Accept >= 0) {
     catch {
-      $pack->SUPER::run('cgi');
+      $pack->SUPER::run('cgi', undef, $config);
     };
-    if (-M $0 < $age) {
-      FCGI::Finish($request);
-      last;
-    }
+    $request->Finish;
+    last if -e $0 and -M $0 < $age;
   }
 }
 

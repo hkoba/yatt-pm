@@ -62,4 +62,16 @@ sub macro_specs {
   wantarray ? @list : \@list;
 }
 
+sub reorder_params {
+  (my Widget $widget, my ($params)) = @_;
+  my @params;
+  foreach my $name (map($_ ? @$_ : (), $widget->{arg_order})) {
+    push @params, delete $params->{$name};
+  }
+  if (keys %$params) {
+    die "Unknown args for $widget->{cf_name}: " . join(", ", keys %$params);
+  }
+  wantarray ? @params : \@params;
+}
+
 1;

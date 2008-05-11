@@ -116,6 +116,7 @@ sub configure {
 
   my @task;
   while (my ($name, $value) = splice @_, 0, 2) {
+    croak "undefined name for configure" unless defined $name;
     if (my $sub = $self->can("configure_$name")) {
       push @task, [$sub, $value];
     } else {

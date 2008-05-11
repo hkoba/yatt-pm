@@ -4,7 +4,11 @@ use strict;
 use warnings FATAL => qw(all);
 
 sub import {
-  my ($callpack) = caller;
+  __PACKAGE__->add_inc(caller);
+}
+
+sub add_inc {
+  my ($pack, $callpack) = @_;
   $callpack =~ s{::}{/}g;
   $INC{$callpack . '.pm'} = 1;
 }
