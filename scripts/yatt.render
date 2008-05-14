@@ -15,6 +15,8 @@ sub MY () { __PACKAGE__ }
 MY->parse_opts(\@ARGV, \ my %opts);
 MY->parse_params(\@ARGV, \ my %common);
 
+my $config = MY->new_config(%opts);
+
 my ($rootdir, $top) = do {
   my $file = $ARGV[0]; # Keep original.
 
@@ -22,11 +24,12 @@ my ($rootdir, $top) = do {
     die "Usage: $0 file ?name=value ...?\n"
   }
 
-  my $dir = dirname($file);
+  my $dir = dirname(MY->rel2abs($file));
+  $config->try_load_config($dir);
 
   # XXX: テンプレートディレクトリの指定も。
   ($dir
-   , MY->new_translator([DIR => MY->rel2abs($dir)], %opts
+   , MY->new_translator([DIR => $dir], $config->translator_param
 			, debug_translator => $ENV{DEBUG}));
 };
 
@@ -40,7 +43,7 @@ my @command;
 
     # XXX: render 以外も。
     my ($handler, $pkg, $widget) = $top->get_handler_to
-      (render => MY->widget_path_in($rootdir, $file));
+      (render => MY->widget_path_in($rootdir, MY->rel2abs($file)));
     push @command, [$handler, $pkg, scalar $widget->reorder_params(\%param)];
   }
 }

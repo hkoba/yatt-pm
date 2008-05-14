@@ -372,14 +372,16 @@ sub startline {
 }
 
 sub linenum {
-  (my MY $self, my ($offset)) = @_;
+  (my MY $self, my ($offset_atstart)) = @_;
   my $linenum = $self->startline;
   my Path $path = $self->{cf_path};
+  my $offset = $offset_atstart;
   while ($path) {
     $linenum += $self->count_lines_of(map {
       $path->{cf_array}[$_]
     } YATT::LRXML::Node::_BODY .. $path->{cf_index} - 1 + ($offset || 0));
     $path = $path->{cf_path};
+    undef $offset;
   }
   $linenum;
 }
@@ -411,7 +413,7 @@ sub node_is_end {
   my MY $self = shift;
   my Path $path = $self->{cf_path} or return;
   defined $path->{cf_index} or return;
-  $path->{cf_index} == $#{$path->{cf_array}};
+  $path->{cf_index} >= $#{$path->{cf_array}};
 }
 
 *stringify = *stringify_current; *stringify = *stringify_current;

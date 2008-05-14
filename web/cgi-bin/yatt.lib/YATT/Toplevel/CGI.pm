@@ -58,7 +58,7 @@ our @EXPORT_OK = (@EXPORT, map {'*'.$_} rc_global);
 sub ROOT_CONFIG () {'.htyattroot'}
 
 #----------------------------------------
-# run -> handle -> ??
+# run -> run_zzz -> dispatch(handler) -> dispatch_zzz(handler) -> handler
 
 # run は環境変数を整えるためのエントリー関数。
 
@@ -139,8 +139,7 @@ END
   }
 
   my $root = $config->{cf_registry} ||= $pack->new_translator
-    ($loader, map($_ ? %$_ : (), $config->{cf_translator_param})
-     , rc_global => [$pack->rc_global]
+    ($loader, $config->translator_param
      , debug_translator => $ENV{DEBUG});
 
   ($pack, $root, $cgi, $file);
@@ -255,8 +254,9 @@ sub tmpl_for_driver {
 }
 
 sub try_load_config {
-  (my Config $config, my ($dir)) = @_;
-  my $file = "$dir/" . $config->ROOT_CONFIG;
+  (my Config $config, my ($file)) = @_;
+  $file .= '/' . $config->ROOT_CONFIG if -d $file;
+  return unless -r $file;
   my @param = do {
     require YATT::XHF;
     my $parser = new YATT::XHF(filename => $file);
@@ -374,6 +374,7 @@ sub new_translator {
   my ($pack, $loader) = splice @_, 0, 2;
   $pack->call_type(Translator => new =>
 		   app_prefix => $pack
+		   , rc_global => [$pack->rc_global]
 		   , loader => $loader, @_);
 }
 
@@ -416,6 +417,11 @@ sub widget_path_in {
   shift @elempath if defined $elempath[0] and $elempath[0] eq '';
 
   @elempath;
+}
+
+sub YATT::Toplevel::CGI::Config::translator_param {
+  my Config $config = shift;
+  map($_ ? %$_ : (), $config->{cf_translator_param})
 }
 
 #========================================

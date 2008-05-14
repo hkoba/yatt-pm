@@ -212,7 +212,8 @@ sub generate_widget {
        , $gen->as_sub
        ($funcname
 	, $gen->genprolog($widget)
-	, $gen->as_statement_list(@body)));
+	, $gen->as_statement_list(@body))
+       , "\n");
 }
 
 sub generate_getargs {
@@ -257,7 +258,7 @@ sub generate_body {
 
 sub as_sub {
   my ($gen, $func_name) = splice @_, 0, 2;
-  "sub $func_name ". $gen->as_block(@_) . "\n";
+  "sub $func_name ". $gen->as_block(@_);
 }
 
 sub as_block {
@@ -654,9 +655,12 @@ sub genargs_static {
     }
   }
 
-  if (my $diff = $args->linenum(+1) - $startline
-      - $args->count_lines_of(@actual)) {
-    $postnl = "\n" x $diff;
+  if ($args->parent->is_empty_element) {
+    my $diff = $args->parent->linenum(+1)
+      - $startline - $args->count_lines_of(@actual);
+    $postnl = "\n" x $diff if $diff;
+  } else {
+    # XXX: どうする？
   }
   ($postnl, @actual);
 }

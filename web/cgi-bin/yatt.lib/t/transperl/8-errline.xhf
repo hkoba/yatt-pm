@@ -41,12 +41,39 @@ TITLE: (static) empty element.
 # x のエラーメッセージを作るときに y の行番号が計算される
 IN:
  <yatt:y/>
+ foo
+ bar
+ baz
  <yatt:x/>
- 
+ foo
+ bar
+ baz
+ <yatt:y/>
+ foo
+ bar
  <!yatt:widget y>
  <h2>y</h2>
-ERROR: ^No such widget \(<yatt:x />\), at file \S+ line 2\n$
+ERROR: ^No such widget \(<yatt:x />\), at file \S+ line 5\n$
 
+TITLE: (static) empty element in body
+# x のエラーメッセージを作るときに y の行番号が計算される
+IN:
+ <yatt:y>
+ foo
+ bar
+ baz
+ <yatt:x/>
+ foo
+ bar
+ baz
+ </yatt:y>
+ <!yatt:widget y>
+ <h2>y</h2>
+ foo
+ <yatt:body/>
+ bar
+ baz
+ERROR: ^No such widget \(<yatt:x />\), at file \S+ line 5\n$
 
 TITLE: (static) after long declaration
 IN:
@@ -96,7 +123,6 @@ IN:
 ERROR: ^Use of uninitialized value (?:\$html_x )?in print at \S+ line 2\.\n$
 
 TITLE: (runtime) var in nested body 
-BREAK: 1
 IN:
  <yatt:foo>
  <yatt:bar>
@@ -120,23 +146,23 @@ IN:
  <yatt:body/>
 ERROR: ^Use of uninitialized value (?:\$html_x )?in print at \S+ line 2\.\n$
 
-TITLE: (runtime) var after long widget call.
+TITLE: (runtime) undef after long widget call.
 IN:
- <!yatt:args x=html>
+ <!yatt:args>
  <yatt:foo a='
  ' b="
  " />
- &yatt:x;
+ <?perl===undef?>
  <!yatt:widget foo a b >
 ERROR: ^Use of uninitialized value (?:\$html_x )?in print at \S+ line 5\.\n$
 
-TITLE: (runtime) var after newlined widget call w/o body.
+TITLE: (runtime) undef after newlined widget call w/o body.
 IN:
- <!yatt:args x=html>
+ <!yatt:args>
  <yatt:foo 
  
  />
- &yatt:x;
+ <?perl===undef?>
  <!yatt:widget foo a b >
 ERROR: ^Use of uninitialized value (?:\$html_x )?in print at \S+ line 5\.\n$
 
@@ -153,3 +179,57 @@ IN:
  <yatt:body/>
 ERROR: ^Use of uninitialized value (?:\$html_x )?in print at \S+ line 5\.\n$
 
+
+TITLE: (runtime) after element.
+IN:
+ <yatt:y>
+ foo
+ bar
+ baz
+ </yatt:y>
+ foo
+ bar
+ <?perl===undef?>
+ <!yatt:widget y>
+ <h2>y</h2>
+ <yatt:body/>
+ERROR: ^Use of uninitialized value in print at \S+ line 8\.\n$
+
+TITLE: (runtime) after empty element in body
+IN:
+ <yatt:x>
+ foo
+ <yatt:y/>
+ bar
+ <?perl===undef?>
+ baz
+ </yatt:x>
+ 
+ 
+ <!yatt:widget x>
+ <yatt:body/>
+ <!yatt:widget y>
+ <h2>y</h2>
+ foo
+ bar
+ baz
+ERROR: ^Use of uninitialized value in print at \S+ line 5\.\n$
+
+TITLE: (runtime) after element with body
+IN:
+ <yatt:x>
+ foo
+ <yatt:y/>
+ bar
+ baz
+ </yatt:x>
+ <?perl===undef?>
+ 
+ <!yatt:widget x>
+ <yatt:body/>
+ <!yatt:widget y>
+ <h2>y</h2>
+ foo
+ bar
+ baz
+ERROR: ^Use of uninitialized value in print at \S+ line 7\.\n$

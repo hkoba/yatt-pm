@@ -207,11 +207,16 @@ sub build_tag {
   my ($is_att, $nodetype, $qflag) = do {
     if (defined $ns and $ns =~ s/^:(?=\w)//) {
       (1, attribute => YATT::LRXML::Node->quoted_by_element($is_ee));
-    } elsif (defined $html) {
-      $is_ee = $self->{cf_html_tags}{lc($html)};
-      (0, html => $is_ee ? EMPTY_ELEMENT : 0);
     } else {
-      (0, element => $is_ee ? 1 : 0);
+      my $type = do {
+	if (defined $html) {
+	  $is_ee = $self->{cf_html_tags}{lc($html)};
+	  'html';
+	} else {
+	  'element'
+	}
+      };
+      (0, $type => $is_ee ? EMPTY_ELEMENT : 0);
     }
   };
 

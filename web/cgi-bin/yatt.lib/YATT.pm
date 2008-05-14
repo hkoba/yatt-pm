@@ -46,7 +46,7 @@ YATT - Yet Another Template Toolkit
 
 =head1 VERSION
 
-Version 0.0.1
+Version 0.0.2
 
 =head1 SYNOPSIS
 
@@ -58,8 +58,10 @@ YATT is Yet Another Template Toolkit. Like PHP (and unlike HTML::Template),
 YATT translates each template into (executable) Perl package(class)
 so that you can define subs to build up your own abstraction architecture.
 
-This is pre-alpha release to avoid CPAN namespace purge. So, you might not
-find any usefull feature in this.
+This software is still in alpha stage. Although template syntax reached
+some stability, internal design is still evolving.
+So, I do not recommend direct use of anything undocumented internal modules,
+especially YATT::Registry, YATT::Translator::Perl and YATT::LRXML::*.
 
 =head1 BUGS AND LIMITATIONS
 
@@ -69,11 +71,14 @@ L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=YATT>.
 I will be notified, and then you'll automatically be notified of progress on
 your bug as I make changes.
 
+Also, you can watch my development status at
+L<http://buribullet.net/svntrac/buribullet/timeline>
+
 =head1 SUPPORT
 
 You can find documentation for this module with the perldoc command.
 
-    perldoc YATT
+    perldoc YATT::Manual
 
 You can also look for information at:
 
@@ -82,10 +87,6 @@ You can also look for information at:
 =item * AnnoCPAN: Annotated CPAN documentation
 
 L<http://annocpan.org/dist/YATT>
-
-=item * CPAN Ratings
-
-L<http://cpanratings.perl.org/d/YATT>
 
 =item * Bug tracker (svntrac)
 
@@ -104,7 +105,7 @@ L<http://search.cpan.org/dist/YATT>
 
 =head1 LICENCE AND COPYRIGHT
 
-Copyright (c) 2007, "KOBAYASI, Hiroaki" C<< <hkoba@cpan.org> >>. All rights reserved.
+Copyright (c) 2007, 2008, "KOBAYASI, Hiroaki" C<< <hkoba@cpan.org> >>. All rights reserved.
 
 This module is free software; you can redistribute it and/or
 modify it under the same terms as Perl itself. See L<perlartistic>.

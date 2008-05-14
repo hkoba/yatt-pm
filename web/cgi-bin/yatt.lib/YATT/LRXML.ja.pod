@@ -7,30 +7,29 @@ YATT::LRXML - Loose But Recursive XML.
 =head1 SYNOPSIS
 
   require YATT::LRXML;
-
   my $tree = read YATT::LRXML($filename, %opts);
 
-    or
+or
 
   my $tree = read_string YATT::LRXML(q{foo<yatt:bar>..</yatt:bar>baz}
                 , namespace => ['yatt', 'perl']);
-  
   for (my $cursor = $tree->open; $cursor->readable; $cursor->next) {
      print $cursor->stringify, "\n";
   }
 
 =head1 DESCRIPTION
 
-LRXML は、XML よりもテンプレートを記述し易く拡張された、
-独自の構文です。 LRXML は XML の整形式を逸脱するため、
-XML Parser ではパースできません。しかしその分、
+LRXML は、XML よりも HTMLのテンプレートを記述しやすくするために
+設計された、独自の構文です。 LRXML は XML の整形式を逸脱するため、
+XML Parser ではパースできません。また、(現段階では)
+シリアライズ用に使う仕組みも持っていません。しかしその分、
 元々の XML よりも豊かな再帰性と、
 DTD を一切不要にする柔軟性を持っています。
 
 =head1 SYNTAX
 
 LRXML は、LRXML の構文要素と、それ以外の印字可能テキスト(PCDATA)の
-並びです。いずれの構文要素も、予め定めた名前空間マーカー で始まります。
+並びです。いずれの構文要素も、予め定めた B<名前空間マーカー> で始まります。
 PCDATA は (LRXML の構文要素と誤解されない限り) エスケープの必要はありません。
 これはテンプレートシステムとしての使用を主眼に設計されたためです。
 
@@ -42,7 +41,7 @@ PCDATA は (LRXML の構文要素と誤解されない限り) エスケープの
 
   <yatt:NAME ATTLIST>  ..BODY.. </yatt:NAME>
 
-    又は
+又は
 
   <yatt:NAME ATTLIST />
 
@@ -51,16 +50,16 @@ PCDATA は (LRXML の構文要素と誤解されない限り) エスケープの
 
 =head3 Attribute Element (属性要素)
 
-属性要素は XML と LRXML の最大の相違点です。タグ名の直前に ':' を加えて
+属性要素は XML と LRXML の最大の相違点です。タグ名の直前に C<:> を加えて
 
   <:yatt:ATT_NAME SUB_ATTLIST> ..ATT_VALUE.. </:yatt:ATT_NAME>
 
-    又は
+又は
 
   <:yatt:ATT_NAME SUB_ATTLIST />
   ..ATT_VALUE..
 
-と書きます。(Common Lisp の :keyword 構文と同じように読んでください。)
+と書きます。(Common Lisp の C<:keyword> 構文と同じように読んでください。)
 
 この構文を使うと、属性の中にタグを書きたいケースでも、
 もっと HTML らしく書く事が出来ます。例えば
@@ -106,16 +105,18 @@ ATTLIST には XML と同様の
 
    NAME
 
-を書けます。(NAME と解釈可能な場合は NAME, それ以外は VALUE).
+を書けます。(NAME だと解釈可能な文字のみからなる場合は NAME,
+それ以外は VALUE).
 
 =head4 Quoted Value
 
-C<'VALUE'>, C<"VALUE"> の引用符の中でも C<< <> >> を使って構いません。
-これは、テンプレートとして用いる場合に、条件式を
+XML と異なり、C<'VALUE'>, C<"VALUE"> の引用符の中でも C<< <> >> を
+(escape せずに)使って構いません。これは、テンプレートとして用いる場合に、
+条件式を
 
   <yatt:event if="x > 0">....</yatt:event>
 
-と書けた方が読みやすいからです。
+のように書けた方が、はるかに読みやすいからです。
 
 =head2 Entity (実体参照, 又は単に参照)
 
@@ -123,10 +124,35 @@ C<'VALUE'>, C<"VALUE"> の引用符の中でも C<< <> >> を使って構いま�
 
 =head3 Entity Path
 
-  &yatt:NAME:NAME;
-  &yatt:NAME();
-  &yatt:NAME[];
-  &yatt:NAME{};
+テンプレートを書く人になるべく大きな自由を与えつつ、
+部品化への動機付けも残すため、 Entity の中にある程度までの複雑な式を
+書くことが可能になっています。
+
+  &yatt:NAME:NAME;   (名前空間か、hash の要素参照)
+  &yatt:NAME{};      (hash の要素参照)
+  &yatt:NAME[];      (配列の要素参照)
+  &yatt:NAME();      (関数の呼び出し)
+
+(括弧内は、記法の用途の一例で、最終的には Translator の自由です)
+
+カッコの中に再び Entity Path を書くには、先頭に C<:> を書きます。
+C<:> が無い場合は、通常の文字列として扱われます。
+カッコの中では C<,> で要素を区切ります。
+
+  &yatt:foo:bar(:baz(),bang,:hoe):moe();
+
+上記では、真ん中の C<bang> が文字列を表します。
+
+C<,> は省略可能な終端子の扱いです。つまり、
+
+  &yatt:foo(bar);
+  &yatt:foo(bar,);
+
+の二つは等価です。また、空文字列を明示的に渡したい場合は
+
+  &yatt:foo(,);
+
+と書きます。
 
 =head2 Declarator (宣言子)
 
@@ -140,17 +166,21 @@ C<'VALUE'>, C<"VALUE"> の引用符の中でも C<< <> >> を使って構いま�
 宣言子の中には、タグの属性リストと同じものに加えて、
 
 
-    NAME = [TYPE NAME=VALUE NAME=VALUE ...]
+=over 4
 
-    -- コメント --
+=item * NAME = [TYPE NAME=VALUE NAME=VALUE ...]
 
-    %NAME;
+=item * -- コメント --
+
+=item * %NAME;
+
+=back
 
 を書く事が出来ます。
 
 =head2 Processing Instruction (処理指令)
 
-  <?yatt ... ?>
+  <?perl ... ?>
 
 php などでお馴染みの、プログラム指令を書ける場所です。
 
