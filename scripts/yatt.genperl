@@ -5,7 +5,8 @@ use warnings FATAL => qw(all);
 use FindBin;
 use lib grep(-d
 	     , "$FindBin::Script.lib", "$FindBin::RealScript.lib"
-	     , "$FindBin::Bin/yatt.lib", "$FindBin::Bin/lib");
+	     , "$FindBin::Bin/yatt.lib", "$FindBin::Bin/lib"
+	     , grep {defined} $ENV{YATT_LIB});
 
 use File::Basename;
 
