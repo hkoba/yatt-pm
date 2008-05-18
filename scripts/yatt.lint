@@ -22,8 +22,11 @@ my $config = MY->new_config(%opts);
 my ($rootdir, $top) = do {
   my $file = $ARGV[0]; # Keep original.
 
-  unless (defined $file and -r $file) {
+  unless (defined $file) {
     die "Usage: $0 file ?name=value ...?\n"
+  }
+  unless (-r $file) {
+    die "$0: No such file! $file\n";
   }
 
   my $dir = dirname(MY->rel2abs($file));
@@ -52,14 +55,14 @@ my ($rootdir, $top) = do {
       } elsif ($error =~ s{ at (\S+) line (\d+)\.$}{}) {
 	($file, $line, $simple, $node) = ($1, $2, $error, '');
       } else {
-	($file, $line, $simple, $node) = ('unknown', 0, $error, '');
+	($file, $line, $simple, $node) = (undef, 0, $error, '');
       }
       printf qq{line %d file %s\n %s\n %s\n}
-	, $line, $file, map {
+	, $line, defined $file ? MY->abs2rel($file) : "<unknown>", map {
 	  my $str = $_;
 	  $str =~ s/\n/\n /g;
 	  $str
-	} $simple, $node if defined $file;
+	} $simple, $node;
 
       exit 1
     }
