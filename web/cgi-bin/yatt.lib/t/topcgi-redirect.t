@@ -54,3 +54,30 @@ my $check = sub {
 	   , "<h2>Hello</h2>\nRedirected mode.\n"
 	   , "hello");
 }
+
+{
+  my $sub = sub {
+    my ($str) = @_;
+    <<END
+<html>
+  <head>
+    <title>hoe<span style="color: red;">moe</span>moe</title>
+  </head>
+  <body>
+    <h2>hoe<span style="color: red;">moe</span>moe</h2>
+        <div>$str</div>
+
+  </body>
+</html>
+
+END
+  };
+
+  $check->("http://localhost/yatt/test/y2.html"
+	   , $sub->('')
+	   , "y2, noparam");
+
+  $check->("http://localhost/yatt/test/y2.html?foo=bar"
+	   , $sub->('bar')
+	   , "y2, foo=bar");
+}

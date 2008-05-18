@@ -34,7 +34,7 @@ sub break_cursor {}
 sub break_eval {}
 
 unless (caller) {
-  
+  # XXX: To be written. It will become general purpose command dispatcher.
 }
 
 1;
@@ -50,7 +50,11 @@ Version 0.0.2
 
 =head1 SYNOPSIS
 
-    require YATT::LRXML;
+  % yatt.render template1.html arg=value arg=value...  tmpl2.html ...
+
+  % yatt.genperl template.html
+
+  % yatt.lint template.html
 
 =head1 DESCRIPTION
 
@@ -59,9 +63,10 @@ YATT translates each template into (executable) Perl package(class)
 so that you can define subs to build up your own abstraction architecture.
 
 This software is still in alpha stage. Although template syntax reached
-some stability, internal design is still evolving.
+some stability, internal structure is still evolving.
 So, I do not recommend direct use of anything undocumented internal modules,
-especially YATT::Registry, YATT::Translator::Perl and YATT::LRXML::*.
+especially YATT::Toplevel::CGI, YATT::Registry, YATT::Translator::Perl 
+and YATT::LRXML::*.
 
 =head1 BUGS AND LIMITATIONS
 
@@ -80,9 +85,12 @@ You can find documentation for this module with the perldoc command.
 
     perldoc YATT::Manual
 
-You can also look for information at:
-
 =over 4
+
+=item * Source Code Repository
+
+Development repository is at L<https://buribullet.net/svn/>.
+Backup repo is at L<http://sourceforge.net/projects/yatt-pm/>.
 
 =item * AnnoCPAN: Annotated CPAN documentation
 

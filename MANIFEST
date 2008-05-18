@@ -7,6 +7,7 @@ scripts/yatt-driver.zsh
 scripts/yatt-libs.zsh
 scripts/yatt-test
 scripts/yatt.genperl
+scripts/yatt.lint
 scripts/yatt.render
 scripts/yatt.server
 scripts/yatt.tcl
@@ -85,5 +86,6 @@ web/cgi-bin/yatt.tmpl/debug/cgi_param.html
 web/cgi-bin/yatt.tmpl/debug/printenv.html
 web/cgi-bin/yatt.tmpl/normal/envelope.html
 web/cgi-bin/yatt.tmpl/normal/error.html
-web/samples/t00debug/index.html
+web/test/envelope.html
 web/test/y1hello.html
+web/test/y2.html

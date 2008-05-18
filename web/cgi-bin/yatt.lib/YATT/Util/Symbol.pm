@@ -50,6 +50,7 @@ sub add_isa {
   my @uniqBase;
   if (my $array = *{$isa}{ARRAY}) {
     foreach my $baseClass (@baseClass) {
+      next if $targetClass eq $baseClass;
       next if lsearch {$_ eq $baseClass} $array;
       push @uniqBase, $baseClass;
     }

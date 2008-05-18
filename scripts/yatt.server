@@ -1,5 +1,6 @@
 #!/usr/bin/perl -w
-use 5.006;
+# Currently, this doesn't work.
+
 use strict;
 use warnings FATAL => 'all';
 no warnings 'redefine';

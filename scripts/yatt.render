@@ -10,6 +10,8 @@ use lib grep(-d
 
 use File::Basename;
 
+use YATT::Inc;
+use YATT::Toplevel::CGI qw(*CGI);
 use base qw(YATT::Toplevel::CGI);
 sub MY () { __PACKAGE__ }
 
@@ -53,6 +55,8 @@ my @command;
 
 foreach my $cmd (@command) {
   my ($sub, @args) = @$cmd;
+  local $ENV{REQUEST_METHOD} = 'GET';
+  local $CGI = MY->new_cgi();
   # XXX: die handler.
   $sub->(@args);
 }

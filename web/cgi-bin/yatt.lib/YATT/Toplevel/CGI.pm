@@ -16,6 +16,7 @@ use YATT::Types -alias =>
   [MY => __PACKAGE__
    , Translator => 'YATT::Translator::Perl'];
 
+require YATT::Inc;
 use YATT::Util;
 use YATT::Util::Finalizer;
 use YATT::Util::Taint qw(untaint_any);
@@ -30,12 +31,13 @@ use YATT::Types -base => __PACKAGE__
   , [Config => [qw(^cf_registry
 		   cf_docs cf_tmpl
 		   cf_charset
-		   cf_app_prefix
 		   cf_translator_param
 		   cf_user_config
 		   cf_no_header
 		   cf_allow_unknown_config
+		   cf_auto_reload
 		 )
+		, ['^cf_app_prefix' => 'YATT']
 		, ['^cf_find_root_upward' => 2]
 	       ]];
 
@@ -96,6 +98,8 @@ sub run_cgi {
 sub create_toplevel {
   (my Config $config, my ($dir)) = splice @_, 0, 2;
 
+  $dir ||= '.';
+
   $config->configure(@_) if @_;
 
   $config->try_load_config($dir);
@@ -151,19 +155,19 @@ END
 
   $cgi->charset($config->{cf_charset} || 'utf-8');
 
-  if (my $instpkg = $config->{cf_app_prefix}) {
+  my $instpkg = $config->app_prefix || 'main';
+  {
     $pack->add_isa($instpkg, $pack);
     foreach my $name ($pack->rc_global) {
       *{globref($instpkg, $name)} = *{globref(MY, $name)};
     }
-    $pack = $instpkg;
   }
 
-  my $root = $config->{cf_registry} ||= $pack->new_translator
+  my $root = $config->{cf_registry} ||= $instpkg->new_translator
     ($loader, $config->translator_param
      , debug_translator => $ENV{DEBUG});
 
-  ($pack, $root, $cgi, $file);
+  ($instpkg, $root, $cgi, $file);
 }
 
 sub run_template {
@@ -295,7 +299,7 @@ sub try_load_config {
   my $dir;
   unless (defined $file and -r $file) {
     die "No such file or directory! "
-      . defined $file ? $file : "(undef)" . "\n";
+      . (defined $file ? $file : "(undef)") . "\n";
   } elsif (-f $file) {
     # ok
     $file = $config->rel2abs($file);
@@ -434,9 +438,11 @@ sub extract_cgi_params {
 }
 
 sub new_translator {
-  my ($pack, $loader) = splice @_, 0, 2;
+  my ($self, $loader) = splice @_, 0, 2;
+  my $pack = ref $self || $self;
   $pack->call_type(Translator => new =>
-		   app_prefix => ref $pack || $pack
+		   app_prefix => $pack
+		   , default_base_class => $pack
 		   , rc_global => [$pack->rc_global]
 		   , loader => $loader, @_);
 }
@@ -484,7 +490,9 @@ sub widget_path_in {
 
 sub YATT::Toplevel::CGI::Config::translator_param {
   my Config $config = shift;
-  map($_ ? %$_ : (), $config->{cf_translator_param})
+  # print "translator_param: ", terse_dump($config), "\n";
+  map($_ ? (ref $_ eq 'ARRAY' ? @$_ : %$_) : ()
+      , $config->{cf_translator_param})
 }
 
 #========================================

@@ -43,7 +43,7 @@ use YATT::Registry::NS;
 use YATT::Util::Symbol;
 
 use base Dir;
-use YATT::Fields qw(^Loader NS last_nsid
+use YATT::Fields qw(^Loader NS last_nsid ^root_is_loaded
 		    cf_auto_reload
 		    cf_type_map
 		    cf_debug_registry
@@ -73,6 +73,9 @@ sub new {
   # root は new 時に強制 refresh.
   # after_configure だと、configure の度なので、new のみに。
   $root->refresh($root);
+
+  # Now safe to lift @ISA.
+  $root->{root_is_loaded} = 1;
 
   $root;
 }
@@ -873,7 +876,9 @@ sub create_var {
     ++$dir->{cf_age};
 
     # RC 読み込みの前に、 default_base_class を設定。
-    if ($root->{cf_default_base_class}) {
+    if ($root->{cf_default_base_class}
+	and ($root->{cf_default_base_class} ne $root->{cf_pkg}
+	     or $root->root_is_loaded)) {
       # XXX: add_isa じゃなくて ensure_isa だね。
       $root->checked_eval(qq{require $root->{cf_default_base_class}});
       $root->add_isa(my $pkg = $root->get_package($dir)

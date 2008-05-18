@@ -13,17 +13,27 @@ my $builder = Module::Build->new(
     dist_author         => '"KOBAYASI, Hiroaki" <hkoba@cpan.org>',
     dist_version_from   => 'web/cgi-bin/yatt.lib/YATT.pm',
     requires => {
-        'perl'       => '5.7.2',
+        'perl'       => '5.7.2', # for sprintf reordering.
         'version'    => 0,
-        'File::Remove' => 0,
+        'File::Remove' => 0, # Should be replaced to File::Path.
         'List::Util' => 0,
         'Test::More' => 0,
 	'Test::Differences' => 0,
     },
     pm_files => \%pm_files,
     test_files => Module::Build->rscan_dir('web/cgi-bin/yatt.lib/t', qr{\.t}),
-    script_files => {'scripts/yatt-driver.zsh' => 'bin/yatt-driver.zsh'},
-    add_to_cleanup      => [ qw(YATT-* *.tmp) ],
+    script_files => {
+      map(("scripts/$_" => "bin/$_")
+	  , qw(
+		yatt.genperl
+		yatt.lint
+		yatt.render
+		yatt.server
+	     ))
+    },
+    add_to_cleanup      => [ qw(YATT-* *.tmp
+				web/cgi-bin/yatt.lib/t/cover_db
+			      ) ],
 );
 
 $builder->create_build_script();
