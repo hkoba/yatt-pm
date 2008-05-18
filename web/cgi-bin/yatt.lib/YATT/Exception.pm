@@ -11,6 +11,8 @@ sub Exception () {__PACKAGE__}
 our @EXPORT_OK = qw(Exception is_normal_end);
 our @EXPORT = @EXPORT_OK;
 
+use YATT::LRXML::Node qw(stringify_node);
+
 use YATT::Fields qw(cf_normal cf_error
 		    cf_caller
 		    cf_other
@@ -46,6 +48,13 @@ sub string {
   (my MY $err) = @_;
   $err->{cf_error} || do {
     $err->simple . " " . $err->error_place . "\n";
+  };
+}
+
+sub error_node {
+  (my MY $err) = @_;
+  $err->{cf_node} || do {
+    $err->{cf_node_obj} ? stringify_node($err->{cf_node_obj}) : ""
   };
 }
 

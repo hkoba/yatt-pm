@@ -704,7 +704,9 @@ sub declare_widget {
    , my ($args, $parser)) = @_;
 
   if ($builder->{parent}) {
-    die $scan->token_error("Misplaced yatt:widget");
+    die $root->node_error($root->fake_cursor_to_build($builder, $scan
+						      , $builder->product)
+			  , "Misplaced yatt:widget in:");
   }
 
   defined (my $name = $args->node_name)

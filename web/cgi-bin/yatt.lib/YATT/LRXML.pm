@@ -84,10 +84,13 @@ sub after_read {
   }
 }
 
+use YATT::Exception qw(Exception);
+
 sub token_error {
   (my MY $self, my ($mesg)) = @_;
-  $mesg .= $self->{cf_metainfo}->in_file;
-  "$mesg at line $self->{cf_linenum}";
+  $self->Exception->new(error_fmt => $mesg
+			, file => $self->{cf_metainfo}->in_file
+			, line => $self->{cf_linenum});
 }
 
 #========================================
@@ -124,22 +127,27 @@ sub open {
 		    , @_);
 }
 
+use YATT::Exception qw(Exception);
+
 sub error {
-  (my MY $self, my ($fmt)) = splice @_, 0, 2;
-  sprintf $fmt, @_;
+  (my MY $self, my ($mesg, $param, @other)) = @_;
+  $self->Exception->new(error_fmt => $mesg
+			, error_param => $param
+			, @other);
 }
 
 sub verify_close {
   (my MY $self, my ($tagname, $scan)) = @_;
   unless (defined $self->{cf_endtag}) {
-    die $self->error("TAG '/$tagname' without open");
+    die $self->error("TAG '/%s' without open", [$tagname]
+		     , file => $scan->cget('metainfo')->filename
+		     , line => $scan->linenum);
   }
   unless ($tagname eq $self->{cf_endtag}) {
-    die $self->error("TAG '%s' at %s line %d closed by /%s"
-		     , $self->{cf_endtag}
-		     , $scan->cget('metainfo')->filename
-		     , $self->{cf_startline}
-		     , $tagname);
+    die $self->error("TAG '%s' line %d closed by /%s"
+		     , [$self->{cf_endtag}, $self->{cf_startline}, $tagname]
+		     , file => $scan->cget('metainfo')->filename
+		     , line => $scan->linenum);
   }
 }
 
