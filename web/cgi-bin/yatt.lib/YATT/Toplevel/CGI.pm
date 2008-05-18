@@ -27,7 +27,7 @@ use YATT::Exception;
 #----------------------------------------
 use base qw(YATT::Class::Configurable);
 use YATT::Types -base => __PACKAGE__
-  , [Config => [qw(cf_registry
+  , [Config => [qw(^cf_registry
 		   cf_docs cf_tmpl
 		   cf_charset
 		   cf_app_prefix
@@ -35,8 +35,11 @@ use YATT::Types -base => __PACKAGE__
 		   cf_user_config
 		   cf_no_header
 		   cf_allow_unknown_config
-		   cf_find_root
-		 )]];
+		 )
+		, ['^cf_find_root_upward' => 2]
+	       ]];
+
+Config->define(create => \&create_toplevel);
 
 #----------------------------------------
 
@@ -88,6 +91,23 @@ sub run_cgi {
     $pack->dispatch_error($root, $error
 			  , {phase => 'action', target => $file});
   }
+}
+
+sub create_toplevel {
+  (my Config $config, my ($dir)) = splice @_, 0, 2;
+
+  $config->configure(@_) if @_;
+
+  $config->try_load_config($dir);
+
+  my @loader = (DIR => $config->{cf_docs});
+
+  push @loader, LIB => $config->{cf_tmpl} if $config->{cf_tmpl};
+
+  $config->{cf_registry} = $config->new_translator
+    (\@loader, $config->translator_param);
+
+  $config;
 }
 
 sub prepare_dispatch {
@@ -284,13 +304,15 @@ sub try_load_config {
     die "Unsupported file type! $file";
   } elsif (-r (my $found = "$file/" . $config->ROOT_CONFIG)) {
     ($dir, $file) = ($file, $found);
-  } elsif ($config->{cf_find_root}) {
-    # $file is directory.
-    if (my @found
-	= $config->upward_find_file($file, $config->{cf_find_root})) {
-      ($dir, $file) = @found;
-    }
+  } elsif ($config->find_root_upward
+	   and my @found = $config->upward_find_file
+	   ($file, $config->find_root_upward)) {
+    ($dir, $file) = @found;
+  } else {
+    $dir = $file;
   }
+
+  $config->configure(docs => $dir);
 
   return unless -r $file;
 
@@ -299,8 +321,6 @@ sub try_load_config {
     my $parser = new YATT::XHF(filename => $file);
     $parser->read_as('pairlist');
   };
-
-  $config->configure(docs => $dir);
 
   $config->classify_config_param(@param);
 }
@@ -357,7 +377,11 @@ sub new_config {
   return $config if defined $config
     and ref $config and UNIVERSAL::isa($config, Config);
 
-  $pack->Config->new(do {
+  if (ref $pack or not UNIVERSAL::isa($pack, Config)) {
+    $pack = $pack->Config;
+  }
+
+  $pack->new(do {
     unless (defined $config) {
       ()
     } elsif (ref $config eq 'ARRAY') {
@@ -412,7 +436,7 @@ sub extract_cgi_params {
 sub new_translator {
   my ($pack, $loader) = splice @_, 0, 2;
   $pack->call_type(Translator => new =>
-		   app_prefix => $pack
+		   app_prefix => ref $pack || $pack
 		   , rc_global => [$pack->rc_global]
 		   , loader => $loader, @_);
 }
