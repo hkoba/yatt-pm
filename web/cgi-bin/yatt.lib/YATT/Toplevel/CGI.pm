@@ -35,6 +35,7 @@ use YATT::Types -base => __PACKAGE__
 		   cf_user_config
 		   cf_no_header
 		   cf_allow_unknown_config
+		   cf_find_root
 		 )]];
 
 #----------------------------------------
@@ -92,7 +93,7 @@ sub run_cgi {
 sub prepare_dispatch {
   (my ($pack, $cgi), my Config $config) = @_;
   my ($rootdir, $file, $loader) = do {
-    if ($config->{cf_docs}) {
+    if (not $config->{cf_registry} and $config->{cf_docs}) {
       # $config->try_load_config($config->{cf_docs});
       ($config->{cf_docs}, $cgi->path_info
        , [DIR => $config->{cf_docs}]);
@@ -253,36 +254,74 @@ sub tmpl_for_driver {
   (LIB => $dir);
 }
 
+sub upward_find_file {
+  my ($pack, $file, $level) = @_;
+  my @path = $pack->splitdir($pack->rel2abs($file));
+  my $limit = defined $level ? @path - $level : 0;
+  my ($dir);
+  for (my $i = $#path - 1; $i >= $limit; $i--) {
+    $dir = join "/", @path[0..$i];
+    $file = "$dir/" . $pack->ROOT_CONFIG;
+    next unless -r $file;
+    return wantarray ? ($dir, $file) : $file;
+  }
+
+  return
+}
+
 sub try_load_config {
   (my Config $config, my ($file)) = @_;
-  $file .= '/' . $config->ROOT_CONFIG if -d $file;
+
+  my $dir;
+  unless (defined $file and -r $file) {
+    die "No such file or directory! "
+      . defined $file ? $file : "(undef)" . "\n";
+  } elsif (-f $file) {
+    # ok
+    $file = $config->rel2abs($file);
+    $dir = dirname($file);
+  } elsif (! -d $file) {
+    die "Unsupported file type! $file";
+  } elsif (-r (my $found = "$file/" . $config->ROOT_CONFIG)) {
+    ($dir, $file) = ($file, $found);
+  } elsif ($config->{cf_find_root}) {
+    # $file is directory.
+    if (my @found
+	= $config->upward_find_file($file, $config->{cf_find_root})) {
+      ($dir, $file) = @found;
+    }
+  }
+
   return unless -r $file;
+
   my @param = do {
     require YATT::XHF;
     my $parser = new YATT::XHF(filename => $file);
     $parser->read_as('pairlist');
   };
+
+  $config->configure(docs => $dir);
+
   $config->classify_config_param(@param);
 }
 
 sub param_for_redirect {
   (my ($pack, $path_translated, $script_filename), my Config $cfobj) = @_;
   my $driver = untaint_any(rootname($script_filename));
-  my @path = $pack->splitdir(untaint_any($path_translated));
-  for (my $i = $#path - 1; $i >= 0; $i--) {
-    my $dir = join "/", @path[0..$i];
-    my $file = "$dir/" . $pack->ROOT_CONFIG;
-    next unless -r $file;
-    # Found.
-    my $target = join "/", @path[$i+1 .. $#path];
-    my @loader = (DIR => $dir
-		  , $pack->tmpl_for_driver($driver));
-    $cfobj->try_load_config($dir);
 
-    return ($dir, $target, \@loader);
+  # This should set $cfobj->{cf_docs}
+  unless ($cfobj->{cf_registry}) {
+    # .htyattroot の読み込みは、registry 作成前の一度で十分。
+    $cfobj->try_load_config(dirname(untaint_any($path_translated)));
   }
 
-  die sprintf "Can't find root config for %s", $path_translated;
+  my $target = substr($path_translated
+		      , length($cfobj->{cf_docs}));
+
+  my @loader = (DIR => $cfobj->{cf_docs}
+		, $pack->tmpl_for_driver($driver));
+
+  return ($cfobj->{cf_docs}, $target, \@loader);
 }
 
 #========================================
