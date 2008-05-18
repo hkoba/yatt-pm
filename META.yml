@@ -8,8 +8,11 @@ license: perl
 resources:
   license: http://dev.perl.org/licenses/
 requires:
+  File::Remove: 0
+  List::Util: 0
   Test::Differences: 0
   Test::More: 0
+  perl: 5.7.2
   version: 0
 provides:
   YATT:
@@ -23,8 +26,8 @@ provides:
     file: web/cgi-bin/yatt.lib/YATT/Class/ArrayScanner.pm
   YATT::Class::Configurable:
     file: web/cgi-bin/yatt.lib/YATT/Class/Configurable.pm
-  YATT::Class::Hierarchy:
-    file: web/cgi-bin/yatt.lib/YATT/Class/Hierarchy.pm
+  YATT::Exception:
+    file: web/cgi-bin/yatt.lib/YATT/Exception.pm
   YATT::Fields:
     file: web/cgi-bin/yatt.lib/YATT/Fields.pm
   YATT::Inc:
@@ -61,6 +64,8 @@ provides:
     file: web/cgi-bin/yatt.lib/YATT/Toplevel/CGI.pm
   YATT::Toplevel::CGI::Batch:
     file: web/cgi-bin/yatt.lib/YATT/Toplevel/CGI.pm
+  YATT::Toplevel::FCGI:
+    file: web/cgi-bin/yatt.lib/YATT/Toplevel/FCGI.pm
   YATT::Toplevel::Server:
     file: web/cgi-bin/yatt.lib/YATT/Toplevel/Server.pm
   YATT::Translator::Perl:
@@ -69,8 +74,10 @@ provides:
     file: web/cgi-bin/yatt.lib/YATT/Types.pm
   YATT::Util:
     file: web/cgi-bin/yatt.lib/YATT/Util.pm
-  YATT::Util::Cache:
-    file: web/cgi-bin/yatt.lib/YATT/Util/Cache.pm
+  YATT::Util::CmdLine:
+    file: web/cgi-bin/yatt.lib/YATT/Util/CmdLine.pm
+  YATT::Util::DictOrder:
+    file: web/cgi-bin/yatt.lib/YATT/Util/DictOrder.pm
   YATT::Util::DirTreeBuilder:
     file: web/cgi-bin/yatt.lib/YATT/Util/DirTreeBuilder.pm
   YATT::Util::Enum:
