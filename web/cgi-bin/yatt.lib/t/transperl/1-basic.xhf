@@ -78,7 +78,7 @@ IN:
   <yatt:hello/>
  
  <!yatt:widget hello>
-ERROR: Misplaced yatt:widget in file \S+ at line 4
+ERROR: Misplaced yatt:widget in: \([^\)]+\), at file \S+ line 4
 
 FILE: doc/envelope.html
 IN: <!yatt:args title=text>
