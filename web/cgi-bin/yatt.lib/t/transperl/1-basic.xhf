@@ -20,6 +20,14 @@ IN:
  <!perl:widget baz>baz
 ERROR: ^Unknown declarator \(<!perl:bar >\), at
 
+
+FILE: doc/nodecl.html
+IN: foo bar baz
+
+TITLE: file widget without decl
+IN: <yatt:nodecl/>
+OUT: foo bar baz
+
 TITLE: one template, bodyless
 IN:
  <!yatt:args x y>

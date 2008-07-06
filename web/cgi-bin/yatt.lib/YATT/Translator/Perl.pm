@@ -581,7 +581,7 @@ sub gencall {
   my $func = $trans->get_funcname_to($trans->{cf_mode}, $widget);
   # actual 一覧の作成
   my ($post, @args) = $trans->genargs_static
-    ($scope, $node, @{$widget}{qw(arg_dict arg_order)});
+    ($scope, $node, $widget->arg_specs);
 
   # XXX: calling convention 周り
   return \ sprintf(' %s($this, [%s])%s', $func
