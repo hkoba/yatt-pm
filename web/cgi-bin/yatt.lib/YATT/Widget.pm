@@ -11,7 +11,7 @@ use YATT::Fields qw(^=arg_dict
 		    ^=argmacro_dict
 		    ^=argmacro_order
 		    ^cf_root
-		    cf_name
+		    ^cf_name
 		    cf_filename
 		    ^cf_declared
 		    cf_decl_start
@@ -47,6 +47,28 @@ sub add_arg {
 sub has_arg {
   (my Widget $widget, my ($name)) = @_;
   defined $widget->{arg_dict}{$name};
+}
+
+sub copy_specs_from {
+  (my Widget $this, my Widget $from) = @_;
+  my @names;
+  {
+    my ($dict, $order) = $from->arg_specs;
+    foreach my $name (@$order) {
+      next if $this->has_arg($name);
+      $this->add_arg($name, $dict->{$name}->clone);
+      push @names, $name;
+    }
+  }
+  {
+    $this->macro_specs;
+    my ($dict, $order) = $from->macro_specs;
+    foreach my $name (@$order) {
+      next if $this->{argmacro_dict} && $this->{argmacro_dict}{$name};
+      # XXX: 未実装。
+    }
+  }
+  @names;
 }
 
 sub arg_specs {

@@ -305,7 +305,7 @@ sub get_widget_from_template {
   my $widget;
 
   # Relative lookup.
-  $widget = $tmpl->lookup_widget($root, @_)
+  $widget = $tmpl->lookup_widget($root, @_ ? @_ : $nsname)
     and return $widget;
 
   # Absolute, ns-specific lookup.
@@ -796,7 +796,18 @@ sub add_decl_attribute {
   }
 
   my ($type, @param) = $args->parse_typespec;
-  $target->add_arg($argname, $root->create_var($type, $args, @param));
+  my ($typename, $subtype) = do {
+    if (ref $type) {
+      ($type->[0], [@{$type}[1 .. $#$type]])
+    } else {
+      ($type, undef);
+    }
+  };
+  if (defined $typename and my $sub = $root->can("attr_declare_$typename")) {
+    $sub->($root, $target, $args, $argname, $subtype, @param);
+  } else {
+    $target->add_arg($argname, $root->create_var($type, $args, @param));
+  }
 }
 
 sub create_var {

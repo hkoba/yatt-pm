@@ -538,18 +538,11 @@ sub gencall_always {
   my @elempath = $node->node_path
     or die $trans->node_error($node, "Empty element path");
 
-  # ■ 局所引数
+  # ■ 局所引数… これも、型の固有処理に任せる. delegate もここで。
   if (my $codevar = $trans->find_codearg($scope, @elempath)) {
     # ← 特に、親の call の body の中で、<yatt:body foo=bar/> で
     # 呼ばれるとき, だよね？
-    unless (ref $codevar and $codevar->can('arg_specs')) {
-      die $trans->node_error($node, "Invalid codevar $codevar for @elempath");
-    }
-
-    my ($post, @args) = $trans->genargs_static
-      ($scope, $node->open, $codevar->arg_specs);
-    return \ sprintf '%1$s && %1$s->(%2$s)%3$s', $codevar->as_lvalue
-      , join(", ", @args), $post;
+    return $codevar->gen_call($trans, $scope, $node);
   }
 
   # ■ さもなければ、通常の Widget の呼び出し
@@ -609,7 +602,7 @@ sub has_pass_through_var {
 }
 
 sub genargs_static {
-  (my MY $trans, my ($scope, $args, $arg_dict, $arg_order)) = @_;
+  (my MY $trans, my ($scope, $args, $arg_dict, $arg_order, $delegate_vars)) = @_;
   my ($body, @actual) = $args->variant_builder;
   my ($postnl, $startline) = ('', $args->linenum);
   for (my $nth = 0; $args->readable; $args->next) {
@@ -647,10 +640,14 @@ sub genargs_static {
       = $bodydecl->gen_assignable_node($trans, $scope, $body, 1);
   }
 
-  for (my $i = 0; $i < @actual; $i++) {
+  for (my $i = 0; $i < @$arg_order; $i++) {
     next if defined $actual[$i];
     my $name = $arg_order->[$i];
-    if ($arg_dict->{$name}->is_required) {
+    if ($delegate_vars->{$name}) {
+      # delegate 宣言では、型は同じになるはず。
+      # XXX: 引数rename
+      $actual[$i] = $arg_dict->{$name}->as_lvalue;
+    } elsif ($arg_dict->{$name}->is_required) {
       die $trans->node_error($args->parent
 			     , "Argument '%s' is missing", $name);
     }
@@ -727,6 +724,26 @@ sub has_element_macro {
 
 # XXX: use は perl 固有だから、ここに持たせるのは理にかなう。
 sub declare_use {
+}
+
+sub attr_declare_delegate {
+  (my MY $trans, my ($widget, $args, $argname, $subtype, @param)) = @_;
+  my @elempath = $subtype ? @$subtype : $argname;
+  my $tmpl = $trans->get_template_from_node($args);
+  my $base = $trans->get_widget_from_template($tmpl, @elempath);
+  unless ($base) {
+    die $trans->node_error($args, "No such widget %s"
+			   , join(":", @elempath));
+  }
+  # pass thru する変数名の一覧。
+  # でも、未指定なものだけね。
+  # XXX: 引数rename
+  my %vars; $vars{$_} = 1 for $widget->copy_specs_from($base);
+  $widget->add_arg
+    ($argname, $trans->create_var(delegate => $args
+				  , base_path => \@elempath
+				  , base_widget => $base
+				  , delegate_vars => \%vars, @param));
 }
 
 sub after_define_args {
@@ -1143,6 +1160,9 @@ use YATT::ArgTypes
    , [code   => -alias => 'expr', \ can_call => 1
       # 引数の型情報
       , -fields => [qw(arg_dict arg_order)]]
+   , [delegate => -fields => [qw(cf_base_path
+				 cf_base_widget
+				 cf_delegate_vars)]]
    , qw(:type_name)
   );
 
@@ -1218,6 +1238,14 @@ sub YATT::Translator::Perl::t_list::entmacro_expand {
   sprintf q{map($_ ? @$_ : (), %s)}, $was;
 }
 
+sub YATT::Translator::Perl::t_code::gen_call {
+  (my t_code $argdecl, my MY $trans, my ($scope, $node)) = @_;
+  my ($post, @args) = $trans->genargs_static
+    ($scope, $node->open, $argdecl->arg_specs);
+  return \ sprintf '%1$s && %1$s->(%2$s)%3$s', $argdecl->as_lvalue
+    , join(", ", @args), $post;
+}
+
 sub YATT::Translator::Perl::t_code::arg_specs {
   my t_code $argdecl = shift;
   ($argdecl->{arg_dict} ||= {}, $argdecl->{arg_order} ||= []);
@@ -1268,6 +1296,23 @@ sub create_var_code {
   my t_code $codevar = $trans->t_code->new(@param);
   $trans->define_args($codevar, $node->open) if $node;
   $codevar;
+}
+
+sub YATT::Translator::Perl::t_delegate::gen_call {
+  (my t_delegate $argdecl, my MY $trans, my ($scope, $node)) = @_;
+  my $func = $trans->get_funcname_to($trans->{cf_mode}
+				     , $argdecl->{cf_base_widget});
+  my ($post, @args) = $trans->genargs_static
+    ($scope, $node->open, $argdecl->arg_specs);
+  return \ sprintf(' %s($this, [%s])%s', $func
+		   , join(", ", map {defined $_ ? $_ : 'undef'} @args)
+		   , $post);
+}
+
+sub YATT::Translator::Perl::t_delegate::arg_specs {
+  my t_delegate $argdecl = shift;
+  ($argdecl->{cf_base_widget}->arg_specs
+   , $argdecl->{cf_delegate_vars});
 }
 
 #========================================

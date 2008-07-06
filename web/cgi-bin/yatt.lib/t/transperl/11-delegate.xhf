@@ -1,0 +1,34 @@
+# -*- coding: utf-8 -*-
+
+TITLE: base=[delegate]
+IN:
+ <!yatt:args x y z w %yatt:no_last_newline;>
+ <yatt:derived x y z w/>
+ <!yatt:widget base x y z %yatt:no_last_newline;>
+ &yatt:x; - &yatt:y; - &yatt:z;
+ <!yatt:widget derived base=[delegate] w %yatt:no_last_newline;>
+ <yatt:base/> - &yatt:w;
+PARAM[
+- 1
+- 2
+- 3
+- 4
+]
+OUT: 1 - 2 - 3 - 4
+
+
+TITLE: base=[delegate:foo]
+IN:
+ <!yatt:args x y z w %yatt:no_last_newline;>
+ <yatt:derived x y z w/>
+ <!yatt:widget foo x y z %yatt:no_last_newline;>
+ &yatt:x; - &yatt:y; - &yatt:z;
+ <!yatt:widget derived base=[delegate:foo] w %yatt:no_last_newline;>
+ <yatt:base/> - &yatt:w;
+PARAM[
+- 1
+- 2
+- 3
+- 4
+]
+OUT: 1 - 2 - 3 - 4
