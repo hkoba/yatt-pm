@@ -244,6 +244,7 @@ sub xhf_test {
       (\@loader
        , app_prefix => "MyApp$SECTION"
        , debug_translator => $ENV{DEBUG}
+       , no_lineinfo => YATT::Util::no_lineinfo()
        , %config
       );
 
