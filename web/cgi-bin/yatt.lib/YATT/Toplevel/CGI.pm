@@ -160,19 +160,24 @@ END
 
   $cgi->charset($config->{cf_charset} || 'utf-8');
 
-  my $instpkg = $config->app_prefix || 'main';
-  {
-    $pack->add_isa($instpkg, $pack);
-    foreach my $name ($pack->rc_global) {
-      *{globref($instpkg, $name)} = *{globref(MY, $name)};
-    }
-  }
+  my $instpkg = $pack->prepare_export($config);
 
   my $root = $config->{cf_registry} ||= $instpkg->new_translator
     ($loader, $config->translator_param
      , debug_translator => $ENV{DEBUG});
 
   ($instpkg, $root, $cgi, $file);
+}
+
+sub prepare_export {
+  my ($pack, $config, $instpkg) = @_;
+  $instpkg ||= $config && $config->app_prefix || 'main';
+
+  $pack->add_isa($instpkg, $pack);
+  foreach my $name ($pack->rc_global) {
+    *{globref($instpkg, $name)} = *{globref(MY, $name)};
+  }
+  $instpkg
 }
 
 sub run_template {
@@ -421,6 +426,12 @@ sub classify_config_param {
     }
   }
   $config->configure(@mine) if @mine;
+  foreach my $name ($config->configkeys) {
+    if ($trans_keys->{"cf_$name"}
+	and defined (my $value = $config->{"cf_$name"})) {
+      push @trans, [$name, $value];
+    }
+  }
   $config->{cf_translator_param}{$_->[0]} = $_->[1] for @trans;
   if (@unknown and $config->{cf_allow_unknown_config}) {
     $config->{cf_user_config}{$_->[0]} = $_->[1] for @unknown;

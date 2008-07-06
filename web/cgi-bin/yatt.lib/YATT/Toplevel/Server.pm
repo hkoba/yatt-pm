@@ -7,6 +7,8 @@ use YATT::Toplevel::CGI qw(*PATH_INFO rootname capture Config);
 use base qw(HTTP::Server::Simple::CGI
 	    YATT::Toplevel::CGI);
 
+use Carp;
+
 use YATT::Util::Taint;
 use YATT::Util;
 
@@ -41,20 +43,28 @@ sub handle_request {
     push @args, join("/", @dirs) if @dirs;
     $file = join("/", @found);
   }
-  my ($renderer, $pkg, $widget) = $top->registry->get_handler_to
-    (render => $top->canonicalize_html_filename($file));
+  my ($renderer, $pkg, $widget);
   my ($html, $error);
-  unless (catch {
+
+  local $SIG{__DIE__} = sub {
+    print STDERR Carp::longmess('error while request handling: ', @_);
+    die @_;
+  };
+
+  if (catch {
+    ($renderer, $pkg, $widget) = $top->registry->get_handler_to
+      (render => $top->canonicalize_html_filename($file));
+  } \ $error or catch {
     $html = capture {
       $renderer->($pkg, $widget->reorder_cgi_params($cgi, \@args))
     }
-  } \$error) {
+  } \ $error) {
+    print "HTTP/1.0 500\r\n\r\n";
+    print $error;
+  } else {
     print "HTTP/1.0 200\r\n";
     print $cgi->header;
     print $html;
-  } else {
-    print "HTTP/1.0 500\r\n\r\n";
-    print $error;
   }
 }
 

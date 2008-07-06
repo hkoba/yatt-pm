@@ -446,6 +446,12 @@ sub trans_html {
   my @script;
   for (; $item->readable; $item->next) {
     last unless $item->is_primary_attribute;
+    my $name = $item->node_name;
+    if (my $var = $trans->has_pass_through_var($scope, $item, $name)) {
+      push @script, qparen($string), $var->as_escaped;
+      $string = '';
+      next;
+    }
     $string .= ' ';
     my ($open, $close) = $item->node_attribute_format;
     $string .= $open;
@@ -585,6 +591,16 @@ sub gencall {
   return \ sprintf(' %s($this, [%s])%s', $func
 		   , join(", ", map {defined $_ ? $_ : 'undef'} @args)
 		   , $post);
+}
+
+sub has_single_bare_varexpr {
+  (my MY $trans, my ($scope, $node)) = @_;
+  my $clone = $node->clone($node->clone_path);
+  my $parent = $clone->parent;
+  return unless $parent->is_bare_attribute and $parent->node_size == 1;
+  my (@expr) = ($trans->mark_vars($scope, ENT_RAW, $clone));
+  return unless @expr and ref $expr[0] eq 'SCALAR';
+  $expr[0];
 }
 
 sub has_pass_through_var {
@@ -1177,6 +1193,7 @@ use YATT::ArgTypes
 
 $calling_conv{this} = t_scalar->new(varname => 'this');
 $calling_conv{args} = t_scalar->new(varname => 'args');
+$calling_conv{_} = t_scalar->new(varname => '_');
 
 sub YATT::Translator::Perl::t_text::quote_assignable {
   shift;
@@ -1194,8 +1211,12 @@ sub YATT::Translator::Perl::t_html::escaped_format {shift->lvalue_format}
 sub YATT::Translator::Perl::t_html::gen_assignable_node {
   (my VarType $var, my MY $trans, my ($scope, $node, $is_opened)) = @_;
   # XXX: フラグがダサい。
-  $trans->as_join
-    ($trans->generate_body($scope, $is_opened ? $node : $node->open));
+  my $n = $is_opened ? $node : $node->open;
+  if (my $expr = $trans->has_single_bare_varexpr($scope, $n)) {
+    t_scalar->quote_assignable($expr);
+  } else {
+    $trans->as_join($trans->generate_body($scope, $n));
+  }
 }
 
 sub YATT::Translator::Perl::t_attr::entmacro_ {
@@ -1322,6 +1343,8 @@ sub YATT::Translator::Perl::t_delegate::gen_call {
   my $func = $trans->get_funcname_to($trans->{cf_mode}
 				     , $argdecl->{cf_base_widget});
   my $body_dict = $argdecl->{cf_base_widget}->{arg_dict}->{body}->{arg_dict};
+  # XXX: どこが問題か、思い出せない！ テストを書くまで、コメントに。
+  # my $body_dict = $argdecl->{cf_base_widget}->get_arg_spec(body => undef);
   my ($post, @args) = $trans->genargs_static
     ([{}, [$body_dict, $scope]]
      , $node->open, $argdecl->arg_specs);

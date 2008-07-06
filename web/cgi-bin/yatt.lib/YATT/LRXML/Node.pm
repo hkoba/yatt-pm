@@ -31,6 +31,7 @@ BEGIN {
 		  node_attribute_format
 		  is_attribute
 		  is_primary_attribute
+		  is_bare_attribute
 		  is_quoted_by_element
 		  is_empty_element
 
@@ -169,6 +170,12 @@ sub is_primary_attribute {
   $_[0]->[_TYPE] == ATTRIBUTE_TYPE
     && (! defined $_[0]->[_FLAG]
 	|| $_[0]->[_FLAG] < @QUOTE_CHAR);
+}
+
+sub is_bare_attribute {
+  $_[0]->[_TYPE] == ATTRIBUTE_TYPE
+    && defined $_[0]->[_FLAG]
+      && $_[0]->[_FLAG] == 0;
 }
 
 sub stringify_node {

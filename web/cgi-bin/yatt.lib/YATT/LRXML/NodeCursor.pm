@@ -75,11 +75,19 @@ sub new_path {
   $self->Path->new($self->{tree}, shift); # XXX: tree でいいの?
 }
 
+sub clone_path {
+  my MY $self = shift;
+  my Path $path = shift || $self->{cf_path};
+  $self->Path->new($path->{cf_array}, $path ? $path->{cf_path} : undef);
+}
+
 sub clone {
   (my MY $self, my ($path)) = @_;
   # XXX: 他のパラメータは? 特に、継承先で足したパラメータ。
   ref($self)->new($self->{tree}
 		  , metainfo => $self->{cf_metainfo}
+		  # XXX: $self->new_path($self->{cf_path}) にしたいが、
+		  # 色々動かなくなる。
 		  , path => ($path || $self->{cf_path}));
 }
 
@@ -496,6 +504,7 @@ sub next_is_body {
 }
 
 sub text_is_attribute { 0 }
+sub text_is_bare_attribute { 0 }
 sub text_is_primary_attribute { 0 }
 sub text_is_quoted_by_element { 0 }
 sub text_node_size { 1 }

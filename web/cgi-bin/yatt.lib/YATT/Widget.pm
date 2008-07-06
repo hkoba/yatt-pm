@@ -62,11 +62,11 @@ sub add_virtual_var {
 
 sub widget_scope {
   (my Widget $widget, my ($outer)) = @_;
-  my $call = [$widget->{arg_dict} ||= {}, $outer];
+  my $args = $widget->{arg_dict} ||= {};
   if ($widget->{virtual_var_dict} and keys %{$widget->{virtual_var_dict}}) {
-    [$widget->{virtual_var_dict}, $call];
+    [$args, [$widget->{virtual_var_dict}, $outer]];
   } else {
-    $call;
+    [$args, $outer];
   }
 }
 
@@ -101,6 +101,16 @@ sub arg_specs {
   my @list = ($widget->{arg_dict} ||= {}
 	      , $widget->{arg_order} ||= []);
   wantarray ? @list : \@list;
+}
+
+sub get_arg_spec {
+  (my Widget $widget, my ($name, $default)) = @_;
+  my $dict = $widget->{arg_dict}
+    or return $default;
+  defined (my $spec = $dict->{$name})
+    or return $default;
+  return $default unless exists $spec->{arg_dict};
+  $spec->{arg_dict};
 }
 
 sub macro_specs {

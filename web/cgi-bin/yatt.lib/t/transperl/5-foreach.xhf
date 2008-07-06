@@ -20,6 +20,29 @@ OUT:
  <li>3</li>
  </ul>
 
+
+TITLE: foreach $_
+IN:
+ <!yatt:args x=list>
+ <ul>
+ <yatt:foreach "&yatt:x:expand();"><li>&yatt:_;</li>
+ </yatt:foreach></ul>
+PARAM[
+[
+- 1
+- 2
+- 3
+]
+]
+OUT:
+ <ul>
+ <li>1</li>
+ <li>2</li>
+ <li>3</li>
+ </ul>
+
+
+
 TITLE: block, Can have same name vars.
 IN:
  <yatt:block><?perl my $var?></yatt:block>

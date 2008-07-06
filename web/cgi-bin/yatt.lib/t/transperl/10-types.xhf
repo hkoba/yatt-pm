@@ -33,6 +33,22 @@ PARAM[
 OUT:
  <h2><b>foo</b></h2>
 
+
+TITLE: type html, bare pass thru.
+BREAK: 1
+IN:
+ <!yatt:args x=value>
+ <h2><yatt:foo y=&yatt:x;/></h2>
+ <!yatt:widget foo y=html>
+ &yatt:y;
+PARAM[
+- <b>foo</b>
+]
+OUT:
+ <h2><b>foo</b>
+ </h2>
+
+
 TITLE: assign -> print. type scalar
 IN:
  <!yatt:args x=scalar y=scalar>

@@ -11,6 +11,7 @@ use lib grep(-d
 use File::Basename;
 
 use YATT::Inc;
+use YATT::Util;
 use YATT::Toplevel::CGI qw(*CGI);
 use base qw(YATT::Toplevel::CGI);
 sub MY () { __PACKAGE__ }
@@ -30,10 +31,13 @@ my ($rootdir, $top) = do {
   my $dir = dirname(MY->rel2abs($file));
   $config->try_load_config($dir);
 
+  MY->prepare_export($config);
+
   # XXX: テンプレートディレクトリの指定も。
   ($dir
    , MY->new_translator([DIR => $dir], $config->translator_param
-			, debug_translator => $ENV{DEBUG}));
+			, debug_translator => $ENV{DEBUG}
+			, no_lineinfo => YATT::Util::no_lineinfo()));
 };
 
 # [1] Compile all.
