@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
 
+FILE: doc/.htyattroot
+IN:
+ no_lineinfo: 0
+
 TITLE: (static) var in toplevel
 IN:
  &yatt:x;
