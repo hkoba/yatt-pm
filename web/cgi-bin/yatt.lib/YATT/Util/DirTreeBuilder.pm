@@ -7,12 +7,10 @@ use base qw(YATT::Class::Configurable File::Spec);
 use Exporter qw(import);
 our @EXPORT_OK = qw(tmpbuilder);
 
-use fields qw(cf_DIR cf_TESTNO cf_AUTO_REMOVE);
+use YATT::Fields qw(^cf_DIR cf_TESTNO cf_AUTO_REMOVE);
 use overload '&{}' => 'as_sub';
 use File::Remove qw(remove);
 use Carp;
-
-sub MY () {__PACKAGE__}
 
 sub tmpbuilder {
   my ($tmpdir) = @_;

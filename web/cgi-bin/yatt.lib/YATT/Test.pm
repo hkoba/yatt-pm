@@ -122,7 +122,7 @@ use YATT::Types -base => __PACKAGE__
 		     cf_IN cf_PARAM cf_OUT cf_ERROR)]]
   , [Config => [['^cf_translator' => 'YATT::Translator::Perl']
 		, '^cf_toplevel'
-		, '^TMPDIR'
+		, '^TMPDIR', 'gen'
 	       ]]
   , [Toplevel => []]
   ;
@@ -134,6 +134,12 @@ Config->define(new_translator => sub {
   ;#
   (my Config $global, my ($loader, @opts)) = @_;
   require_and($global->translator => new => loader => $loader, @opts);
+});
+
+Config->define(configure_DIR => sub {
+  ;#
+  (my Config $global, my ($dir)) = @_;
+  $global->{TMPDIR} = tmpbuilder($dir);
 });
 
 sub ntests {
@@ -148,10 +154,8 @@ sub ntests {
 
 sub xhf_test {
   my Config $global = do {
-    shift->Config->new;
+    shift->Config->new(DIR => shift);
   };
-
-  $global->{TMPDIR} = tmpbuilder(shift);
 
   if (@_ == 1 and -d $_[0]) {
     my $srcdir = shift;
@@ -217,6 +221,11 @@ sub xhf_load_sections {
   @sections;
 }
 
+sub xhf_is_runnable {
+  (my Config $global, my TestDesc $test) = @_;
+  $test->{cf_OUT} || $test->{cf_ERROR};
+}
+
 sub xhf_do_sections {
   (my Config $global, my @sections) = @_;
 
@@ -233,7 +242,7 @@ sub xhf_do_sections {
 	$builder->($global->{TMPDIR}->path2desc
 		   ($test->{realfile}, $test->{cf_IN}));
       }
-      push @test, $test if $test->{cf_OUT} || $test->{cf_ERROR};
+      push @test, $test if $global->xhf_is_runnable($test);
     }
 
     my @loader = (DIR => "$DIR/doc");
@@ -245,7 +254,7 @@ sub xhf_do_sections {
     }
 
     &YATT::break_translator;
-    my $gen = ($global->toplevel || $global)->new_translator
+    $global->{gen} = ($global->toplevel || $global)->new_translator
       (\@loader
        , app_prefix => "MyApp$SECTION"
        , debug_translator => $ENV{DEBUG}
@@ -253,41 +262,49 @@ sub xhf_do_sections {
        , %config
       );
 
-    my $toplevel = $global->toplevel;
-
     foreach my TestDesc $test (@test) {
-      unless (defined $test->{cf_TITLE}) {
-	die "test title is not defined!" . dumper($test);
-      }
-      my @widget_path = split /:/, $test->{cf_WIDGET};
-      my $title = join("", '[', basename($testfile), '] ', $test->{cf_TITLE}
-		      , defined_fmt(' (%d)', $test->{num}, ''));
+      my @widget_path = split /:/, $test->{cf_WIDGET} if $test->{cf_WIDGET};
       my ($param) = map {ref $_ ? $_ : 'main'->checked_eval($_)}
 	$test->{cf_PARAM} if $test->{cf_PARAM};
+
     SKIP: {
-	if ($test->{cf_OUT}) {
-	  Test::More::skip("($test->{cf_SKIP}) $title", 2)
-	      if $test->{cf_SKIP};
-
-	  if ($toplevel
-	      and my $sub = $toplevel->can("set_random_list")) {
-	    $sub->($global, $test->{cf_RANDOM});
-	  }
-
-	  &YATT::breakpoint if $test->{cf_BREAK};
-	  is_rendered [$gen, \@widget_path, $param]
-	    , $test->{cf_OUT}, $title;
-	} elsif ($test->{cf_ERROR}) {
-	  Test::More::skip("($test->{cf_SKIP}) $title", 1)
-	      if $test->{cf_SKIP};
-	  &YATT::breakpoint if $test->{cf_BREAK};
-	  raises [$gen, call_handler => render => \@widget_path, $param]
-	    , qr{$test->{cf_ERROR}}s, $title;
-	}
+	$global->xhf_runtest_desc($test, $testfile, \@widget_path, $param);
       }
     }
   } continue {
     $SECTION++;
+  }
+}
+
+sub xhf_runtest_desc {
+  (my Config $global, my TestDesc $test
+   , my ($testfile, $widget_path, $param)) = @_;
+
+  unless (defined $test->{cf_TITLE}) {
+    die "test title is not defined!" . dumper($test);
+  }
+  my $title = join("", '[', basename($testfile), '] ', $test->{cf_TITLE}
+		   , defined_fmt(' (%d)', $test->{num}, ''));
+
+  my $toplevel = $global->toplevel;
+  if ($test->{cf_OUT}) {
+    Test::More::skip("($test->{cf_SKIP}) $title", 2)
+	if $test->{cf_SKIP};
+
+    if ($toplevel
+	and my $sub = $toplevel->can("set_random_list")) {
+      $sub->($global, $test->{cf_RANDOM});
+    }
+
+    &YATT::breakpoint if $test->{cf_BREAK};
+    is_rendered [$global->{gen}, $widget_path, $param]
+      , $test->{cf_OUT}, $title;
+  } elsif ($test->{cf_ERROR}) {
+    Test::More::skip("($test->{cf_SKIP}) $title", 1)
+	if $test->{cf_SKIP};
+    &YATT::breakpoint if $test->{cf_BREAK};
+    raises [$global->{gen}, call_handler => render => $widget_path, $param]
+      , qr{$test->{cf_ERROR}}s, $title;
   }
 }
 
