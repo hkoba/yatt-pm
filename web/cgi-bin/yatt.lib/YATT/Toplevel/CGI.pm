@@ -39,7 +39,8 @@ use YATT::Types -base => __PACKAGE__
 		 )
 		, ['^cf_app_prefix' => 'YATT']
 		, ['^cf_find_root_upward' => 2]
-	       ]];
+	       ]]
+  , qw(:export_alias);
 
 Config->define(create => \&create_toplevel);
 
@@ -51,7 +52,7 @@ use vars map {'$'.$_} our @env_vars
        SCRIPT_FILENAME
        REDIRECT_STATUS
        PATH_TRANSLATED);
-our @EXPORT = (qw(&use_env_vars
+push our @EXPORT, (qw(&use_env_vars
 		  &rootname
 		  &capture
 		), map {'*'.$_} our @env_vars);
@@ -59,7 +60,7 @@ our @EXPORT = (qw(&use_env_vars
 our Config $CONFIG;
 our ($CGI, $SESSION, %COOKIE, %HEADER);
 sub rc_global () { qw(CONFIG CGI SESSION HEADER COOKIE) }
-our @EXPORT_OK = (@EXPORT, map {'*'.$_} rc_global);
+push our @EXPORT_OK, (@EXPORT, map {'*'.$_} rc_global);
 
 sub ROOT_CONFIG () {'.htyattroot'}
 
@@ -469,7 +470,7 @@ sub entity_param {
 sub canonicalize_html_filename {
   my $pack = shift;
   $_[0] .= "index" if $_[0] =~ m{/$};
-  $_[0] =~ s{\.(html?|yatt?)$}{};
+  $_[0] =~ s{\.(y?html?|yatt?)$}{};
   $_[0]
 }
 
