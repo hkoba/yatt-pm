@@ -8,6 +8,7 @@ BEGIN {require Exporter; *import = \&Exporter::import}
 use base qw(YATT::Class::Configurable);
 use YATT::Fields qw(^=arg_dict
 		    ^=arg_order
+		    ^=virtual_var_dict
 		    ^=argmacro_dict
 		    ^=argmacro_order
 		    ^cf_root
@@ -16,7 +17,7 @@ use YATT::Fields qw(^=arg_dict
 		    ^cf_declared
 		    cf_decl_start
 		    cf_body_start
-		    cf_template_nsid
+		    ^cf_template_nsid
 		    ^cf_no_last_newline
 		  );
 
@@ -49,23 +50,47 @@ sub has_arg {
   defined $widget->{arg_dict}{$name};
 }
 
+sub has_virtual_var {
+  (my Widget $widget, my ($name)) = @_;
+  $widget->{virtual_var_dict}{$name}
+}
+
+sub add_virtual_var {
+  (my Widget $widget, my ($name, $var)) = @_;
+  $widget->{virtual_var_dict}{$name} = $var;
+}
+
+sub widget_scope {
+  (my Widget $widget, my ($outer)) = @_;
+  my $call = [$widget->{arg_dict} ||= {}, $outer];
+  if ($widget->{virtual_var_dict} and keys %{$widget->{virtual_var_dict}}) {
+    [$widget->{virtual_var_dict}, $call];
+  } else {
+    $call;
+  }
+}
+
 sub copy_specs_from {
   (my Widget $this, my Widget $from) = @_;
   my @names;
   {
     my ($dict, $order) = $from->arg_specs;
     foreach my $name (@$order) {
-      next if $this->has_arg($name);
-      $this->add_arg($name, $dict->{$name}->clone);
+      unless ($this->has_arg($name)) {
+	$this->add_arg($name, $dict->{$name}->clone);
+      }
       push @names, $name;
     }
   }
   {
-    $this->macro_specs;
-    my ($dict, $order) = $from->macro_specs;
-    foreach my $name (@$order) {
-      next if $this->{argmacro_dict} && $this->{argmacro_dict}{$name};
-      # XXX: 未実装。
+    # XXX: 深く考え切れてない。
+    # order には Spec object が入っている。
+    # dict  には Slot object が入っている
+    my ($dst_dict, $dst_order) = $this->macro_specs;
+    my ($src_dict, $src_order) = $from->macro_specs;
+    push @$dst_order, @$src_order;
+    foreach my $trigger (keys %$src_dict) {
+      $dst_dict->{$trigger} ||= $src_dict->{$trigger};
     }
   }
   @names;

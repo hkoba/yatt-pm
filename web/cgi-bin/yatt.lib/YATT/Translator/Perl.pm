@@ -196,9 +196,7 @@ sub generate_lineinfo {
 sub generate_widget {
   (my MY $gen, my Widget $widget, my ($metainfo)) = @_;
   my @body = $gen->generate_body
-    ([{}
-      , [$widget->arg_dict
-	 , [\%calling_conv]]]
+    ([{}, $widget->widget_scope([\%calling_conv])]
      , $widget->cursor(metainfo => $metainfo->clone
 		       (startline => $widget->{cf_body_start}
 			, caller_widget => $widget)));
@@ -729,17 +727,28 @@ sub declare_use {
 sub attr_declare_delegate {
   (my MY $trans, my ($widget, $args, $argname, $subtype, @param)) = @_;
   my @elempath = $subtype ? @$subtype : $argname;
-  my $tmpl = $trans->get_template_from_node($args);
+  my Template $tmpl = $trans->get_template_from_node($args);
   my $base = $trans->get_widget_from_template($tmpl, @elempath);
   unless ($base) {
     die $trans->node_error($args, "No such widget %s"
 			   , join(":", @elempath));
   }
+  if ($tmpl->{cf_nsid} != $base->template_nsid) {
+    $trans->ensure_widget_is_generated($base);
+  }
+
   # pass thru する変数名の一覧。
   # でも、未指定なものだけね。
   # XXX: 引数rename
   my %vars; $vars{$_} = 1 for $widget->copy_specs_from($base);
-  $widget->add_arg
+
+  #
+  # arg とは別の、コンパイル時のみの仮想的な変数として登録。
+  #
+  if ($widget->has_virtual_var($argname)) {
+    die $trans->node_error($args, "Duplicate delegate? %s", $argname);
+  }
+  $widget->add_virtual_var
     ($argname, $trans->create_var(delegate => $args
 				  , base_path => \@elempath
 				  , base_widget => $base
@@ -1290,6 +1299,16 @@ sub YATT::Translator::Perl::t_code::add_arg {
   $codevar;
 }
 
+sub YATT::Translator::Perl::t_code::clone {
+  (my t_code $orig) = @_;
+  my t_code $new = $orig->SUPER::clone;
+  my ($dict, $order) = $orig->arg_specs;
+  foreach my $name (@$order) {
+    $new->add_arg($name, $dict->{$name}->clone);
+  }
+  $new
+}
+
 # code 型の変数宣言の生成
 sub create_var_code {
   (my MY $trans, my ($node, @param)) = @_;
@@ -1302,8 +1321,10 @@ sub YATT::Translator::Perl::t_delegate::gen_call {
   (my t_delegate $argdecl, my MY $trans, my ($scope, $node)) = @_;
   my $func = $trans->get_funcname_to($trans->{cf_mode}
 				     , $argdecl->{cf_base_widget});
+  my $body_dict = $argdecl->{cf_base_widget}->{arg_dict}->{body}->{arg_dict};
   my ($post, @args) = $trans->genargs_static
-    ($scope, $node->open, $argdecl->arg_specs);
+    ([{}, [$body_dict, $scope]]
+     , $node->open, $argdecl->arg_specs);
   return \ sprintf(' %s($this, [%s])%s', $func
 		   , join(", ", map {defined $_ ? $_ : 'undef'} @args)
 		   , $post);
