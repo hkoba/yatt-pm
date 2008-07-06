@@ -5,6 +5,8 @@ use warnings FATAL => qw(all);
 use base qw(Test::More);
 
 use File::Basename;
+use Cwd;
+
 use Data::Dumper;
 use Carp;
 
@@ -87,6 +89,7 @@ sub is_rendered ($$$) {
       &YATT::break_handler;
       $sub->($pkg, @args);
     };
+    $out =~ s{\r}{}g if defined $out;
     eq_or_diff($out, $cmp, $title);
   } else {
     Test::More::fail "skipped. $title";
@@ -246,7 +249,13 @@ sub xhf_do_sections {
     }
 
     my @loader = (DIR => "$DIR/doc");
-    push @loader, LIB => "$DIR/lib" if -d "$DIR/lib";
+    push @loader, LIB => do {
+      if (-d "$DIR/lib") {
+	"$DIR/lib";
+      } else {
+	getcwd;
+      }
+    };
 
     my %config;
     if (-r (my $fn = "$DIR/doc/.htyattroot")) {
