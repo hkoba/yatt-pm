@@ -59,6 +59,21 @@ OUT:
  
  &lt;h2&gt;foo&lt;/h2&gt; &amp;bar
 
+TITLE: my list
+IN:
+ <!yatt:args x=list>
+ <yatt:my foo:list=&yatt:x:expand();/>
+ &yatt:foo:expand();
+PARAM[
+[
+- foo
+- bar
+- baz
+]
+]
+OUT:
+ 
+ foobarbaz
 
 FILE: doc/envelope.html
 IN:

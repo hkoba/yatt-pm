@@ -787,14 +787,17 @@ sub add_decl_attribute {
 }
 
 sub create_var {
-  (my Root $root, my ($type, $args)) = splice @_, 0, 3;
+  (my Root $root, my ($type, $args, @param)) = @_;
   $type = '' unless defined $type;
-  defined (my $class = $root->{cf_type_map}{$type})
-    or croak "No such type: $type";
-  if (my $sub = $root->can("create_var_$type")) {
-    $sub->($root, $args, @_);
+  my ($primary, @subtype) = ref $type ? @$type : $type;
+  defined (my $class = $root->{cf_type_map}{$primary})
+    or croak "No such type: $primary";
+  unshift @param, subtype => @subtype >= 2 ? \@subtype : $subtype[0]
+    if @subtype;
+  if (my $sub = $root->can("create_var_$primary")) {
+    $sub->($root, $args, @param);
   } else {
-    $class->new(@_);
+    $class->new(@param);
   }
 }
 

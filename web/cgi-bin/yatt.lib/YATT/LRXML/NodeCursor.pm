@@ -474,10 +474,11 @@ sub parse_typespec {
   my ($head, @rest) = $self->node_children;
   unless (defined $head) {
     ()
-  } elsif ($head =~ s{^(\w+)?(?:([|/?!])(.*))?}{}s) {
+  } elsif ($head =~ s{^(\w+((?:\:\w+)*))?(?:([|/?!])(.*))?}{}s) {
     # $1 can undef.
-    ($1, default => @rest ? [defined $3 ? ($3) : (), @rest] : $3
-     , default_mode => $2)
+    ($1 && $2 ? [split /:/, $1] : $1
+     , default => @rest ? [defined $4 ? ($4) : (), @rest] : $4
+     , default_mode => $3)
   } else {
     (undef);
   }

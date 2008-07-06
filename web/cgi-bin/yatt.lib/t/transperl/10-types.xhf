@@ -67,11 +67,27 @@ OUT:
  <h2>1,2,3,4</h2>
  
 
-
-TITLE: attr(other,value)
+TITLE: attr (default)
 BREAK: 1
 IN:
- <!yatt:args color=attr?class>
+ <!yatt:args class=attr>
+ <div&yatt:class;></div>
+PARAM[
+- foo
+]
+OUT:
+ <div class="foo"></div>
+
+PARAM[
+- 
+]
+OUT:
+ <div></div>
+
+
+TITLE: attr(other,value)
+IN:
+ <!yatt:args color=attr:class>
  <div&yatt:color(bar,baz);></div>
 PARAM[
 - foo

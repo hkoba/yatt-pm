@@ -430,12 +430,12 @@ sub quoted_by_element {
 
 sub is_quoted_by_element {
   my ($node) = @_;
-  $node->[_FLAG] >= @QUOTE_CHAR;
+  defined $node->[_FLAG] && $node->[_FLAG] >= @QUOTE_CHAR;
 }
 
 sub is_empty_element {
   my ($node) = @_;
-  $node->[_FLAG] == EMPTY_ELEMENT;
+  defined $node->[_FLAG] && $node->[_FLAG] == EMPTY_ELEMENT;
 }
 
 1;

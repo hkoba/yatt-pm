@@ -618,14 +618,14 @@ sub genargs_static {
       next;
     }
 
-    my ($typename, $name) = $trans->arg_type_and_name($args);
+    my ($name, $typename) = $trans->arg_name_types($args);
     unless (defined $name) {
       $name = $arg_order->[$nth++]
 	or die $trans->node_error($args, "Too many args");
     }
     my $argdecl = $arg_dict->{$name}
       or die $trans->node_error($args, "Unknown arg '%s'", $name);
-    # XXX: $typename (type:attname の type) を活用していない。
+    # XXX: $typename (attname:type の type) を活用していない。
     # XXX: code 型引数を primary で渡したときにまで、 print が作られてる。
     # $args->is_quoted_by_element で判別せよ。
     $actual[$argdecl->argno] = do {
@@ -817,7 +817,8 @@ sub add_decl_entity {
 # 変数関連
 
 use YATT::Types [VarType =>
-		 [qw(cf_varname ^cf_argno cf_default cf_default_mode
+		 [qw(cf_varname ^cf_argno ^cf_subtype
+		     cf_default cf_default_mode
 		     cf_filename cf_linenum
 		   )]]
   , qw(:export_alias);
@@ -1139,9 +1140,12 @@ sub YATT::Translator::Perl::t_attr::entmacro_ {
   if (@$restExpr) {
     die $trans->node_error($node, "attr() should be last call.");
   }
+  if (ref $var->{cf_subtype}) {
+    die $trans->node_error($node, "nested subtype for attr");
+  }
   my @expr = $trans->gen_entref_list($scope, $node, @args);
   \ sprintf(q{print YATT::attr('%s', %s)}
-	    , $var->{cf_default} || $var->{cf_varname}
+	    , $var->{cf_subtype} || $var->{cf_varname}
 	    , join(", ", $var->as_lvalue, @expr));
 }
 
@@ -1238,14 +1242,14 @@ sub make_arg_spec {
   }
 }
 
-sub arg_type_and_name {
-  (my MY $trans, my ($args, $default)) = @_;
+sub arg_name_types {
+  (my MY $trans, my ($args)) = @_;
   my (@path) = $args->node_path;
-  if (@path > 1) {
-    @path[0, 1]
-  } else {
-    ($default || '', $path[0]);
+  if ($args->is_attribute and $args->is_quoted_by_element) {
+    shift @path;
   }
+  my ($name) = shift @path;
+  @path >= 2 ? ($name, \@path) : ($name, $path[0]);
 }
 
 # macro の、 my:type=var など専用。
@@ -1397,9 +1401,8 @@ sub feed_arg_spec {
     my $filename = $args->metainfo->filename;
     for (; $args->readable; $args->next) {
       last unless $args->is_primary_attribute;
-      my ($typename, $name)
-	= $trans->arg_type_and_name($args
-				    , $args->next_is_body ? 'html' : 'text');
+      my ($name, $typename) = $trans->arg_name_types($args);
+      $typename ||= $args->next_is_body ? 'html' : 'text';
       if (my VarType $old = $scope->[0]{$name}) {
 	die $trans->node_error
 	  ($args, "Variable '%s' redefined (previously at file %s line %s)"
