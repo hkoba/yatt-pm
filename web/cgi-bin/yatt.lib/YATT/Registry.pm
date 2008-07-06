@@ -791,7 +791,7 @@ sub create_var {
   $type = '' unless defined $type;
   my ($primary, @subtype) = ref $type ? @$type : $type;
   defined (my $class = $root->{cf_type_map}{$primary})
-    or croak "No such type: $primary";
+    or croak $root->node_error($args, "No such type: %s", $primary);
   unshift @param, subtype => @subtype >= 2 ? \@subtype : $subtype[0]
     if @subtype;
   if (my $sub = $root->can("create_var_$primary")) {

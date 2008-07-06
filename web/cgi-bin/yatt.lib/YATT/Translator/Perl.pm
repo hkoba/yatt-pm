@@ -1157,9 +1157,12 @@ sub YATT::Translator::Perl::t_attr::gen_getarg {
 
 sub YATT::Translator::Perl::t_attr::as_escaped {
   my t_attr $var = shift;
+  if (ref $var->{cf_subtype}) {
+    die "nested subtype for attr: $var->{cf_varname}";
+  }
   my $realvar = sprintf $var->lvalue_format, $var->{cf_varname};
   sprintf(q{YATT::named_attr('%s', %s)}
-	  , $var->{cf_default} || $var->{cf_varname}
+	  , $var->{cf_subtype} || $var->{cf_varname}
 	  , $realvar);
 }
 
@@ -1410,7 +1413,8 @@ sub feed_arg_spec {
 	   , $old->{cf_linenum} || '(unknown)');
       }
       my $var = $scope->[0]{$name}
-	= $trans->create_var($typename, undef, varname => $name
+	= $trans->create_var($typename, $args
+			     , varname => $name
 			     , filename => $filename
 			     , linenum  => $args->linenum);
 
