@@ -3,7 +3,7 @@ package YATT::Toplevel::FCGI;
 use strict;
 use warnings FATAL => qw(all);
 
-use Exporter qw(import);
+BEGIN {require Exporter; *import = \&Exporter::import}
 
 use base qw(YATT::Toplevel::CGI);
 use YATT::Toplevel::CGI;

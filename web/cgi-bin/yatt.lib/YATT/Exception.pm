@@ -2,7 +2,7 @@ package YATT::Exception;
 use strict;
 use warnings FATAL => qw(all);
 use base qw(YATT::Class::Configurable);
-use Exporter qw(import);
+BEGIN {require Exporter; *import = \&Exporter::import}
 
 use overload '""' => 'string';
 

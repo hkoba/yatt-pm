@@ -2,7 +2,7 @@
 package YATT::LRXML::EntityPath;
 use strict;
 use warnings FATAL => qw(all);
-use Exporter qw(import);
+BEGIN {require Exporter; *import = \&Exporter::import}
 our @EXPORT_OK = qw(parse_entpath is_nested_entpath);
 our @EXPORT = @EXPORT_OK;
 

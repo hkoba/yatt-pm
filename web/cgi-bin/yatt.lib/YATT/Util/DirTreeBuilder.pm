@@ -4,7 +4,7 @@ use strict;
 use warnings FATAL => qw(all);
 
 use base qw(YATT::Class::Configurable File::Spec);
-use Exporter qw(import);
+BEGIN {require Exporter; *import = \&Exporter::import}
 our @EXPORT_OK = qw(tmpbuilder);
 
 use YATT::Fields qw(^cf_DIR cf_TESTNO cf_AUTO_REMOVE);

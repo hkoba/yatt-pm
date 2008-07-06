@@ -12,7 +12,7 @@ use YATT::Exception;
 
 {
   package YATT::Registry::NS; use YATT::Inc;
-  use Exporter qw(import);
+  BEGIN {require Exporter; *import = \&Exporter::import}
   use base qw(YATT::Class::Configurable);
   use YATT::Fields qw(Widget
 		      cf_nsid cf_parent_nsid cf_base_nsid

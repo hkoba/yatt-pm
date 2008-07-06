@@ -2,7 +2,7 @@ package YATT::Util::CmdLine;
 use strict;
 use warnings FATAL => qw(all);
 
-use Exporter qw(import);
+BEGIN {require Exporter; *import = \&Exporter::import}
 
 our @EXPORT_OK = qw(parse_opts parse_params);
 our @EXPORT = @EXPORT_OK;

@@ -14,7 +14,7 @@ use YATT::Fields [cf_mode => 'render']
   , qw(target_cache
        cf_debug_translator);
 
-use Exporter qw(import);
+BEGIN {require Exporter; *import = \&Exporter::import}
 our @EXPORT_OK = qw(qqvalue qparen);
 our @EXPORT = @EXPORT_OK;
 
