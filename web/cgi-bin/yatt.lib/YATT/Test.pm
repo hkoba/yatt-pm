@@ -122,6 +122,7 @@ use YATT::Types -base => __PACKAGE__
 		     cf_IN cf_PARAM cf_OUT cf_ERROR)]]
   , [Config => [['^cf_translator' => 'YATT::Translator::Perl']
 		, '^cf_toplevel'
+		, '^TMPDIR'
 	       ]]
   , [Toplevel => []]
   ;
@@ -149,16 +150,28 @@ sub xhf_test {
   my Config $global = do {
     shift->Config->new;
   };
-  my $TMPDIR = tmpbuilder(shift);
 
-  require YATT::XHF;
+  $global->{TMPDIR} = tmpbuilder(shift);
 
-  unless (@_) {
-    croak "Source is missing."
-  } elsif (@_ == 1 and -d $_[0]) {
+  if (@_ == 1 and -d $_[0]) {
     my $srcdir = shift;
     @_ = dict_sort <$srcdir/*.xhf>;
   }
+
+  croak "Source is missing." unless @_;
+  my @sections = $global->xhf_load_sections(@_);
+
+  Test::More::plan(tests => 1 + ntests(@sections));
+
+  require_ok($global->target);
+
+  $global->xhf_do_sections(@sections);
+}
+
+sub xhf_load_sections {
+  my Config $global = shift;
+
+  require YATT::XHF;
 
   my @sections;
   foreach my $testfile (@_) {
@@ -201,21 +214,24 @@ sub xhf_test {
     push @sections, [$testfile => @test];
   }
 
-  Test::More::plan(tests => 1 + ntests(@sections));
+  @sections;
+}
 
-  require_ok($global->target);
+sub xhf_do_sections {
+  (my Config $global, my @sections) = @_;
 
   my $SECTION = 0;
   foreach my $section (@sections) {
     my ($testfile, @all) = @$section;
-    my $builder = $TMPDIR->as_sub;
+    my $builder = $global->{TMPDIR}->as_sub;
     my $DIR = $builder->([DIR => "doc"]);
 
     my @test;
     foreach my TestDesc $test (@all) {
       if ($test->{cf_IN}) {
 	die "Conflicting FILE: $test->{realfile}!\n" if -e $test->{realfile};
-	$builder->($TMPDIR->path2desc($test->{realfile}, $test->{cf_IN}));
+	$builder->($global->{TMPDIR}->path2desc
+		   ($test->{realfile}, $test->{cf_IN}));
       }
       push @test, $test if $test->{cf_OUT} || $test->{cf_ERROR};
     }
