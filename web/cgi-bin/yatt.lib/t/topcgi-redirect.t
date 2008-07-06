@@ -81,3 +81,16 @@ END
 	   , $sub->('bar')
 	   , "y2, foo=bar");
 }
+
+{
+  $check->("http://localhost/yatt/test/y3pathinfo.html/.ht1.xhf"
+	   , <<END, "y3, pathinfo");
+  name = foo
+  value = bar
+
+  name = hoe
+  value = moe
+
+
+END
+}

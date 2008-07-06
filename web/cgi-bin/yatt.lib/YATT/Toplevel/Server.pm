@@ -37,13 +37,7 @@ sub handle_request {
   my $file = $cgi->path_info;
   my @args;
   unless (-e "$top->{cf_docs}$file") {
-    my @dirs = $top->splitdir($file);
-    my @found;
-    while (@dirs and -e join("/", $top->{cf_docs}, @found, $dirs[0])) {
-      push @found, shift @dirs;
-    }
-    push @args, join("/", @dirs) if @dirs;
-    $file = join("/", @found);
+    push @args, $top->trim_trailing_pathinfo(\$file, $top->{cf_docs});
   }
 
   unless ($file =~ m{\.html?$}) {

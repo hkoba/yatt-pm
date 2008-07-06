@@ -13,7 +13,7 @@ use YATT::Fields qw(^=arg_dict
 		    ^=argmacro_order
 		    ^cf_root
 		    ^cf_name
-		    cf_filename
+		    ^cf_filename
 		    ^cf_declared
 		    cf_decl_start
 		    cf_body_start

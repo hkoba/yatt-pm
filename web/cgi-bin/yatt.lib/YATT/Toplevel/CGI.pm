@@ -37,6 +37,7 @@ use YATT::Types -base => __PACKAGE__
 		   cf_no_header
 		   cf_allow_unknown_config
 		   cf_auto_reload
+		   cf_no_chdir
 		 )
 		, ['^cf_app_prefix' => 'YATT']
 		, ['^cf_find_root_upward' => 2]
@@ -88,11 +89,12 @@ sub run_cgi {
 
   local $CONFIG = my Config $config = $pack->new_config(shift);
 
-  my ($root, $file, $error);
+  my ($root, $file, $error, $param);
   if (catch {
-    ($pack, $root, $cgi, $file) = $pack->prepare_dispatch($cgi, $config);
+    ($pack, $root, $cgi, $file, $param)
+      = $pack->prepare_dispatch($cgi, $config);
     } \ $error or catch {
-      $pack->dispatch($root, $cgi, $file);
+      $pack->dispatch($root, $cgi, $file, $param);
     } \ $error and not is_normal_end($error)) {
     $pack->dispatch_error($root, $error
 			  , {phase => 'action', target => $file});
@@ -120,7 +122,7 @@ sub create_toplevel {
 
 sub prepare_dispatch {
   (my ($pack, $cgi), my Config $config) = @_;
-  my ($rootdir, $file, $loader) = do {
+  my ($rootdir, $file, $loader, $param) = do {
     if (not $config->{cf_registry} and $config->{cf_docs}) {
       # $config->try_load_config($config->{cf_docs});
       ($config->{cf_docs}, $cgi->path_info
@@ -166,7 +168,7 @@ END
     ($loader, $config->translator_param
      , debug_translator => $ENV{DEBUG});
 
-  ($instpkg, $root, $cgi, $file);
+  ($instpkg, $root, $cgi, $file, $param);
 }
 
 sub prepare_export {
@@ -207,15 +209,20 @@ sub dispatch {
 
   local $CGI = $cgi;
   local ($SESSION, %COOKIE, %HEADER);
-  my ($renderer, $pkg);
+  my ($renderer, $pkg, $widget);
 
   if (catch {
-    ($renderer, $pkg) = $root->get_handler_to
+    ($renderer, $pkg, $widget) = $root->get_handler_to
       (render => $top->canonicalize_html_filename($file));
   } \ my $error) {
     $top->dispatch_error($root, $error
 			 , {phase => 'get_handler', target => $file});
   } else {
+    unless ($CONFIG->{cf_no_chdir}) {
+      # XXX: これもエラー処理を
+      my $dir = untaint_any(dirname($widget->filename));
+      chdir($dir);
+    }
     $top->dispatch_action($root, $renderer, $pkg, @param);
   }
 }
@@ -339,9 +346,27 @@ sub try_load_config {
   $config->classify_config_param(@param);
 }
 
+sub trim_trailing_pathinfo {
+  my ($pack, $strref, @prefix) = @_;
+  @prefix = ('') unless @prefix;
+  my @dirs = $pack->splitdir($$strref);
+  my @found;
+  while (@dirs and -e join("/", @prefix, @found, $dirs[0])) {
+    push @found, shift @dirs;
+  }
+  $$strref = join("/", @found);
+  return unless @dirs;
+  join("/", @dirs);
+}
+
 sub param_for_redirect {
   (my ($pack, $path_translated, $script_filename), my Config $cfobj) = @_;
   my $driver = untaint_any(rootname($script_filename));
+
+  my @params;
+  unless (-e $path_translated) {
+    push @params, $pack->trim_trailing_pathinfo(\$path_translated);
+  }
 
   # This should set $cfobj->{cf_docs}
   unless ($cfobj->{cf_registry}) {
@@ -355,7 +380,7 @@ sub param_for_redirect {
   my @loader = (DIR => $cfobj->{cf_docs}
 		, $pack->tmpl_for_driver($driver));
 
-  return ($cfobj->{cf_docs}, $target, \@loader);
+  return ($cfobj->{cf_docs}, $target, \@loader, @params ? \@params : ());
 }
 
 #========================================
