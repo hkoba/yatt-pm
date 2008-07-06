@@ -27,6 +27,8 @@ sub run_server {
   $server->SUPER::run;
 }
 
+my %TYPE = qw(js text/javascript);
+
 sub handle_request {
   my ($server, $cgi) = @_;
   my Config $top = $server->{TOP};
@@ -43,6 +45,24 @@ sub handle_request {
     push @args, join("/", @dirs) if @dirs;
     $file = join("/", @found);
   }
+
+  unless ($file =~ m{\.html?$}) {
+    my ($ext, $type, $fh);
+    unless (($ext) = $file =~ m{\.(\w+)$} and my $type = $TYPE{$ext}) {
+      print "HTTP/1.0 500\r\n\r\n";
+      print "Unsupported file type $file";
+    } elsif (not open my $fh, '<', "$top->{cf_docs}$file") {
+      print "HTTP/1.0 404\r\n\r\n";
+      print "Not found: $file ($!)\n";
+    } else {
+      print "HTTP/1.0 200\r\n";
+      print $cgi->header(-type => $type, -Content_length => -s $fh);
+      local $_ = "";
+      print while sysread $fh, $_, 2048;
+    }
+    return;
+  }
+
   my ($renderer, $pkg, $widget);
   my ($html, $error);
 
