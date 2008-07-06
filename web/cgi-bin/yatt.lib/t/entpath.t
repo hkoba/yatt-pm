@@ -66,14 +66,24 @@ sub is_entpath {
   is_entpath q{:foo():bar()}
     , [[call => foo =>], [call => bar =>]];
 
+  &YATT::breakpoint;
   is_entpath q{:foo(bar,:baz(),,)}
     , [[call => foo => [text => 'bar'], [call => 'baz']
        , [text => '']]];
+
+  is_entpath q{:foo(bar,{key:val,k2:v2},,)}
+    , [[call => foo => [text => 'bar']
+	, [hash => [text => 'key'], [text => 'val']
+	   , [text => 'k2'], [text => 'v2']]
+	, [text => '']]];
 
   is_entpath q{:yaml(config):title}
     , [[call => yaml => [text => 'config']]
        , [var  => 'title']
       ];
+
+  is_entpath q{:foo(:config,title)}
+    , [[call => foo => [var => 'config'], [text => 'title']]];
 
   is_entpath q{:foo[3][8]}
     , [[var => 'foo'], [aref => [expr => '3']], [aref => [expr => '8']]];

@@ -539,8 +539,9 @@ sub gencall_always {
   (my MY $trans, my ($scope, $node)) = @_;
 
   my $tmpl = $trans->get_template_from_node($node);
-  my @elempath = $node->node_path
-    or die $trans->node_error($node, "Empty element path");
+  my @elempath = $node->node_path or do {
+    die $trans->node_error($node, "Empty element path");
+  };
 
   # ■ 局所引数… これも、型の固有処理に任せる. delegate もここで。
   if (my $codevar = $trans->find_codearg($scope, @elempath)) {

@@ -113,8 +113,9 @@ sub _parse_term {
     return [$literal_type => ''];
   }
   my $is_expr = s{^=}{};
+  my @result;
   unless (s{^$re_text}{}) {
-    &_parse_pipeline;
+    @result = &_parse_pipeline;
   } else {
     my $result = '';
   TEXT: {
@@ -130,9 +131,10 @@ sub _parse_term {
 	}
       } while s{^(?: $re_text | ([\(\[\{]) | ([:\.]) ) }{}x;
     }
-    s/^,//;
-    [$is_expr ? 'expr' : $literal_type => $result];
+    @result = [$is_expr ? 'expr' : $literal_type => $result];
   }
+  s/^,//;
+  @result;
 }
 
 sub _parse_group {
@@ -140,7 +142,6 @@ sub _parse_group {
   for (my ($len, $cnt) = length($_); $_ ne ''; $len = length($_), $cnt++) {
     if (s/^ ([\)\]\}])//x) {
       die "Paren mismatch: expect $close got $1 " if $1 ne $close;
-      s/^,//;
       last;
     }
     my @pipe = $sub->(@rest);
@@ -175,13 +176,8 @@ sub _parse_hash {
   for (my ($len, $cnt) = length($_); $_ ne ''; $len = length($_), $cnt++) {
     if (s/^ ([\)\]\}])//x) {
       die "Paren mismatch: expect \} got $1 " if $1 ne '}';
-      s/^,//;
       last;
     }
-    if ($cnt && $len == length($_)) {
-      die "Can't parse: $_"
-    }
-    s/^,//;
     s/^(\w+) [:=] //x or die "Hash key is missing: $_";
     push @hash, [text => $1], &_parse_term;
   }
