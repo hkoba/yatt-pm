@@ -7,8 +7,9 @@ use lib "$FindBin::Bin/..";
 
 #========================================
 use YATT::Test;
+use base qw(YATT::Test);
 
 my $ROOTNAME = rootname($0);
 
-xhf_test("$ROOTNAME.tmp"
-	 , @ARGV ? @ARGV : $ROOTNAME)
+__PACKAGE__->xhf_test("$ROOTNAME.tmp"
+		      , @ARGV ? @ARGV : $ROOTNAME)

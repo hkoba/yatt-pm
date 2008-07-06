@@ -42,6 +42,7 @@ use lib _rootname(dirname(dirname(File::Spec->rel2abs($0)))) . ".lib"
 
 #========================================
 use YATT::Test;
+use base qw(YATT::Test);
 
-xhf_test("/tmp/yatt-test$$"
-	 , @ARGV ? @ARGV : '.')
+__PACKAGE__->xhf_test("/tmp/yatt-test$$"
+		      , @ARGV ? @ARGV : '.')

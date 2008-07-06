@@ -110,27 +110,28 @@ sub dumper {
 }
 
 #----------------------------------------
-
-use YATT::Types [TestDesc => [qw(cf_FILE realfile
-				 ntests
-				 cf_TITLE num cf_TAG
-				 cf_BREAK
-				 cf_SKIP
-				 cf_WIDGET
-				 cf_RANDOM
-				 cf_IN cf_PARAM cf_OUT cf_ERROR)]]
-  , [Global => [['^cf_translator' => 'YATT::Translator::Perl']
+use base qw(YATT::Class::Configurable);
+use YATT::Types -base => __PACKAGE__
+  , [TestDesc => [qw(cf_FILE realfile
+		     ntests
+		     cf_TITLE num cf_TAG
+		     cf_BREAK
+		     cf_SKIP
+		     cf_WIDGET
+		     cf_RANDOM
+		     cf_IN cf_PARAM cf_OUT cf_ERROR)]]
+  , [Config => [['^cf_translator' => 'YATT::Translator::Perl']
 		, '^cf_toplevel'
 	       ]]
   , [Toplevel => []]
   ;
 
-Global->define(target => sub { my $self = shift; $self->toplevel
+Config->define(target => sub { my $self = shift; $self->toplevel
 				 || $self->translator });
 
-Global->define(new_translator => sub {
+Config->define(new_translator => sub {
   ;#
-  (my Global $global, my ($loader, @opts)) = @_;
+  (my Config $global, my ($loader, @opts)) = @_;
   require_and($global->translator => new => loader => $loader, @opts);
 });
 
@@ -145,7 +146,12 @@ sub ntests {
 }
 
 sub xhf_test {
+  my Config $global = do {
+    shift->Config->new;
+  };
   my $TMPDIR = tmpbuilder(shift);
+
+  require YATT::XHF;
 
   unless (@_) {
     croak "Source is missing."
@@ -154,33 +160,18 @@ sub xhf_test {
     @_ = dict_sort <$srcdir/*.xhf>;
   }
 
-  require YATT::XHF;
-
-  my Global $global;
-
   my @sections;
   foreach my $testfile (@_) {
     my $parser = new YATT::XHF(filename => $testfile);
     my TestDesc $prev;
     my ($n, @test, %uniq) = (0);
     while (my $rec = $parser->read_as_hash) {
-      if (not $global and $rec->{global}) {
-	$global = Global->new(%{$rec->{global}});
+      if ($rec->{global}) {
+	$global->configure(%{$rec->{global}});
 	next;
       }
-      my TestDesc $test = TestDesc->new(%$rec);
-
-      push @test, $test;
-      $test->{ntests} = do {
-	if ($test->{cf_OUT}) {
-	  2
-	} elsif ($test->{cf_ERROR}) {
-	  1
-	} else {
-	  0
-	}
-      };
-
+      push @test, my TestDesc $test = $global->TestDesc->new(%$rec);
+      $test->{ntests} = $global->ntests_in_desc($test);
       $test->{cf_FILE} ||= $prev && $prev->{cf_FILE}
 	&& $prev->{cf_FILE} =~ m{%d} ? $prev->{cf_FILE} : undef;
 
@@ -209,8 +200,6 @@ sub xhf_test {
 
     push @sections, [$testfile => @test];
   }
-
-  $global ||= Global->new;
 
   Test::More::plan(tests => 1 + ntests(@sections));
 
@@ -283,6 +272,17 @@ sub xhf_test {
     }
   } continue {
     $SECTION++;
+  }
+}
+
+sub ntests_in_desc {
+  (my $this, my TestDesc $test) = @_;
+  if ($test->{cf_OUT}) {
+    2
+  } elsif ($test->{cf_ERROR}) {
+    1
+  } else {
+    0
   }
 }
 
