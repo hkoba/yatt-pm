@@ -68,7 +68,6 @@ OUT:
  
 
 TITLE: attr (default)
-BREAK: 1
 IN:
  <!yatt:args class=attr>
  <div&yatt:class;></div>

@@ -56,6 +56,7 @@ use vars map {'$'.$_} our @env_vars
 push our @EXPORT, (qw(&use_env_vars
 		  &rootname
 		  &capture
+		  &new_config
 		), map {'*'.$_} our @env_vars);
 
 our Config $CONFIG;
@@ -150,6 +151,7 @@ END
 
   unless ($PATH_INFO) {
     if ($PATH_TRANSLATED) {
+      # XXX: ミス時に効率悪い。substr して eq に書き直すべき。
       if (index($PATH_TRANSLATED, $rootdir) == 0) {
 	$PATH_INFO = substr($PATH_TRANSLATED, length($rootdir));
       }

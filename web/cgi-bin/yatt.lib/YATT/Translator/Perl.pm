@@ -420,7 +420,7 @@ sub trans_pi {
 
 sub genexpr_node {
   (my MY $trans, my ($scope, $early_escaped, $node)) = @_;
-  join("", map { ref $_ ? $$_ : $_ }
+  join("", map { ref $_ ? $$_ : $trans->dots_for_arrows(my $cp = $_) }
        $trans->mark_vars($scope, $early_escaped, $node));
 }
 
@@ -1035,6 +1035,41 @@ sub generate_entref {
 }
 
 #========================================
+# マクロなどで、cursor になっていない targetNode を入手した後で、
+# それを再び cursor にして、指定の型のソースを生成する仕組み。
+
+# デフォルト値を最初に指定。
+sub default_gentype {
+  (my MY $trans, my ($default, $type, $scope, $baseNC, $targetNode)) = @_;
+  if (ref $type) {
+    croak "Type mismatch: \$type should be string for default_gentype: $type";
+  }
+  unless (defined $targetNode and node_body($targetNode)) {
+    return $default;
+  }
+  $trans->faked_gentype($type, $scope, $baseNC, $targetNode);
+}
+
+sub faked_gentype {
+  (my MY $trans, my ($type, $scope, $baseNC, $targetNode)) = @_;
+  my $node = $targetNode ? $trans->fake_cursor_from($baseNC, $targetNode)
+    : $baseNC;
+  $trans->can("t_$type")->()->gen_assignable_node($trans, $scope, $node);
+}
+
+# expr 専用。デフォルト値も渡せる。
+sub faked_genexpr {
+  (my MY $trans, my ($scope, $baseNC, $targetNode, $default, $ent_flag)) = @_;
+  unless (defined $targetNode and node_body($targetNode)) {
+    return $default;
+  }
+  # open するのが、faked_gentype(scalar) とも違う所、のはず。
+  my $nc = $trans->fake_cursor_from($baseNC, $targetNode)->open;
+  $trans->genexpr_node($scope, defined $ent_flag ? $ent_flag : ENT_RAW
+		       , $nc);
+}
+
+#========================================
 
 sub YATT::Translator::Perl::VarType::gen_getarg {
   (my VarType $var, my MY $gen
@@ -1436,6 +1471,33 @@ sub feed_arg_spec {
       push @script, \ $script;
     }
     @script;
+  }
+}
+
+{
+  declare_alias macro_yatt_format => \&macro_format;
+  sub macro_format {
+    (my MY $trans, my ($scope, $args)) = @_;
+
+    unless ($args->readable && $args->is_primary_attribute) {
+      die $trans->node_error($args, "format parameter is missing");
+    }
+
+    my $name = $args->node_name;
+
+    my $format = do {
+      if (my $var = $trans->has_pass_through_var($scope, $args, $name)) {
+	$var->as_lvalue;
+      } else {
+	$trans->faked_gentype(text => $scope, $args);
+      }
+    };
+
+    $args->next;
+
+    sprintf(q|sprintf(%s, %s)|
+	    , $format
+	    , $trans->as_join($trans->generate_body([{}, $scope], $args)));
   }
 }
 

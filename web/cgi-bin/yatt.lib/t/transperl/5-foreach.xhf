@@ -134,3 +134,47 @@ OUT:
  </tr>
  </table>
  
+
+TITLE: format "(%s)"
+IN:
+ <!yatt:args name value>
+ <yatt:format "(%s)"
+ ><input type="text" name="&yatt:name;" value="&yatt:value;"
+ ></yatt:format>
+PARAM[
+- q1
+- foo
+]
+OUT:
+ (<input type="text" name="q1" value="foo" />)
+
+
+TITLE: format var
+IN:
+ <!yatt:args fmt name value>
+ <yatt:format fmt
+ ><input type="text" name="&yatt:name;" value="&yatt:value;"
+ ></yatt:format>
+PARAM[
+- [%s]
+- q2
+- bar
+]
+OUT:
+ [<input type="text" name="q2" value="bar" />]
+
+
+TITLE: format expr
+IN:
+ <!yatt:args fmt name value>
+ <yatt:format "foo&yatt:fmt;bar"
+ ><input type="text" name="&yatt:name;" value="&yatt:value;"
+ ></yatt:format>
+PARAM[
+- "%s"
+- q2
+- bar
+]
+OUT:
+ foo"<input type="text" name="q2" value="bar" />"bar
+

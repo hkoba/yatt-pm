@@ -335,6 +335,17 @@ sub get_widget_from_dir {
 }
 
 {
+  sub YATT::Registry::NS::list_declared_widget_names {
+    (my NS $tmpl) = @_;
+    my @result;
+    foreach my $name (keys %{$tmpl->{Widget}}) {
+      my $w = $tmpl->{Widget}{$name};
+      next unless $w->declared;
+      push @result, $name;
+    }
+    @result;
+  }
+
   # For relative lookup.
   sub YATT::Registry::NS::Template::lookup_widget {
     (my Template $tmpl, my Root $root) = splice @_, 0, 2;
@@ -695,6 +706,7 @@ sub declare_args {
     die $scan->token_error("Misplaced yatt:args");
   }
   my Widget $widget = $builder->{cf_widget};
+  $widget->{cf_declared} = 1;
   $widget->{cf_decl_start} = $scan->{cf_last_linenum};
   $widget->{cf_body_start} = $scan->{cf_last_linenum} + $scan->{cf_last_nol};
   $root->define_args($widget, $nc);
@@ -718,6 +730,7 @@ sub declare_widget {
   # XXX: filename, lineno
   my Widget $widget = $root->create_widget_in
     ($builder->{cf_template}, $name
+     , declared => 1
      , filename  => $builder->{cf_template}->metainfo->cget('filename')
      , decl_start => $scan->{cf_last_linenum}
      , body_start => $scan->{cf_last_linenum} + $scan->{cf_last_nol});
@@ -913,6 +926,7 @@ sub create_var {
       my $path = $loader->catfile($dirname, $name);
       # entry を作るだけ。load はしない。→ mtime も、子供側で。
       if (-d $path) {
+	next unless $name =~ /^\w+$/;
 	$dir->{Dir}{$name} ||= $loader->{Cache}{$path}
 	  ||= $root->createNS(Dir => name => $name
 			      , loadkey => untaint_any($path)

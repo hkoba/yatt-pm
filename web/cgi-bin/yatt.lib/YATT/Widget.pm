@@ -13,6 +13,7 @@ use YATT::Fields qw(^=arg_dict
 		    ^cf_root
 		    cf_name
 		    cf_filename
+		    ^cf_declared
 		    cf_decl_start
 		    cf_body_start
 		    cf_template_nsid
