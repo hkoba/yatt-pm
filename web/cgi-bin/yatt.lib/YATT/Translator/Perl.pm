@@ -381,7 +381,8 @@ sub trans_text {
   if ($node->node_is_beginning) {
     $pre = $1 if $body =~ s/^($CRLF+)//;
   } elsif ($node->node_is_end) {
-    if ($node->metainfo->caller_widget->no_last_newline) {
+    if (not $node->has_parent
+	and $node->metainfo->caller_widget->no_last_newline) {
       $body =~ s/($CRLF+)$//s;
     } else {
       $post = $2 if $body =~ s/($CRLF)($CRLF+)$/$1/s;

@@ -39,7 +39,6 @@ IN:
 ERROR: ^No such variable 'x' \(.*\)
 
 TITLE: my html
-BREAK: 1
 IN:
  <yatt:my x><h2>foo</h2></yatt:my>
  <b>&yatt:x;</b>
@@ -85,3 +84,38 @@ OUT:
  </div>
  
  </div>
+
+
+TITLE: newline of body with %yatt:no_last_newline
+IN:
+ <yatt:foo list="1..3"/>
+ <!yatt:widget foo list=list %yatt:no_last_newline;>
+ <yatt:bar list />
+ 
+ <!yatt:widget bar list=list %yatt:no_last_newline;>
+ <yatt:baz list>
+   <td>&yatt:num;</td>
+ </yatt:baz>
+ 
+ <!yatt:widget baz list=list body=[code num] %yatt:no_last_newline;>
+ <yatt:table list body/>
+ 
+ <!yatt:widget table list=list body=[code num]>
+ <table>
+ <yatt:foreach my=num list="&yatt:list:expand();">
+ <tr>
+ <yatt:body num/></tr>
+ </yatt:foreach></table>
+OUT:
+ <table>
+ <tr>
+   <td>1</td>
+ </tr>
+ <tr>
+   <td>2</td>
+ </tr>
+ <tr>
+   <td>3</td>
+ </tr>
+ </table>
+ 

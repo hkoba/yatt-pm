@@ -367,6 +367,21 @@ sub size {
   }
 }
 
+sub has_parent {
+  my MY $self = shift;
+  defined (my Path $path = $self->{cf_path}) or return 0;
+  $path->{cf_path}
+}
+
+sub depth {
+  my MY $self = shift;
+  my $depth = 0;
+  while (defined (my Path $path = $self->{cf_path})) {
+    $depth++;
+  }
+  $depth;
+}
+
 sub startline {
   my MY $self = shift;
   $self->metainfo->cget('startline');
