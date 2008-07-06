@@ -51,9 +51,13 @@ Config->define(create => \&create_toplevel);
 use vars map {'$'.$_} our @env_vars
   = qw(DOCUMENT_ROOT
        PATH_INFO
-       SCRIPT_FILENAME
+       PATH_TRANSLATED
+       REDIRECT_REDIRECT_STATUS
        REDIRECT_STATUS
-       PATH_TRANSLATED);
+       REDIRECT_URL
+       REQUEST_URI
+       SCRIPT_FILENAME
+     );
 push our @EXPORT, (qw(&use_env_vars
 		  &rootname
 		  &capture
@@ -127,9 +131,13 @@ sub prepare_dispatch {
       # $config->try_load_config($config->{cf_docs});
       ($config->{cf_docs}, $cgi->path_info
        , [DIR => $config->{cf_docs}]);
-    } elsif ($REDIRECT_STATUS and $PATH_TRANSLATED) {
-      ($pack->param_for_redirect($PATH_TRANSLATED
-				 , $SCRIPT_FILENAME || $0, $config));
+    } elsif ($REDIRECT_STATUS) {
+      # 404 Not found handling
+      my $target = $PATH_TRANSLATED || $DOCUMENT_ROOT . $REDIRECT_URL;
+      ($pack->param_for_redirect($target
+				 , $SCRIPT_FILENAME || $0, $config
+				 , $REDIRECT_STATUS == 404
+				));
     } elsif ($PATH_INFO and $SCRIPT_FILENAME) {
       (untaint_any(dirname($SCRIPT_FILENAME))
        , untaint_any($PATH_INFO)
@@ -209,14 +217,18 @@ sub dispatch {
 
   local $CGI = $cgi;
   local ($SESSION, %COOKIE, %HEADER);
-  my ($renderer, $pkg, $widget);
+  my @elpath = $root->parse_elempath($top->canonicalize_html_filename($file));
+  my ($found, $renderer, $pkg, $widget);
 
   if (catch {
-    ($renderer, $pkg, $widget) = $root->get_handler_to
-      (render => $top->canonicalize_html_filename($file));
+    $found = ($renderer, $pkg, $widget)
+      = $root->lookup_handler_to(render => @elpath);
   } \ my $error) {
     $top->dispatch_error($root, $error
 			 , {phase => 'get_handler', target => $file});
+  } elsif (not $found) {
+    # XXX: これも。
+    $top->dispatch_not_found($root, $file, @param);
   } else {
     unless ($CONFIG->{cf_no_chdir}) {
       # XXX: これもエラー処理を
@@ -225,6 +237,13 @@ sub dispatch {
     }
     $top->dispatch_action($root, $renderer, $pkg, @param);
   }
+}
+
+sub dispatch_not_found {
+  my ($top, $root, $file) = @_;
+  my $ERR = \*STDOUT;
+
+  print $ERR "\n\nNot found: $file";
 }
 
 # XXX: もう少し改善を。
@@ -240,7 +259,10 @@ sub dispatch_error {
   } \ my $load_error) {
     print $ERR "\n\nload_error($load_error), original_error=($error)";
   } elsif (not $found) {
-    print $ERR "\n\n$error";
+    print $ERR $CGI ? $CGI->header : "\n\n";
+    print $ERR $error;
+    $top->printenv_html($info, id => 'error_info') if $info;
+    $top->printenv_html;
   } elsif (catch {
     $html = capture {$renderer->($pkg, [$error, $info])};
   } \ my Exception $error2) {
@@ -276,7 +298,20 @@ sub plain_error {
   my ($pack, $cgi, $message) = @_;
   print $cgi->header if $cgi;
   print $message;
+  $pack->printenv_html;
   exit ($cgi ? 0 : 1);
+}
+
+sub printenv_html {
+  my ($pack, $env, %opts) = @_;
+  $opts{id} ||= 'printenv';
+  my $ERR = \*STDOUT;
+  $env ||= \%ENV;
+  print $ERR "<table id='$opts{id}'>\n";
+  foreach my $k (sort keys %$env) {
+    print $ERR "<tr><td>", $k, "</td><td>", $env->{$k}, "</td></tr>\n";
+  }
+  print $ERR "</table>\n";
 }
 
 #========================================
@@ -360,11 +395,14 @@ sub trim_trailing_pathinfo {
 }
 
 sub param_for_redirect {
-  (my ($pack, $path_translated, $script_filename), my Config $cfobj) = @_;
+  (my ($pack, $path_translated, $script_filename)
+   , my Config $cfobj, my $not_found) = @_;
   my $driver = untaint_any(rootname($script_filename));
 
   my @params;
-  unless (-e $path_translated) {
+  if (not $not_found and not -e $path_translated) {
+    # not_found でもないのに、 path_translated が not exists であるケース
+    # == trailing path_info が有るケース。
     push @params, $pack->trim_trailing_pathinfo(\$path_translated);
   }
 
@@ -542,8 +580,9 @@ sub entity_param {
 sub canonicalize_html_filename {
   my $pack = shift;
   $_[0] .= "index" if $_[0] =~ m{/$};
-  $_[0] =~ s{\.(y?html?|yatt?)$}{};
-  $_[0]
+  my $copy = shift;
+  $copy =~ s{\.(y?html?|yatt?)$}{};
+  $copy;
 }
 
 sub widget_path_in {

@@ -179,7 +179,7 @@ END
 
 sub make_class {
   my ($self, $class, $super, $slots) = @_;
-  YATT::Inc->add_inc($super);
+  YATT::Inc->add_inc($class);
   <<END . ($super ? <<END : "") . ($slots ? <<END : "") . "\n";
 package $class;
 END

@@ -60,8 +60,8 @@ sub call_handler {
   $handler->($pkg, @_);
 }
 
-sub get_handler_to {
-  (my MY $trans, my ($method, @elpath)) = @_;
+sub parse_elempath {
+  my ($pack, @elpath) = @_;
   if (@elpath == 1) {
     if (ref $elpath[0]) {
       @elpath = @{$elpath[0]};
@@ -72,6 +72,13 @@ sub get_handler_to {
 
   # root dir should be ignored.
   shift @elpath if !defined $elpath[0] || $elpath[0] eq '';
+
+  @elpath;
+}
+
+sub get_handler_to {
+  (my MY $trans, my ($method)) = splice @_, 0, 2;
+  my @elpath = $trans->parse_elempath(@_);
 
   my @result;
   if (wantarray) {

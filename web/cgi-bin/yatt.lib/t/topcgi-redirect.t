@@ -33,10 +33,14 @@ my $check = sub {
   SKIP: {
      skip "Can't fetch.", 1 unless $res;
 
+     my $content = $mech->content;
+     # To hide printenv.
+     $content =~ s{<table[^>]*>.*</table>\s*}{}xs if $content;
+
      unless (ref $is) {
-       is $mech->content, $is, $title;
+       is $content, $is, $title;
      } elsif (ref $is eq 'Regexp') {
-       like $mech->content, $is, $title;
+       like $content, $is, $title;
      } else {
        die "Unknown";
      }

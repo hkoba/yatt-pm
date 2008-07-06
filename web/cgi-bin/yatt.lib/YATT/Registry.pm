@@ -188,10 +188,27 @@ sub configure_base {
 
 #----------------------------------------
 
+{
+  our $IS_RELOADING;
+  sub is_reloading { $IS_RELOADING }
+  sub with_reloading_flag {
+    (my Root $root, my ($flag, $sub)) = @_;
+    local $IS_RELOADING = $flag;
+    $sub->();
+  }
+}
+
+#----------------------------------------
+
 sub Entity (*$) {
   my ($name, $sub) = @_;
   my ($instClass) = caller;
-  *{globref($instClass, "entity_$name")} = $sub;
+  my $glob = globref($instClass, "entity_$name");
+  if (MY->is_reloading and defined *{$glob}{CODE}) {
+    # To avoid 'Subroutine MyApp5::entity_bar redefined'.
+    undef *$glob;
+  }
+  *$glob = $sub;
 }
 
 sub ElementMacro (*$) {
@@ -900,13 +917,15 @@ sub create_var {
       $loader->load_dir($root, $dir, $dirname);
     }
 
-    ++$dir->{cf_age};
+    my $is_reload = $dir->{cf_age}++;
 
     # RC 読み込みの前に、 default_base_class を設定。
     if ($root->{cf_default_base_class}
 	and ($root->{cf_default_base_class} ne $root->{cf_pkg}
 	     or $root->root_is_loaded)) {
       # XXX: add_isa じゃなくて ensure_isa だね。
+      #print STDERR "loading default_base_class $root->{cf_default_base_class}"
+      # . " for dir $dirname\n";
       $root->checked_eval(qq{require $root->{cf_default_base_class}});
       $root->add_isa(my $pkg = $root->get_package($dir)
 		     , $root->{cf_default_base_class});
@@ -915,11 +934,16 @@ sub create_var {
     # RC 読み込みは、最後に
     my $rcfile = $loader->catfile($dirname, $loader->RCFILE);
     if (-r $rcfile) {
-      my $lineinfo = $root->{cf_no_lineinfo} ? ""
-	: sprintf(qq{\n#line 1 "%s"\n}, $rcfile);
-      my $script = untaint_any($loader->checked_read_file($rcfile));
+      my $script = "";
+      $script .= ";no warnings 'redefine';" if $is_reload;
+      $script .= sprintf(qq{\n#line 1 "%s"\n}, $rcfile)
+	unless $root->{cf_no_lineinfo};
+      $script .= untaint_any($loader->checked_read_file($rcfile));
       &YATT::break_rc;
-      $root->eval_in_dir($dir, $lineinfo . $script);
+      $root->with_reloading_flag
+	($is_reload, sub {
+	   $root->eval_in_dir($dir, $script);
+	 });
       &YATT::break_after_rc;
 
       $dir->after_rc_loaded($root);

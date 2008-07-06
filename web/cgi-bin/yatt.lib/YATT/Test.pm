@@ -10,6 +10,8 @@ use Cwd;
 use Data::Dumper;
 use Carp;
 
+use Time::HiRes qw(usleep);
+
 use YATT;
 use YATT::Util qw(rootname catch checked_eval default defined_fmt
 		  require_and
@@ -24,6 +26,8 @@ use YATT::Util::DictOrder;
 our @EXPORT = qw(ok is isnt like is_deeply skip fail plan
 		 require_ok isa_ok
 		 basename
+
+		 wait_for_time
 
 		 is_rendered raises is_can run
 		 capture rootname checked_eval default defined_fmt
@@ -326,6 +330,16 @@ sub ntests_in_desc {
   } else {
     0
   }
+}
+
+#
+sub wait_for_time {
+  my ($time) = @_;
+  my $now = Time::HiRes::time;
+  my $diff = $time - $now;
+  return if $diff <= 0;
+  usleep($diff);
+  $diff;
 }
 
 1;

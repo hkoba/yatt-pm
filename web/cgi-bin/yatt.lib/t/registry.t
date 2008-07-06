@@ -8,6 +8,8 @@ use FindBin;
 use lib "$FindBin::Bin/..";
 use YATT::Test qw(no_plan);
 
+use File::stat;
+
 require_ok('YATT::Registry');
 &YATT::break_translator;
 
@@ -100,11 +102,17 @@ my $SESSION = 1;
 
 # [5]
 {
+  require YATT::Types;
+  import YATT::Types -base => 'YATT::Registry', [Base => []];
+
   $SESSION++;
-  my $DIR = $TMPDIR->
+  my $builder = $TMPDIR->as_sub;
+  my $DIR = $builder->
     ([DIR => 'app'
       , [FILE => '.htyattrc'
-	 , q{use YATT::Registry base => 'normal'}]
+	 , q{use YATT::Registry base => 'normal';
+Entity bar => sub {'baz'};
+}]
       , [FILE => 'index.html', q{<h2>hello</h2>}]
       , [DIR  => 'normal'
 	 , [DIR  => 'simple'
@@ -113,10 +121,28 @@ my $SESSION = 1;
   my $root = new YATT::Registry
     (loader => [DIR => "$DIR/app"]
      , app_prefix => "MyApp$SESSION"
+     , default_base_class => Base()
      , auto_reload => 1);
 
   isnt my $index = $root->get_ns(['index']), undef, "[$SESSION] index";
   isa_ok $index, $root->Template, "[$SESSION] index";
   isnt $root->get_widget_from_template
     ($index, qw(yatt simple widget)), undef, "[$SESSION] simple widget";
+
+  if (my $sleep = wait_for_time(stat("$DIR/app/index.html")->mtime + 1)) {
+    print STDERR "# slept $sleep sec\n" if $ENV{VERBOSE};
+  }
+
+  $builder->([DIR => 'app'
+	      # To make sure directory mtime is changed.
+	      , [FILE => 'new.tmp', q{}]
+
+	      , [FILE => 'index.html', q{<h2>world</h2>}]
+	      , [FILE => '.htyattrc', q{use YATT::Registry base => 'normal';
+Entity bar => sub {'baz'};
+}]
+	     ]);
+
+  isnt $root->get_widget_from_dir
+    ($root, qw(index)), undef, "[$SESSION] index reload";
 }
