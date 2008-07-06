@@ -8,14 +8,15 @@ use FindBin;
 
 # pathname without extension.
 sub _rootname {
-  my ($basename, $dirname, $suffix) = fileparse(@_);
+  my $path = shift;
+  my ($basename, $dirname, $suffix) = fileparse($path, shift || qr{\.\w+});
   join "/", File::Spec->rel2abs($dirname), $basename;
 }
 
 sub prog_libdirs {
   my @libs;
   foreach my $prog (@_) {
-    my $root = _rootname($prog, qr{\.\w+});
+    my $root = _rootname($prog);
     if (-d (my $d = "$root.lib")) {
       push @libs, $d;
     }
@@ -34,8 +35,10 @@ sub prog_libdirs {
   @libs;
 }
 
-use lib prog_libdirs("$FindBin::Bin/yatt"
-		     , "$FindBin::RealBin/yatt");
+use lib _rootname(dirname(dirname(File::Spec->rel2abs($0)))) . ".lib"
+  , prog_libdirs("$FindBin::Bin/yatt"
+		     , "$FindBin::RealBin/yatt")
+  ;
 
 #========================================
 use YATT::Test;

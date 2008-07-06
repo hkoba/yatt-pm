@@ -31,6 +31,7 @@ use YATT::Types -base => __PACKAGE__
   , [Config => [qw(^cf_registry
 		   cf_docs cf_tmpl
 		   cf_charset
+		   cf_debug_allowed_ip
 		   cf_translator_param
 		   cf_user_config
 		   cf_no_header
@@ -494,6 +495,12 @@ sub YATT::Toplevel::CGI::Config::translator_param {
   # print "translator_param: ", terse_dump($config), "\n";
   map($_ ? (ref $_ eq 'ARRAY' ? @$_ : %$_) : ()
       , $config->{cf_translator_param})
+}
+
+# Config に
+sub is_debug_allowed {
+  (my Config $config, my ($cgi)) = @_;
+  
 }
 
 #========================================

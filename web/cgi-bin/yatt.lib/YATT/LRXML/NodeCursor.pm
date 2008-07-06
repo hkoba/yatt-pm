@@ -151,9 +151,10 @@ sub clone_filtered_by {
   my ($hash, $all) = @_;
   my $boundary = $all ? 'readable' : 'is_primary_attribute';
   for (; $orig->$boundary(); $orig->next) {
-    my $name;
-    if ($orig->is_attribute and $name = $orig->node_name and $hash->{$name}) {
-      ${$hash->{$name}} = $orig->current;
+    my @name;
+    if ($orig->is_attribute and @name = $orig->node_path
+	and $hash->{$name[0]}) {
+      ${$hash->{$name[0]}} = $orig->current;
       next;
     }
     $clone->add_node(copy_array($orig->current));

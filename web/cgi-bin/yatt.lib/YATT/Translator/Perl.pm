@@ -1247,12 +1247,13 @@ sub arg_type_and_name {
   }
 }
 
+# macro の、 my:type=var など専用。
 sub feed_arg_spec {
   (my MY $trans, my ($args, $arg_dict, $arg_order)) = splice @_, 0, 4;
   my $found;
   for (my $nth = 0; $args->readable; $args->next) {
     last unless $args->is_primary_attribute;
-    my ($typename, $name) = $trans->arg_type_and_name($args);
+    my ($name, @ext) = $args->node_path;
     unless (defined $name) {
       $name = $arg_order->[$nth++]
 	or die $trans->node_error($args, "Too many args");
@@ -1287,8 +1288,10 @@ sub feed_arg_spec {
     my %local;
     my $loopvar = do {
       if ($my) {
+	my ($x, @type) = node_path($my);
 	my $varname = node_body($my);
-	$local{$varname} = $trans->create_var('', undef, varname => $varname);
+	$local{$varname} = $trans->create_var
+	  ($type[0] || '', undef, varname => $varname);
 	'my $' . $varname;
       } else {
 	# _ は？ entity 自体に処理させるか…

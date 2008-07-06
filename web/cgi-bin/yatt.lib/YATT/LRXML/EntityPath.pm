@@ -61,9 +61,9 @@ my %open_head = qw| ( call [ array { hash |;
 my %open_rest = qw| ( call [ aref  |;
 my %close_ch  = qw( ( ) [ ] { } );
 
-my $re_var  = qr{[:\.]+ (\w+) (\()?}x;
-my $re_word = qr{[\w\$\-\+\*/%<>]
-		 [\w\$\-\+\*/%<>:\.=]*}x;
+my $re_var  = qr{[:]+ (\w+) (\()?}x;
+my $re_word = qr{[\w\$\-\+\*/%<>\.]
+		 [\w\$\-\+\*/%<>\.:=]*}x;
 
 sub _parse_pipeline {
   my @pipe;
@@ -144,7 +144,9 @@ sub _parse_group {
       last;
     }
     my @pipe = $sub->(@rest);
-    die "Can't match: $_" if $cnt && $len == length($_);
+    if ($cnt && $len == length($_)) {
+      die "Can't match: $_";
+    }
     push @$group, @pipe <= 1 ? @pipe : \@pipe;
   }
   $group;
