@@ -59,8 +59,9 @@ push our @EXPORT, (qw(&use_env_vars
 		), map {'*'.$_} our @env_vars);
 
 our Config $CONFIG;
-our ($CGI, $SESSION, %COOKIE, %HEADER);
-sub rc_global () { qw(CONFIG CGI SESSION HEADER COOKIE) }
+our ($CGI, $SESSION, %COOKIE, %HEADER, $RANDOM_LIST, $RANDOM_INDEX);
+sub rc_global () { qw(CONFIG CGI SESSION HEADER COOKIE
+		      RANDOM_LIST RANDOM_INDEX) }
 push our @EXPORT_OK, (@EXPORT, map {'*'.$_} rc_global);
 
 sub ROOT_CONFIG () {'.htyattroot'}
@@ -457,6 +458,38 @@ sub use_env_vars {
     };
   }
   $SCRIPT_FILENAME ||= $0;
+}
+
+#========================================
+
+sub set_random_list {
+  my ($this, $random) = @_;
+  if (defined $random) {
+    $RANDOM_LIST = ref $random ? $random : [split " ", $random];
+    $RANDOM_INDEX = 0;
+  } else {
+    undef $RANDOM_LIST;
+    undef $RANDOM_INDEX;
+  }
+}
+
+sub entity_rand {
+  my ($this, $scalar) = @_;
+  $scalar ||= 1;
+  if ($RANDOM_LIST) {
+    my $val = $RANDOM_LIST->[$RANDOM_INDEX++ % @$RANDOM_LIST];
+    $val * $scalar;
+  } else {
+    rand $scalar;
+  }
+}
+
+sub entity_randomize {
+  my ($this, $list) = @_;
+  my $sub = $this->can('entity_rand');
+  my @result;
+  push @result, splice @$list, $sub->($this, scalar @$list), 1 while @$list;
+  wantarray ? @result : \@result;
 }
 
 #========================================

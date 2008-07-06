@@ -9,7 +9,9 @@ use Data::Dumper;
 use Carp;
 
 use YATT;
-use YATT::Util qw(rootname catch checked_eval default defined_fmt);
+use YATT::Util qw(rootname catch checked_eval default defined_fmt
+		  require_and
+		);
 use YATT::Util::Symbol;
 use YATT::Util::Finalizer;
 use YATT::Util::DirTreeBuilder qw(tmpbuilder);
@@ -115,7 +117,22 @@ use YATT::Types [TestDesc => [qw(cf_FILE realfile
 				 cf_BREAK
 				 cf_SKIP
 				 cf_WIDGET
-				 cf_IN cf_PARAM cf_OUT cf_ERROR)]];
+				 cf_RANDOM
+				 cf_IN cf_PARAM cf_OUT cf_ERROR)]]
+  , [Global => [['^cf_translator' => 'YATT::Translator::Perl']
+		, '^cf_toplevel'
+	       ]]
+  , [Toplevel => []]
+  ;
+
+Global->define(target => sub { my $self = shift; $self->toplevel
+				 || $self->translator });
+
+Global->define(new_translator => sub {
+  ;#
+  (my Global $global, my ($loader, @opts)) = @_;
+  require_and($global->translator => new => loader => $loader, @opts);
+});
 
 sub ntests {
   my $ntests = 0;
@@ -126,8 +143,6 @@ sub ntests {
   }
   $ntests;
 }
-
-our $TRANS = 'YATT::Translator::Perl';
 
 sub xhf_test {
   my $TMPDIR = tmpbuilder(shift);
@@ -141,12 +156,18 @@ sub xhf_test {
 
   require YATT::XHF;
 
+  my Global $global;
+
   my @sections;
   foreach my $testfile (@_) {
     my $parser = new YATT::XHF(filename => $testfile);
     my TestDesc $prev;
     my ($n, @test, %uniq) = (0);
     while (my $rec = $parser->read_as_hash) {
+      if (not $global and $rec->{global}) {
+	$global = Global->new(%{$rec->{global}});
+	next;
+      }
       my TestDesc $test = TestDesc->new(%$rec);
 
       push @test, $test;
@@ -189,9 +210,11 @@ sub xhf_test {
     push @sections, [$testfile => @test];
   }
 
+  $global ||= Global->new;
+
   Test::More::plan(tests => 1 + ntests(@sections));
 
-  require_ok($TRANS);
+  require_ok($global->target);
 
   my $SECTION = 0;
   foreach my $section (@sections) {
@@ -217,12 +240,14 @@ sub xhf_test {
     }
 
     &YATT::break_translator;
-    my $gen = $TRANS->new
-      (loader => \@loader
+    my $gen = ($global->toplevel || $global)->new_translator
+      (\@loader
        , app_prefix => "MyApp$SECTION"
        , debug_translator => $ENV{DEBUG}
        , %config
       );
+
+    my $toplevel = $global->toplevel;
 
     foreach my TestDesc $test (@test) {
       unless (defined $test->{cf_TITLE}) {
@@ -237,7 +262,12 @@ sub xhf_test {
 	if ($test->{cf_OUT}) {
 	  Test::More::skip("($test->{cf_SKIP}) $title", 2)
 	      if $test->{cf_SKIP};
-	  # XXX: this が undef...
+
+	  if ($toplevel
+	      and my $sub = $toplevel->can("set_random_list")) {
+	    $sub->($global, $test->{cf_RANDOM});
+	  }
+
 	  &YATT::breakpoint if $test->{cf_BREAK};
 	  is_rendered [$gen, \@widget_path, $param]
 	    , $test->{cf_OUT}, $title;
