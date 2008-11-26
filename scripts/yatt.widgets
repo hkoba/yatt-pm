@@ -1,0 +1,77 @@
+#!/usr/bin/perl -w
+use strict;
+use warnings FATAL => qw(all);
+
+use FindBin;
+use lib grep(-d
+	     , "$FindBin::Script.lib", "$FindBin::RealScript.lib"
+	     , "$FindBin::Bin/yatt.lib", "$FindBin::Bin/lib"
+	     , grep {defined} $ENV{YATT_LIB});
+
+use File::Basename;
+
+use YATT::Util;
+use YATT::Util::CmdLine;
+
+use YATT::Translator::Perl;
+use YATT::Registry::NS;
+use base qw(YATT::Translator::Perl File::Spec);
+
+use YATT::LRXML::Node qw(DECLARATOR_TYPE);
+
+use YATT::Exception qw(Exception);
+use YATT::Toplevel::CGI qw(Config new_config);
+
+sub MY () { __PACKAGE__ }
+
+MY->parse_opts(\@ARGV, \ my %opts);
+MY->parse_params(\@ARGV, \ my %common);
+
+my $config = MY->new_config(%opts);
+
+my $path = shift;
+
+my ($rootdir, $top) = do {
+
+  unless (defined $path) {
+    die "Usage: $0 path\n"
+  }
+  unless (-r $path) {
+    die "$0: No such file! $path\n";
+  }
+
+  my $dir = dirname(MY->rel2abs($path));
+  $config->try_load_config($dir);
+
+  my $pack = MY;
+
+  # XXX: テンプレートディレクトリの指定も。
+  ($dir
+   , MY->new(app_prefix => $pack
+	     , default_base_class => $pack
+	     , loader => [DIR => $dir]
+	     , $config->translator_param));
+};
+
+show_widgets_in_dir($top, $top, {});
+
+sub show_widgets_in_dir {
+  (my Root $root, my Dir $dir, my $uniq) = @_;
+
+  $root->refresh($dir);
+
+  foreach my $fn (sort keys %{$dir->{Template}}) {
+    my Template $tmpl = $root->nsobj($dir->{Template}{$fn});
+    $root->refresh($tmpl);
+    foreach my $wn (sort keys %{$tmpl->{Widget}}) {
+      my $widget = $tmpl->{Widget}{$wn};
+      next unless $widget->declared;
+      my $winfo = join("\t", grep {$_} $fn, $wn);
+      print $winfo, "\t", $tmpl->{cf_loadkey}, "\n" unless $uniq->{$winfo}++;
+    }
+  }
+
+  foreach my $dn (sort keys %{$dir->{Dir}}) {
+    show_widgets_in_dir($root, $root->nsobj($dir->{Dir}{$dn}), $uniq);
+  }
+}
