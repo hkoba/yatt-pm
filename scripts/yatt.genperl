@@ -26,7 +26,7 @@ my ($rootdir, $top) = do {
   }
 
   my $dir = dirname(MY->rel2abs($file));
-  $config->try_load_config($dir);
+  $config->try_load_config($ENV{YATT_ROOTDIR} || $dir);
 
   # XXX: テンプレートディレクトリの指定も。
   ($dir

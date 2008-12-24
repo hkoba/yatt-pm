@@ -17,6 +17,21 @@ PARAM[
 OUT: 1 - 2 - 3 - 4
 
 
+TITLE: [delegate] order. widget -> args
+IN:
+ <!yatt:widget base x y z %yatt:no_last_newline;>
+ &yatt:x; - &yatt:y; - &yatt:z;
+ <!yatt:args x y z w base=[delegate] %yatt:no_last_newline;>
+ <yatt:base/> - &yatt:w;
+PARAM[
+- 1
+- 2
+- 3
+- 4
+]
+OUT: 1 - 2 - 3 - 4
+
+
 TITLE: base=[delegate] should be virtual(compile only) var.
 IN:
  <!yatt:args x y z w %yatt:no_last_newline;>

@@ -12,6 +12,7 @@ use base qw(YATT::Registry);
 use YATT::Fields [cf_mode => 'render']
   , [cf_product => sub {[]}]
   , qw(target_cache
+       cf_pagevars
        cf_debug_translator);
 
 BEGIN {require Exporter; *import = \&Exporter::import}
@@ -182,16 +183,35 @@ sub forget_template {
   delete $gen->{target_cache}{$tmplid} ? 1 : 0;
 }
 
+my %calling_conv;
+
 sub generate_template {
   (my MY $gen, my Template $tmpl) = @_;
   print STDERR "Generate: $tmpl->{cf_loadkey}\n"
     if $gen->{cf_debug_translator};
   my $metainfo = $tmpl->metainfo;
-  join "", q{package } . $gen->get_package($tmpl) . ';'
-    , map {$gen->generate_widget($_, $metainfo)} @{$tmpl->widget_list};
+  my @use = map {
+    unless (defined $_) {
+      ()
+    } else {
+      map {"use $_;"} ref $_ ? @$_ : $_
+    }
+  } $gen->{cf_use};
+  my @file_scope = do {
+    if ($gen->{cf_pagevars}) {
+      $gen->checked_eval(qq{require $gen->{cf_pagevars}});
+      push @use, "use $gen->{cf_pagevars} (qw($tmpl->{cf_name}), 1);";
+      ($gen->{cf_pagevars}->build_scope_for($gen, $tmpl->{cf_name})
+       , [\%calling_conv]);
+    } else {
+      \%calling_conv;
+    }
+  };
+  join("", q{package } . $gen->get_package($tmpl) . ';'
+       , join("",@use)
+       , map {$gen->generate_widget($_, $metainfo, \@file_scope)}
+       @{$tmpl->widget_list});
 }
-
-my %calling_conv;
 
 sub generate_lineinfo {
   (my MY $gen, my Widget $widget, my ($start, $prefix)) = @_;
@@ -201,9 +221,9 @@ sub generate_lineinfo {
 }
 
 sub generate_widget {
-  (my MY $gen, my Widget $widget, my ($metainfo)) = @_;
+  (my MY $gen, my Widget $widget, my ($metainfo, $file_scope)) = @_;
   my @body = $gen->generate_body
-    ([{}, $widget->widget_scope([\%calling_conv])]
+    ([{}, $widget->widget_scope($file_scope)]
      , $widget->cursor(metainfo => $metainfo->clone
 		       (startline => $widget->{cf_body_start}
 			, caller_widget => $widget)));
@@ -937,6 +957,7 @@ sub feed_array_if {
   wantarray ? @{$desc}[1..$#$desc] : $desc;
 }
 
+# $node の情報を借りながら、@_ を generate.
 sub gen_entref_list {
   (my MY $trans, my ($scope, $node)) = splice @_, 0, 3;
   my @result;
@@ -954,6 +975,7 @@ sub gen_entref_path {
   my @expr = do {
     if (my ($name, @args) = $trans->feed_array_if(call => \@_)) {
       my $pkg = $trans->get_package_from_node($node);
+      my $dont_call;
       my $call = do {
 	# XXX: codevar は、path の先頭だけ。
 	# 引数にも現れるから、
@@ -961,10 +983,16 @@ sub gen_entref_path {
 	  if (ref $var and $var->can('arg_specs')) {
 	    sprintf('%1$s && %1$s->', $var->as_lvalue);
 	  } elsif (my $handler = $var->can("entmacro_")) {
+            $dont_call++;
 	    $handler->($var, $trans, $scope, $node, \@_, [], @args);
 	  } else {
 	    $var->as_lvalue;
 	  }
+	} elsif (my $handler = $trans->can("entmacro_$name")) {
+	  # XXX: $pkg->can の方が、拡張向きで良いのだが…
+	  # 予約語も持ちたい。
+          $dont_call++;
+	  $handler->($pkg, $trans, $scope, $node, \@_, [], @args);
 	} elsif ($pkg->can(my $en = "entity_$name")) {
 	  sprintf('%s->%s', $pkg, $en);
 	} else {
@@ -973,7 +1001,7 @@ sub gen_entref_path {
 	}
       };
 
-      ref $call ? $call : sprintf q{%s(%s)}, $call, join ", "
+      ($dont_call || ref $call) ? $call : sprintf q{%s(%s)}, $call, join ", "
 	, $trans->gen_entref_list($scope, $node, @args);
     } elsif (($name) = $trans->feed_array_if(var => \@_)) {
       unless ($var = $trans->find_var($scope, $name)) {
@@ -1254,15 +1282,9 @@ sub YATT::Translator::Perl::t_attr::entmacro_ {
     die $trans->node_error($node, "nested subtype for attr");
   }
   my @expr = $trans->gen_entref_list($scope, $node, @args);
-  \ sprintf(q{print YATT::attr('%s', %s)}
+  sprintf(q{YATT::attr('%s', %s)}
 	    , $var->{cf_subtype} || $var->{cf_varname}
 	    , join(", ", $var->as_lvalue, @expr));
-}
-
-sub YATT::Translator::Perl::t_attr::gen_getarg {
-  (my t_attr $var, my MY $gen
-   , my ($scope, $widget, $metainfo, $actual)) = @_;
-  $actual;
 }
 
 sub YATT::Translator::Perl::t_attr::as_escaped {
@@ -1615,6 +1637,17 @@ sub feed_arg_spec {
   }
 }
 
+#========================================
+sub entmacro_if {
+  my ($this, $trans
+      , $scope, $node, $restExpr, $queue, @args) = @_;
+  # XXX: $cond を文字列にするのは不便。
+  my ($cond, $then, $else)
+    = $trans->gen_entref_list($scope, $node, @args);
+  # XXX: 三項演算だと、狂いが出そうな。
+  sprintf q{(%s ? %s : %s)}
+    , map {ref $_ ? $$_ : $_} $cond, $then, $else || q{''};
+};
 #========================================
 
 sub paren_escape ($) {

@@ -238,7 +238,11 @@ sub dispatch {
     if (not defined $param[0] and $widget->public) {
       $param[0] = $widget->reorder_cgi_params($cgi);
     }
-    $top->dispatch_action($root, $renderer, $pkg, @param);
+    if (my $handler = $pkg->can('dispatch_action')) {
+      $handler->($top, $root, $renderer, $pkg, @param);
+    } else {
+      $top->dispatch_action($root, $renderer, $pkg, @param);
+    }
   }
 }
 
@@ -372,6 +376,9 @@ sub try_load_config {
   }
 
   $config->configure(docs => $dir);
+  if (-d (my $libdir = "$dir/lib")) {
+    unshift @INC, $libdir;
+  }
 
   return unless -r $file;
 
@@ -578,6 +585,11 @@ sub entity_breakpoint {
 sub entity_concat {
   my $this = shift;
   join '', @_;
+}
+
+sub entity_join {
+  my ($this, $sep) = splice @_, 0, 2;
+  join $sep, grep {defined $_ && $_ ne ''} @_;
 }
 
 #========================================

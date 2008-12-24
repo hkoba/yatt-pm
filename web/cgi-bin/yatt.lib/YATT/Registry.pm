@@ -52,6 +52,7 @@ use YATT::Fields qw(^Loader NS last_nsid ^root_is_loaded
 		    cf_no_lineinfo
 		    current_parser
 		    cf_default_base_class
+		    cf_use
 		    nspattern
 		  )
   , ['^cf_namespace' => qw(yatt perl)]
@@ -625,7 +626,7 @@ use YATT::Widget;
 
 use YATT::LRXML; # for Builder.
 use YATT::Types
-  ([WidgetBuilder => [qw(cf_widget cf_template)]]
+  ([WidgetBuilder => [qw(cf_widget ^cf_template cf_root_builder)]]
    , -base => qw(YATT::LRXML::Builder)
    , -alias => [Builder => __PACKAGE__ . '::WidgetBuilder'
 		, Scanner => 'YATT::LRXML::Scanner']
@@ -723,6 +724,11 @@ sub declare_args {
   if ($builder->{parent}) {
     die $scan->token_error("Misplaced yatt:args");
   }
+  # widget -> args の順番で出現する場合もある。
+  # root 用の builder を取り出し直す
+  if ($builder->{cf_root_builder}) {
+    $builder = $builder->{cf_root_builder};
+  }
   my Widget $widget = $builder->{cf_widget};
   $widget->{cf_declared} = 1;
   $widget->{cf_decl_start} = $scan->{cf_last_linenum};
@@ -766,7 +772,12 @@ sub declare_widget {
 		      , template => $builder->{cf_template}
 		      , startpos => $scan->{cf_index}
 		      , startline => $scan->{cf_linenum}
-		      , linenum   => $scan->{cf_linenum});
+		      , linenum   => $scan->{cf_linenum}
+		      # widget -> args に戻るためには root_builder を
+		      # 渡さねばならぬ
+		      , root_builder =>
+		      $builder->{cf_root_builder} || $builder
+		     );
 }
 
 sub create_widget_in {
