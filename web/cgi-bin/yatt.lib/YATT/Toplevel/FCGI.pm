@@ -27,4 +27,6 @@ sub run {
   }
 }
 
+sub plain_exit { shift->bye }
+
 1;

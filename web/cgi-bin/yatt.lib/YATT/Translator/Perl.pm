@@ -22,7 +22,9 @@ our @EXPORT = @EXPORT_OK;
 use YATT::Registry::NS;
 use YATT::Widget;
 use YATT::Util qw(checked_eval add_arg_order_in terse_dump coalesce);
-use YATT::LRXML::Node qw(node_path node_body node_name node_children
+use YATT::LRXML::Node qw(node_path node_body node_name
+			 node_size node_flag
+			 node_children
 			 create_node
 			 TEXT_TYPE ELEMENT_TYPE ENTITY_TYPE);
 
@@ -933,6 +935,19 @@ sub gen_getargs_dynamic {
   '';
 }
 
+sub gen_pass_through_arg_typed {
+  (my MY $gen, my ($type, $scope, $baseNC, $targetNode)) = @_;
+  my $node = $targetNode
+    ? $gen->fake_cursor_from($baseNC, $targetNode)
+      : $baseNC;
+  my $name = $node->node_name;
+  if (my $var = $gen->has_pass_through_var($scope, $node, $name)) {
+    $var->as_lvalue;
+  } else {
+    $gen->faked_gentype($type => $scope, $node)
+  }
+}
+
 sub mark_vars {
   (my MY $trans, my ($scope, $early_escaped, $node)) = @_;
   my @result;
@@ -1128,7 +1143,13 @@ sub default_gentype {
   unless (defined $targetNode and node_body($targetNode)) {
     return $default;
   }
-  $trans->faked_gentype($type, $scope, $baseNC, $targetNode);
+#  my $name = node_name($targetNode);
+#  if (my $var
+#      = $trans->has_pass_through_var($scope, $targetNode, $name)) {
+#    $var->as_lvalue;
+#  } else {
+    $trans->faked_gentype($type, $scope, $baseNC, $targetNode);
+#  }
 }
 
 sub faked_gentype {
@@ -1389,11 +1410,18 @@ sub YATT::Translator::Perl::t_delegate::gen_call {
   (my t_delegate $argdecl, my MY $trans, my ($scope, $node)) = @_;
   my $func = $trans->get_funcname_to($trans->{cf_mode}
 				     , $argdecl->{cf_base_widget});
-  my $body_dict = $argdecl->{cf_base_widget}->{arg_dict}->{body}->{arg_dict};
-  # XXX: どこが問題か、思い出せない！ テストを書くまで、コメントに。
+  # XXX: テストを書け。body が code か html か、だ。
   # my $body_dict = $argdecl->{cf_base_widget}->get_arg_spec(body => undef);
+  my $body_spec = $argdecl->{cf_base_widget}->{arg_dict}->{body};
+  my $body_scope = do {
+    if ($body_spec->type_name eq 'code') {
+      [$body_spec->{arg_dict}, $scope]
+    } else {
+      $scope
+    }
+  };
   my ($post, @args) = $trans->genargs_static
-    ([{}, [$body_dict, $scope]]
+    ([{}, $body_scope]
      , $node->open, $argdecl->arg_specs);
   return \ sprintf(' %s($this, [%s])%s', $func
 		   , join(", ", map {defined $_ ? $_ : 'undef'} @args)
@@ -1479,7 +1507,25 @@ sub feed_arg_spec {
     };
 
     my $fmt = q{foreach %1$s (%2$s) %3$s};
-    my $listexpr = $trans->genexpr_node($scope, 0, $args->adopter_for($list));
+    my $listexpr = do {
+      if (0) {
+	print STDERR "# foreach list: "
+	  , YATT::LRXML::Node::stringify_node($list), "\n";
+      }
+      # XXX: 何故使い分けが必要になってしまうのか?
+      # my $fc = $args->adopter_for($list);
+      # my $fc = $trans->fake_cursor_from($args, $list);
+      if (my $var = $trans->has_pass_through_var
+	  ($scope, my $fc = $trans->fake_cursor_from($args, $list), 'list')) {
+	unless ($var->type_name eq 'list') {
+	  my $path = $args->parent->node_path;
+	  die $trans->node_error($fc, "$path - should be list type")
+	}
+	'@'.$var->as_lvalue;
+      } else {
+	$trans->genexpr_node($scope, 0, $args->adopter_for($list));
+      }
+    };
     my @statements = $trans->as_statement_list
       ($trans->generate_body([\%local, $scope], $args));
 

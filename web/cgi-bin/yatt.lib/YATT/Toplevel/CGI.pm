@@ -306,7 +306,12 @@ sub plain_error {
   print $cgi->header if $cgi;
   print $message;
   $pack->printenv_html;
-  exit ($cgi ? 0 : 1);
+  $pack->plain_exit($cgi ? 0 : 1);
+}
+
+sub plain_exit {
+  my ($pack, $exit_code) = @_;
+  exit $exit_code;
 }
 
 sub printenv_html {
