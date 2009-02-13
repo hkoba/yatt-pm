@@ -1507,7 +1507,21 @@ sub feed_arg_spec {
     };
 
     my $fmt = q{foreach %1$s (%2$s) %3$s};
-    my $listexpr = $trans->genexpr_node($scope, 0, $args->adopter_for($list));
+    my $listexpr = do {
+      if (0) {
+	print STDERR "# foreach list: "
+	  , YATT::LRXML::Node::stringify_node($list), "\n";
+      }
+      # XXX: 何故使い分けが必要になってしまうのか?
+      # my $fc = $args->adopter_for($list);
+      # my $fc = $trans->fake_cursor_from($args, $list);
+      if (my $var = $trans->has_pass_through_var
+	  ($scope, $trans->fake_cursor_from($args, $list), 'list')) {
+	'@'.$var->as_lvalue;
+      } else {
+	$trans->genexpr_node($scope, 0, $args->adopter_for($list));
+      }
+    };
     my @statements = $trans->as_statement_list
       ($trans->generate_body([\%local, $scope], $args));
 

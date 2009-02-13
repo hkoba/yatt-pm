@@ -511,6 +511,7 @@ sub text_node_size { 1 }
 sub text_node_type { YATT::LRXML::Node::TEXT_TYPE }
 sub text_node_body { shift }
 sub text_node_type_name { 'text' }
+sub text_node_flag { 0 }
 sub text_node_name { undef }
 sub text_node_children {
   if (ref $_[0]) {

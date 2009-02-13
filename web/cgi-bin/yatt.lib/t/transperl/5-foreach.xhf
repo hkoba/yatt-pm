@@ -21,6 +21,49 @@ OUT:
  </ul>
 
 
+TITLE: foreach list=x pass through
+IN:
+ <!yatt:args x=list>
+ <ul>
+ <yatt:foreach my=i list=x><li>&yatt:i;</li>
+ </yatt:foreach></ul>
+PARAM[
+[
+- 1
+- 2
+- 3
+]
+]
+OUT:
+ <ul>
+ <li>1</li>
+ <li>2</li>
+ <li>3</li>
+ </ul>
+
+
+TITLE: foreach list pass through
+BREAK: 1
+IN:
+ <!yatt:args list=list>
+ <ul>
+ <yatt:foreach my=i list><li>&yatt:i;</li>
+ </yatt:foreach></ul>
+PARAM[
+[
+- 1
+- 2
+- 3
+]
+]
+OUT:
+ <ul>
+ <li>1</li>
+ <li>2</li>
+ <li>3</li>
+ </ul>
+
+
 TITLE: foreach $_
 IN:
  <!yatt:args x=list>
