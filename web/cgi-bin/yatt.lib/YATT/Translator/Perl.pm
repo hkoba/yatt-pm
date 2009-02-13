@@ -983,6 +983,9 @@ sub gen_entref_path {
       }
     } elsif (($name) = $trans->feed_array_if(expr => \@_)) {
       $name;
+    } elsif (my @pairs = $trans->feed_array_if(hash => \@_)) {
+      # XXX: '=>' is better.
+      '{'.join(", ", $trans->gen_entref_list($scope, $node, @pairs)).'}';
     } elsif (($name) = $trans->feed_array_if(text => \@_)) {
       qqvalue($name);
     } else {
