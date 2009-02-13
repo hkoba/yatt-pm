@@ -46,7 +46,10 @@ sub expand_all_macros {
     foreach my Spec $spec (@$order) {
       my MY $macro = $found{$spec->refid} or next;
       # XXX: disabled だけれど、他にも config がある場合は、エラーにすべき。
-      next if $macro->{disabled};
+      if ($macro->{disabled}) {
+	$spec->revert_into($copy, $macro);
+	next;
+      }
       $copy = $macro->handle($trans, $scope, $copy);
     }
     $copy;
@@ -260,6 +263,17 @@ sub spec_clone_with_renaming {
     }
   }
   $new;
+}
+
+Spec->define(revert_into => \&spec_revert_into);
+sub spec_revert_into {
+  (my Spec $spec, my $node, my MY $macro) = @_;
+  foreach my Slot $slot (map {ref $_ ? @$_ : ()} $spec->{cf_edit}) {
+    my $name = "cf_$slot->{cf_name}";
+    defined(my $expr = $macro->{$name})
+      or next;
+    $node->add_node($expr);
+  }
 }
 
 sub output_name {

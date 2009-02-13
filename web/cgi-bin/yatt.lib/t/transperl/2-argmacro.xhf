@@ -101,7 +101,6 @@ OUT:
 # eol.
 
 TITLE: %range; - output overriding
-BREAK: 1
 FILE: doc/test2/t%d.html
 IN:
  <!yatt:args>
@@ -111,6 +110,19 @@ IN:
  &yatt:list:expand();
 OUT:
  234
+# eol.
+
+
+TITLE: %range; input and output overriding
+FILE: doc/test2/t%d.html
+IN:
+ <!yatt:args>
+ <yatt:hello list=3 to=8/>
+ 
+ <!yatt:widget hello to=! %range;  %yatt:no_last_newline;>
+ &yatt:to;
+OUT:
+ 8
 # eol.
 
 
