@@ -8,6 +8,7 @@ use YATT::Fields (qw(schemas tables cf_DBH cf_auto_create
 		     cf_no_header
 		   )
 		  , ['^cf_NULL' => '']
+		  , ['^cf_name' => 'DBSchema']
 		 );
 
 use YATT::Types [Table => [qw(cf_name cf_additional)]
@@ -24,47 +25,71 @@ require YATT::Inc;
 
 #----------------------------------------
 
-sub tsv_with_null ($@);
-
 #========================================
 
 sub import {
   my ($pack) = shift;
   return unless @_;
-  $pack->parse_import(\@_, \ my %opts);
+  my MY $schema = $pack->create(@_);
+
+  $schema->export_and_rebless_with(caller);
+}
+
+sub export_and_rebless_with {
+  (my MY $schema, my ($callpack)) = @_;
 
   # Allocate new class.
-  my ($callpack) = (caller);
-  my $className = delete $opts{-name} || "DBSchema";
-  my $classFullName = join("::", $callpack, $className);
+  my $classFullName = join("::", $callpack, $schema->name);
   YATT::Inc->add_inc($classFullName);
-  eval qq{use strict; package $classFullName; use base qw($pack)};
+  eval sprintf q{use strict; package %s; use base qw(%s)}
+    , $classFullName, ref $schema;
   # MY->add_isa($classFullName, $pack);
-
-  my MY $schema = $classFullName->create(@_);
-  $schema->configure(%opts) if %opts;
+  eval qq{use strict; package $callpack; use base qw($classFullName)};
+  # MY->add_isa($callpack, $classFullName);
 
   my $glob = globref($classFullName, "SCHEMA");
   *{$glob} = \ $schema;
   *{$glob} = sub () { $schema };
 
   # Install to caller
-  *{globref($callpack, $className)} = sub () { $schema };
-  eval qq{use strict; package $callpack; use base qw($classFullName)};
-  # MY->add_isa($callpack, $classFullName);
+  *{globref($callpack, $schema->name)} = sub () { $schema };
+  # special new for singleton.
+  *{globref($callpack, 'new')} = sub {
+    shift;
+    $schema->configure(@_) if @_;
+    $schema;
+  };
+
+  $schema->rebless_with($callpack);
+}
+
+sub create {
+  my ($pack) = shift;
+  $pack->parse_import(\@_, \ my %opts);
+  my MY $self = $pack->new(%opts);
+  foreach my $item (@_) {
+    if (ref $item) {
+      $self->add_table(@$item);
+    } else {
+      croak "Invalid schema item: $item";
+    }
+  }
+  $self;
 }
 
 sub parse_import {
   my ($pack, $list, $opts) = @_;
+  # -bool_flag
+  # key => value
   for (my $i = 0; $i < @$list; $i++) {
     last if ref $list->[$i];
-    if ($list->[$i] =~ /^-/) {
+    if ($list->[$i] =~ /^-(\w+)/) {
+      $opts->{$1} = 1;
+    } else {
+      croak "Option value is missing for $list->[$i]"
+	unless $i+1 < @$list;
       $opts->{$list->[$i]} = $list->[$i+1];
       $i++;
-    } elsif ($list->[$i] =~ /^:/) {
-      $opts->{$list->[$i]} = 1;
-    } else {
-      last;
     }
   }
 }
@@ -109,16 +134,6 @@ sub has_table {
 }
 
 #========================================
-
-sub create {
-  my MY $self = shift->new;
-  foreach my $item (@_) {
-    if (ref $item) {
-      $self->add_table(@$item);
-    }
-  }
-  $self;
-}
 
 sub add_table {
   (my MY $self, my ($name, $opts, @columns)) = @_;
@@ -227,7 +242,8 @@ sub sql_insert {
   my @insNames;
   foreach my Column $col (@{$tab->{Column}}) {
     push @insNames, $col->{cf_name} if $col->{cf_inserted};
-    if ($insEncs and my Table $encTab = $col->{cf_encoded_by}) {
+    if (ref $insEncs eq 'ARRAY'
+	and my Table $encTab = $col->{cf_encoded_by}) {
       push @$insEncs, [$#insNames => $encTab->{cf_name}];
     }
   }
@@ -288,32 +304,49 @@ END
 
 sub select {
   (my MY $schema, my ($tabName, $params)) = splice @_, 0, 3;
-  my $dbh = (delete $params->{dbh}) || $schema->{cf_DBH};
-  my $is_tsv = delete $params->{tsv};
+
+  my $is_text = delete $params->{text};
+  my $separator = delete $params->{separator} || "\t";
+  ($is_text, $separator) = (1, "\t") if delete $params->{tsv};
+
   my (@fetch) = grep {delete $params->{$_}} qw(hashref arrayref array);
   die "Conflict! @fetch" if @fetch > 1;
 
-  my $sth = $dbh->prepare(scalar $schema->sql_select($tabName, $params));
-  $sth->execute(@_);
+  my $sth = $schema->to_select($tabName, $params, \@_);
 
-  if ($is_tsv) {
+  if ($is_text) {
     # Debugging aid.
     my $null = $schema->NULL;
-    my $header = tsv_with_null($null, @{$sth->{NAME}})
+    my $header = $schema->format_line($sth->{NAME}, $separator, $null)
       if $schema->{cf_no_header};
     my $res = $sth->fetchall_arrayref
       or return;
     join("", defined $header ? $header : ()
-	 , map { tsv_with_null($null, @$_) } @$res)
-  } elsif (@fetch) {
-    $sth->can("fetchrow_$fetch[0]")->($sth);
+	 , map { $schema->format_line($_, $separator, $null) } @$res)
   } else {
-    $sth;
+    my $method = $fetch[0] || 'arrayref';
+    $sth->can("fetchrow_$method")->($sth);
   }
+}
+
+sub to_select {
+  (my MY $schema, my ($tabName, $params, $values, $rvref)) = @_;
+  my $dbh = (delete $params->{dbh}) || $schema->{cf_DBH};
+  my $sth = $dbh->prepare(scalar $schema->sql_select($tabName, $params));
+  if ($values) {
+    my $rv = $sth->execute(@$values);
+    $$rvref = $rv if $rvref;
+  }
+  $sth;
 }
 
 sub sql_select {
   (my MY $schema, my ($tabName, $params)) = @_;
+
+  if (my $sub = $schema->can("sql_select_$tabName")) {
+    return $sub->($schema, $params);
+  }
+
   my Table $tab = $schema->{tables}{$tabName}
     or croak "No such table: $tabName";
 
@@ -383,9 +416,9 @@ select _rowid_, * from $tabName where $colName = ?
 END
 }
 
-sub tsv_with_null ($@) {
-  my $null = shift;
-  join("\t", map {
+sub format_line {
+  (my MY $schema, my ($rec, $separator, $null)) = @_;
+  join($separator, map {
     unless (defined $_) {
       $null
     } elsif ((my $val = $_) =~ s/[\t\n]/ /g) {
@@ -393,15 +426,19 @@ sub tsv_with_null ($@) {
     } else {
       $_
     }
-  } @_). "\n";
+  } @$rec). "\n";
 }
 
 #========================================
 
-sub update {
-  (my MY $schema, my ($tabName, $colName, $colValue, $rowId)) = @_;
-  my $sql = $schema->sql_update($tabName, $colName);
-  $schema->{cf_DBH}->do($sql, undef, $colValue, $rowId);
+sub to_update {
+  (my MY $schema, my ($tabName, $colName)) = @_;
+  my $sth = $schema->{cf_DBH}->prepare
+    ($schema->sql_update($tabName, $colName));
+  sub {
+    my ($colValue, $rowId) = @_;
+    $sth->execute($colValue, $rowId);
+  }
 }
 
 sub sql_update {

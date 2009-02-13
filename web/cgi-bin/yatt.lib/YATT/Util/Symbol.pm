@@ -9,6 +9,7 @@ BEGIN {
 		      fields_hash fields_hash_of_class
 		      add_isa lift_isa_to
 		      declare_alias
+		      rebless_with
 		    );
   our @EXPORT    = @EXPORT_OK;
 }
@@ -41,6 +42,27 @@ sub fields_hash_of_class {
     \&fields_hash_of_class;
   } else {
     sub { $_[0]->[0] }
+  }
+};
+
+sub rebless_array_with {
+  my ($self, $newclass) = @_;
+  $self->[0] = fields_hash_of_class($newclass);
+  bless $self, $newclass;
+}
+
+sub rebless_hash_with {
+  my ($self, $newclass) = @_;
+  Hash::Util::unlock_keys($self);
+  Hash::Util::lock_keys($self, keys %{fields_hash_of_class($newclass)});
+  bless $self, $newclass;
+}
+
+*rebless_with = do {
+  if ($] >= 5.009) {
+    \&rebless_hash_with;
+  } else {
+    \&rebless_array_with;
   }
 };
 
