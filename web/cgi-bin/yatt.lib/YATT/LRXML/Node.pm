@@ -181,6 +181,9 @@ sub is_bare_attribute {
 sub stringify_node {
   my ($node) = shift;
   my $type = $node->[_TYPE];
+  if (not defined $type or $type eq '') {
+    die "Invalid node object: ".YATT::Util::terse_dump($node);
+  }
   if (@NODE_FORMAT <= $type) {
     die "Unknown type: $type";
   }
