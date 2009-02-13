@@ -1389,11 +1389,18 @@ sub YATT::Translator::Perl::t_delegate::gen_call {
   (my t_delegate $argdecl, my MY $trans, my ($scope, $node)) = @_;
   my $func = $trans->get_funcname_to($trans->{cf_mode}
 				     , $argdecl->{cf_base_widget});
-  my $body_dict = $argdecl->{cf_base_widget}->{arg_dict}->{body}->{arg_dict};
-  # XXX: どこが問題か、思い出せない！ テストを書くまで、コメントに。
+  # XXX: テストを書け。body が code か html か、だ。
   # my $body_dict = $argdecl->{cf_base_widget}->get_arg_spec(body => undef);
+  my $body_spec = $argdecl->{cf_base_widget}->{arg_dict}->{body};
+  my $body_scope = do {
+    if ($body_spec->type_name eq 'code') {
+      [$body_spec->{arg_dict}, $scope]
+    } else {
+      $scope
+    }
+  };
   my ($post, @args) = $trans->genargs_static
-    ([{}, [$body_dict, $scope]]
+    ([{}, $body_scope]
      , $node->open, $argdecl->arg_specs);
   return \ sprintf(' %s($this, [%s])%s', $func
 		   , join(", ", map {defined $_ ? $_ : 'undef'} @args)
