@@ -957,6 +957,7 @@ sub feed_array_if {
   wantarray ? @{$desc}[1..$#$desc] : $desc;
 }
 
+# $node の情報を借りながら、@_ を generate.
 sub gen_entref_list {
   (my MY $trans, my ($scope, $node)) = splice @_, 0, 3;
   my @result;
@@ -988,6 +989,8 @@ sub gen_entref_path {
 	    $var->as_lvalue;
 	  }
 	} elsif (my $handler = $trans->can("entmacro_$name")) {
+	  # XXX: $pkg->can の方が、拡張向きで良いのだが…
+	  # 予約語も持ちたい。
           $dont_call++;
 	  $handler->($pkg, $trans, $scope, $node, \@_, [], @args);
 	} elsif ($pkg->can(my $en = "entity_$name")) {
@@ -1638,8 +1641,10 @@ sub feed_arg_spec {
 sub entmacro_if {
   my ($this, $trans
       , $scope, $node, $restExpr, $queue, @args) = @_;
+  # XXX: $cond を文字列にするのは不便。
   my ($cond, $then, $else)
-    = $trans->gen_entref_list($scope, $node->open, @args);
+    = $trans->gen_entref_list($scope, $node, @args);
+  # XXX: 三項演算だと、狂いが出そうな。
   sprintf q{(%s ? %s : %s)}
     , map {ref $_ ? $$_ : $_} $cond, $then, $else || q{''};
 };
