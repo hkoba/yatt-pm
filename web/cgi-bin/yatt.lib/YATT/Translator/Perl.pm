@@ -987,7 +987,7 @@ sub gen_entref_path {
 	  } else {
 	    $var->as_lvalue;
 	  }
-	} elsif (my $handler = $pkg->can("entmacro_$name")) {
+	} elsif (my $handler = $trans->can("entmacro_$name")) {
           $dont_call++;
 	  $handler->($pkg, $trans, $scope, $node, \@_, [], @args);
 	} elsif ($pkg->can(my $en = "entity_$name")) {
@@ -1634,6 +1634,15 @@ sub feed_arg_spec {
   }
 }
 
+#========================================
+sub entmacro_if {
+  my ($this, $trans
+      , $scope, $node, $restExpr, $queue, @args) = @_;
+  my ($cond, $then, $else)
+    = $trans->gen_entref_list($scope, $node->open, @args);
+  sprintf q{(%s ? %s : %s)}
+    , map {ref $_ ? $$_ : $_} $cond, $then, $else || q{''};
+};
 #========================================
 
 sub paren_escape ($) {
