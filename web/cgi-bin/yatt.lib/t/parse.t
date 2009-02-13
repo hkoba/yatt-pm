@@ -322,12 +322,17 @@ END
     = q{<yatt:foo
 &yatt:var;
 my:foo
-my:bar='BAR'
-><:yatt:baz>BAZ</:yatt:baz>bang</yatt:foo>};
+my:bar='BAR'><:yatt:baz>BAZ</:yatt:baz>bang</yatt:foo>};
+
+  # XXX: Currently, \n in tag is not preserved.
+  $html =~ s{\n}{ }g;
+
   my $elem = $parser->parse_string($html)->open;
   is_deeply [$elem->node_name, $elem->node_path], [qw(foo
 						      yatt foo)]
     , 'name of elem';
+
+  eq_or_diff $elem->stringify, $html, "round trip of my";
 
   my $att = $elem->open;
   is_deeply [scalar $att->node_name, do {

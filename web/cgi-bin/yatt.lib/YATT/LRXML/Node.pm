@@ -416,13 +416,17 @@ sub node_attribute_format {
 sub attribute_stringify_as {
   my ($node) = @_;
   unless (defined $$node[_BODY]) {
-    ($$node[_RAW_NAME], '', '');
+    (join_or_string($$node[_RAW_NAME]), '', '');
   } else {
     my $Q = $$node[_FLAG] ? @QUOTE_CHAR[$$node[_FLAG]] : "";
     my ($sep, $opn, $clo) = ref $Q ? (' ', @$Q) : ('', $Q, $Q);
-    my $prefix = join_or_empty($$node[_RAW_NAME], '=').$opn;
+    my $prefix = join_or_empty(join_or_string($$node[_RAW_NAME]), '=').$opn;
     ($prefix, $sep, $clo);
   }
+}
+
+sub join_or_string {
+  ref $_[0] ? join(":", @{$_[0]}) : $_[0];
 }
 
 sub join_or_empty {
