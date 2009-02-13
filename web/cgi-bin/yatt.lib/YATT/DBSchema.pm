@@ -469,16 +469,12 @@ sub sql_decode {
       push @selCols, $col->{cf_name};
     }
 
-    if ($enc) {
+    if ($enc && $depth < coalesce($until, 1)) {
       # alias と rowid と…
       push @$selJoins, "\nLEFT JOIN $enc->{cf_name} $col->{cf_name}"
 	. " on $alias.$col->{cf_name}"
 	  . " = $col->{cf_name}._rowid_";
 
-      if (not defined $col->{cf_decode_depth}
-	  and $depth >= coalesce($until, 0)) {
-	next;
-      }
       push @selCols, $schema->sql_decode
 	($enc, $selJoins, $depth + 1, $col->{cf_name}
 	 , $col->{cf_decode_depth});
