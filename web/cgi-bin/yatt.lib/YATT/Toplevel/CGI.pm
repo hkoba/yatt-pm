@@ -571,6 +571,15 @@ sub entity_randomize {
   wantarray ? @result : \@result;
 }
 
+sub entity_breakpoint {
+  &YATT::breakpoint();
+}
+
+sub entity_concat {
+  my $this = shift;
+  join '', @_;
+}
+
 #========================================
 
 sub entity_param {
