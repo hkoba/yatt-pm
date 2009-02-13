@@ -28,7 +28,8 @@ sub MY () { __PACKAGE__ }
 MY->parse_opts(\@ARGV, \ my %opts);
 MY->parse_params(\@ARGV, \ my %common);
 
-my ($o_args, $o_decl) = map {delete $opts{$_}} qw(args decl);
+my ($o_all, $o_args, $o_decl) = map {delete $opts{$_}} qw(all args decl);
+$o_args = $o_decl = 1 if $o_all;
 
 my $config = MY->new_config(%opts);
 
