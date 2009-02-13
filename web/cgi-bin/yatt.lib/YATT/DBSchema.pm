@@ -190,7 +190,7 @@ sub add_table {
 
     $tab->{cf_name} = $name;
     if (@columns) {
-      # XXX: ³ÈÄ¥¤ÎÍ¾ÃÏ¤¢¤ê
+      # XXX: æ‹¡å¼µã®ä½™åœ°ã‚ã‚Š
       $tab->{raw_create} = $opts;
       my $fields = $tab->fields_hash;
       foreach my $desc (@columns) {
@@ -295,7 +295,7 @@ sub sql_create_table {
 	, $tab->{cf_name}, $ix->{cf_name};
   }
 
-  # insert ¤¬Í­¤Ã¤Æ¤â¡¢¹½¤ï¤Ê¤¤¡£
+  # insert ãŒæœ‰ã£ã¦ã‚‚ã€æ§‹ã‚ãªã„ã€‚
   push @create, map {$_ ? @$_ : ()} $tab->{raw_create};
 
   wantarray ? @create : join(";\n", @create);
@@ -338,7 +338,7 @@ sub to_insert {
   (my MY $schema, my ($tabName, $params)) = @_;
   my $dbh = delete $params->{dbh} || $schema->dbh;
   my $sth = $dbh->prepare($schema->sql_insert($tabName, \ my @insEncs));
-  # ¤³¤³¤Ç encode ÍÑ¤Î sql/sth ¤âÀ¸À®¤»¤è¤È?
+  # ã“ã“ã§ encode ç”¨ã® sql/sth ã‚‚ç”Ÿæˆã›ã‚ˆã¨?
   my @encoder;
   foreach my $item (@insEncs) {
     my ($i, $table) = @$item;
@@ -364,7 +364,7 @@ END
 insert into $table($column) values(?)
 END
 
-  # XXX: sth ¤Ë¤Þ¤Ç¤¹¤ë¤Ù¤­¤«¡£prepare_cached ÇÑ»ß°Æ¡£
+  # XXX: sth ã«ã¾ã§ã™ã‚‹ã¹ãã‹ã€‚prepare_cached å»ƒæ­¢æ¡ˆã€‚
   sub {
     my ($list, $nth) = @_;
     my ($rowid) = do {
@@ -388,7 +388,7 @@ sub sql {
   $self->can("sql_${mode}")->($self, $table, \%param, @_);
 }
 
-# XXX: explain ¤ò¡£ cf_explain ¤Ç¡©
+# XXX: explain ã‚’ã€‚ cf_explain ã§ï¼Ÿ
 sub cmd_select {
   my MY $self = shift;
   $self->parse_opts(\@_, \ my %opts);
@@ -462,7 +462,7 @@ sub sql_decode {
   foreach my Column $col (@{$tab->{Column}}) {
     my Table $enc = $col->{cf_encoded_by};
     if ($depth || $enc) {
-      # primary key ¤Ï´û¤ËÀÑ¤Þ¤ì¤Æ¤¤¤ë¡£
+      # primary key ã¯æ—¢ã«ç©ã¾ã‚Œã¦ã„ã‚‹ã€‚
       push @selCols, "$alias.$col->{cf_name}"
 	unless $col->{cf_primary_key};
     } else {
@@ -470,7 +470,7 @@ sub sql_decode {
     }
 
     if ($enc) {
-      # alias ¤È rowid ¤È¡Ä
+      # alias ã¨ rowid ã¨â€¦
       push @$selJoins, "\nLEFT JOIN $enc->{cf_name} $col->{cf_name}"
 	. " on $alias.$col->{cf_name}"
 	  . " = $col->{cf_name}._rowid_";
