@@ -178,6 +178,21 @@ sub tables {
   keys %{$schema->{tables}};
 }
 
+sub has_column {
+  (my MY $schema, my ($table, $column, $dbh)) = @_;
+  my $hash = $schema->columns_hash($table, $dbh || $schema->dbh);
+  exists $hash->{$column};
+}
+
+sub columns_hash {
+  (my MY $schema, my ($table, $dbh)) = @_;
+  $dbh ||= $schema->dbh;
+  my $sth = $dbh->prepare("select * from $table limit 0");
+  $sth->execute;
+  my %hash = %{$sth->{NAME_hash}};
+  \%hash;
+}
+
 #========================================
 
 sub add_table {
