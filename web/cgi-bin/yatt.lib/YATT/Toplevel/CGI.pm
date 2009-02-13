@@ -564,10 +564,10 @@ sub entity_rand {
 }
 
 sub entity_randomize {
-  my ($this, $list) = @_;
+  my ($this) = shift;
   my $sub = $this->can('entity_rand');
   my @result;
-  push @result, splice @$list, $sub->($this, scalar @$list), 1 while @$list;
+  push @result, splice @_, $sub->($this, scalar @_), 1 while @_;
   wantarray ? @result : \@result;
 }
 
