@@ -57,6 +57,7 @@ sub clone {
 
 sub cget {
   (my MY $self, my ($cf)) = @_;
+  $cf =~ s/^-//; # For Tcl/Tk co-operatability.
   my $fields = fields_hash($self);
   croak "Can't cget $cf" unless exists $fields->{"cf_$cf"};
   $self->{"cf_$cf"};

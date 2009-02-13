@@ -5,7 +5,7 @@ use Tcl;
 
 use base qw(YATT::Class::Configurable);
 use YATT::Fields (qw(tcl)
-		  , ['cf_expose'  => 1]
+		  , ['^cf_myname'  => '::yatt::perl']
 		  , ['cf_tclinit' => 1]);
 
 use YATT::Util::Symbol;
@@ -50,11 +50,39 @@ sub AUTOLOAD {
 sub new {
   my MY $self = shift->SUPER::new(@_);
   $self->{tcl}->Init if $self->{cf_tclinit};
-  if ($self->{cf_expose}) {
+  if (my $myname = $self->myname) {
     # 決め打ちはどうかとも思うが、そもそもこの tcl interp は
     # この YATT::Class::Tcl インスタンスに固有だから、衝突のしようがない。
-    $self->{tcl}->Eval(q{namespace eval ::yatt {}});
-    $self->{tcl}->CreateCommand('::yatt::perl', \&perl_dispatch, $self);
+    $self->{tcl}->Eval(<<'END');
+namespace eval ::yatt {
+proc nslist nsname {
+    set q [namespace qualifier $nsname]
+    if {$q eq ""} {
+	return [list $nsname]
+    } else {
+	linsert [nslist $q] end [namespace tail $nsname]
+    }
+}
+
+proc ensure-nslist nslist {
+    if {![llength $nslist]} {
+	list
+    } else {
+	list namespace eval [lindex $nslist 0] \
+	    [ensure-nslist [lrange $nslist 1 end]]
+    }
+}
+
+proc ensure-ns nsname {
+  uplevel #0 [ensure-nslist [nslist [namespace qualifier $nsname]]]
+}
+
+}
+
+END
+
+    $self->{tcl}->invoke('yatt::ensure-ns', $myname);
+    $self->{tcl}->CreateCommand($myname, \&perl_dispatch, $self);
   }
   $self
 }
@@ -68,7 +96,13 @@ sub before_configure {
 sub perl_dispatch {
   (my MY $self, my ($tcl, undef, $method)) = splice @_, 0, 4;
   $tcl->ResetResult;
-  $tcl->AppendResult($self->$method(@_));
+  my @result = $self->$method(@_); # To make debugger happy.
+  $tcl->AppendResult(map {defined $_ ? $_ : ""} @result);
+}
+
+sub MainLoop {
+  (my MY $self, my $varname) = @_;
+  $self->{tcl}->invoke(vwait => $varname || 'forever');
 }
 
 sub lexpand {
