@@ -19,7 +19,7 @@ repo_url=(
 function main {
     precheck || return 1
     
-    local mode=devel url
+    local mode=stable url
     url=$repo_url[$mode]
     if [[ $PWD == */cgi-bin ]]; then
 	echo Installing into existing cgi-bin ($PWD) ...
