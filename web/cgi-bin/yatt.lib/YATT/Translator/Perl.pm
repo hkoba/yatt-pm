@@ -936,7 +936,10 @@ sub gen_getargs_dynamic {
 }
 
 sub gen_pass_through_arg_typed {
-  (my MY $gen, my ($type, $scope, $node)) = @_;
+  (my MY $gen, my ($type, $scope, $baseNC, $targetNode)) = @_;
+  my $node = $targetNode
+    ? $gen->fake_cursor_from($baseNC, $targetNode)
+      : $baseNC;
   my $name = $node->node_name;
   if (my $var = $gen->has_pass_through_var($scope, $node, $name)) {
     $var->as_lvalue;
