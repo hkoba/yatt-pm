@@ -974,6 +974,7 @@ sub gen_entref_path {
   my @expr = do {
     if (my ($name, @args) = $trans->feed_array_if(call => \@_)) {
       my $pkg = $trans->get_package_from_node($node);
+      my $dont_call;
       my $call = do {
 	# XXX: codevar は、path の先頭だけ。
 	# 引数にも現れるから、
@@ -981,10 +982,14 @@ sub gen_entref_path {
 	  if (ref $var and $var->can('arg_specs')) {
 	    sprintf('%1$s && %1$s->', $var->as_lvalue);
 	  } elsif (my $handler = $var->can("entmacro_")) {
+            $dont_call++;
 	    $handler->($var, $trans, $scope, $node, \@_, [], @args);
 	  } else {
 	    $var->as_lvalue;
 	  }
+	} elsif (my $handler = $pkg->can("entmacro_$name")) {
+          $dont_call++;
+	  $handler->($pkg, $trans, $scope, $node, \@_, [], @args);
 	} elsif ($pkg->can(my $en = "entity_$name")) {
 	  sprintf('%s->%s', $pkg, $en);
 	} else {
@@ -993,7 +998,7 @@ sub gen_entref_path {
 	}
       };
 
-      ref $call ? $call : sprintf q{%s(%s)}, $call, join ", "
+      ($dont_call || ref $call) ? $call : sprintf q{%s(%s)}, $call, join ", "
 	, $trans->gen_entref_list($scope, $node, @args);
     } elsif (($name) = $trans->feed_array_if(var => \@_)) {
       unless ($var = $trans->find_var($scope, $name)) {
@@ -1274,7 +1279,7 @@ sub YATT::Translator::Perl::t_attr::entmacro_ {
     die $trans->node_error($node, "nested subtype for attr");
   }
   my @expr = $trans->gen_entref_list($scope, $node, @args);
-  \ sprintf(q{print YATT::attr('%s', %s)}
+  sprintf(q{YATT::attr('%s', %s)}
 	    , $var->{cf_subtype} || $var->{cf_varname}
 	    , join(", ", $var->as_lvalue, @expr));
 }
