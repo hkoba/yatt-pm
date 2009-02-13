@@ -183,6 +183,7 @@ sub add_table {
       $tab->{cf_additional} = $opts;
       foreach my $desc (@columns) {
 	my ($col, $type, @desc) = @$desc;
+	# XXX: ref $col вк unique(...), key(...), check(...), primary key(..)
 	$self->add_table_column($tab, $col, $type, map {
 	  if (/^-(\w+)/) {
 	    $1 => 1

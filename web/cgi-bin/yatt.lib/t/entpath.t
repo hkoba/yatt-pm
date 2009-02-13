@@ -66,7 +66,6 @@ sub is_entpath {
   is_entpath q{:foo():bar()}
     , [[call => foo =>], [call => bar =>]];
 
-  &YATT::breakpoint;
   is_entpath q{:foo(bar,:baz(),,)}
     , [[call => foo => [text => 'bar'], [call => 'baz']
        , [text => '']]];
@@ -75,6 +74,12 @@ sub is_entpath {
     , [[call => foo => [text => 'bar']
 	, [hash => [text => 'key'], [text => 'val']
 	   , [text => 'k2'], [text => 'v2']]
+	, [text => '']]];
+
+  is_entpath q{:foo(bar,{key:val,k2,:v2:path},,)}
+    , [[call => foo => [text => 'bar']
+	, [hash => [text => 'key'], [text => 'val']
+	   , [text => 'k2'], [[var => 'v2'],[var => 'path']]]
 	, [text => '']]];
 
   is_entpath q{:yaml(config):title}
@@ -87,6 +92,44 @@ sub is_entpath {
 
   is_entpath q{:foo[3][8]}
     , [[var => 'foo'], [aref => [expr => '3']], [aref => [expr => '8']]];
+
+  #----------------------------------------
+
+  is_entpath q{:where({user=hkoba,status=[assigned,:status,pending]})}
+    , [[call => 'where'
+	, [hash => [text => 'user'], [text => 'hkoba']
+	   , [text => 'status'], [array => [text => 'assigned']
+				  , [var  => 'status']
+				  , [text => 'pending']]]]];
+
+  is_entpath q{:where({user=hkoba,status={!=,:status}})}
+    , [[call => 'where'
+	, [hash => [text => 'user'], [text => 'hkoba']
+	   , [text => 'status'], [hash => [text => '!=']
+				  , [var => 'status']]]]];
+
+  is_entpath q{:where({user=hkoba,status={!=,[assigned,in-progress,pending]}})}
+    , [[call => 'where'
+	, [hash => [text => 'user'], [text => 'hkoba']
+	   , [text => 'status'], [hash => [text => '!=']
+				  , [array => [text => 'assigned']
+				     , [text => 'in-progress']
+				     , [text => 'pending']]]]]];
+
+  is_entpath q{:where({user=hkoba,status={!=,completed,-not_like=pending%}})}
+    , [[call => 'where'
+	, [hash => [text => 'user'], [text => 'hkoba']
+	   , [text => 'status']
+	   , [hash => [text => '!='], [text => 'completed']
+	      , [text => -not_like], [text => 'pending%']]]]];
+
+  is_entpath q{:where({priority={<,2},workers={>=,100}})}
+    , [[call => 'where'
+	, ['hash'
+	   , [text => 'priority'], [hash => [text => '<'],  [text => '2']]
+	   , [text => 'workers'],[hash => [text => '>='], [text => '100']]]]];
+
+  #----------------------------------------
 
   is_entpath q{:schema:resultset(Artist):all()}
     , [[var => 'schema']
@@ -125,6 +168,8 @@ sub is_entpath {
     , [[var => 'cd']
        , [call => 'artist']
        , [call => 'name']];
+
+  #----------------------------------------
 
   is_entpath q{:foo(bar):baz():bang}
     , [[call => foo => [text => 'bar']]

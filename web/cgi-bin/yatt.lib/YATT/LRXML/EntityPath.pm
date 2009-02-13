@@ -15,19 +15,21 @@ our @EXPORT = @EXPORT_OK;
   trail    ::= var | '[' term ']' ;
 
   container::= '[' term* ']'
-             |  '{' ( name (':' | '=') term )* '}' ;
+             |  '{' ( dot_name (':' text | '=' term )
+                    | other+ ','?
+                    )* '}' ;
 
   var      ::= (':'+ | '.'+) name ( '(' term* ')' )? ;
   name     ::= \w+ ;
+  dot_name ::= [\w\.]+ ;
 
   expr     ::= '=' text ;
   text     ::= word ( group word? )* ; -- group で始まるのは、container.
 
   group    ::= [\(\[\{] ( text | ',' )* [\}\]\)]
 
-  word     ::= [\w\$\-\+\*/%<>]
-               [\w\$\-\+\*/%<>:\.=]*
-           ;
+  word     ::= [\w\$\-\+\*/%<>] other* ;
+  other    ::= [\w\$\-\+\*/%<>:\.!=] ;
 
 =cut
 
@@ -62,8 +64,8 @@ my %open_rest = qw| ( call [ aref  |;
 my %close_ch  = qw( ( ) [ ] { } );
 
 my $re_var  = qr{[:]+ (\w+) (\()?}x;
-my $re_word = qr{[\w\$\-\+\*/%<>\.]
-		 [\w\$\-\+\*/%<>\.:=]*}x;
+my $re_other= qr{[\w\$\-\+\*/%<>\.:!=]}x;
+my $re_word = qr{[\w\$\-\+\*/%<>\.] $re_other*}x;
 
 sub _parse_pipeline {
   my @pipe;
@@ -178,9 +180,19 @@ sub _parse_hash {
       die "Paren mismatch: expect \} got $1 " if $1 ne '}';
       last;
     }
-    s/^(\w+) [:=] //x or die "Hash key is missing: $_";
-    push @hash, [text => $1], &_parse_term;
+    # {!=,:var} を許すには…
+    if (s/^([\w\.\-]+) [:=] //x || s/^($re_other+) ,?//x) {
+      # ↑ array でも許すべきか?
+      push @hash, [text => $1];
+    }
+    my @value = &_parse_term;
+    push @hash, @value > 1 ? \@value : $value[0];
+    unless (length($_) < $len) {
+      die "Infinite loop on parse_hash: $_";
+    }
   }
+  # XXX: Give more detailed diag!
+  die "Odd number of hash elements" if (@hash - 1) % 2;
   \@hash;
 }
 
