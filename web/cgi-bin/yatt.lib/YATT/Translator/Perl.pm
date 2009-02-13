@@ -22,7 +22,9 @@ our @EXPORT = @EXPORT_OK;
 use YATT::Registry::NS;
 use YATT::Widget;
 use YATT::Util qw(checked_eval add_arg_order_in terse_dump coalesce);
-use YATT::LRXML::Node qw(node_path node_body node_name node_children
+use YATT::LRXML::Node qw(node_path node_body node_name
+			 node_size node_flag
+			 node_children
 			 create_node
 			 TEXT_TYPE ELEMENT_TYPE ENTITY_TYPE);
 
@@ -933,6 +935,16 @@ sub gen_getargs_dynamic {
   '';
 }
 
+sub gen_pass_through_arg_typed {
+  (my MY $gen, my ($type, $scope, $node)) = @_;
+  my $name = $node->node_name;
+  if (my $var = $gen->has_pass_through_var($scope, $node, $name)) {
+    $var->as_lvalue;
+  } else {
+    $gen->faked_gentype($type => $scope, $node)
+  }
+}
+
 sub mark_vars {
   (my MY $trans, my ($scope, $early_escaped, $node)) = @_;
   my @result;
@@ -1128,7 +1140,13 @@ sub default_gentype {
   unless (defined $targetNode and node_body($targetNode)) {
     return $default;
   }
-  $trans->faked_gentype($type, $scope, $baseNC, $targetNode);
+#  my $name = node_name($targetNode);
+#  if (my $var
+#      = $trans->has_pass_through_var($scope, $targetNode, $name)) {
+#    $var->as_lvalue;
+#  } else {
+    $trans->faked_gentype($type, $scope, $baseNC, $targetNode);
+#  }
 }
 
 sub faked_gentype {

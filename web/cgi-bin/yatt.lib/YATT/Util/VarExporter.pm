@@ -48,12 +48,19 @@ sub export_to {
     or $failok or die "No such page: $page";
 
   foreach my $name (keys %$vars) {
-    *{globref($destpkg, $name)} = \ $vars->{$name};
+    *{globref($destpkg, $name)} = do {
+      unless (ref $vars->{$name}) {
+	\ $vars->{$name};
+      } else {
+	$vars->{$name}
+      }
+    };
   }
 }
 
 sub find_vars {
-  (my MY $self, my ($page, $varname)) = @_;
+  my MY $self = ref $_[0] ? shift : shift->instance();
+  my ($page, $varname) = @_;
   my $page_vars = $self->{pages}{$page}
     or return;
   unless (defined $varname) {
