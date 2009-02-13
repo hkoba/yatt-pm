@@ -38,7 +38,8 @@ sub simple {
   $err->{cf_error} || do {
     my $msg = '';
     $msg .= sprintf($err->{cf_error_fmt}
-		    , map {$_ ? @$_ : ()} $err->{cf_error_param})
+		    , map {defined $_ ? $_ : "(null)"}
+		    map {$_ ? @$_ : ()} $err->{cf_error_param})
       if $err->{cf_error_fmt};
     $msg
   };

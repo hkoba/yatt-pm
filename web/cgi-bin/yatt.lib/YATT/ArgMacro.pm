@@ -9,7 +9,7 @@ use YATT::Util qw(checked_eval);
 use YATT::Util::Symbol qw(globref fields_hash_of_class);
 use YATT::LRXML::Node qw(copy_array);
 
-use YATT::Fields qw(spec);
+use YATT::Fields 'spec', [disabled => 0];
 
 sub initargs { qw(spec) }
 
@@ -20,6 +20,7 @@ use YATT::Types
 	       cf_out
 	       cf_edit
 	       cf_rename_spec
+	       cf_disabled
 	       trigger
 	       output
 	       output_map
@@ -43,6 +44,12 @@ sub slot_create {
     }
   };
   $pack->new(name => $name, @args, @rest);
+}
+
+Slot->define(is_output => \&slot_is_output);
+sub slot_is_output {
+  my Slot $slot = shift;
+  $slot->{cf_mode} eq 'out';
 }
 
 foreach my $mode (qw(in out edit)) {
@@ -111,7 +118,8 @@ sub spec_clone_with_renaming {
   }
 
   my $call_spec = $new->call_spec(1);
-  foreach my $list ($new->{cf_in}, $new->{cf_edit}) {
+  foreach my $list (grep {defined $_}
+		    $new->{cf_in}, $new->{cf_edit}, $new->{cf_out}) {
     foreach my Slot $slot (@$list) {
       $trigger{$prefix . $slot->{cf_name}}
 	= $slot->clone(spec => $new, call_spec => $call_spec);
@@ -188,7 +196,8 @@ sub create_from {
   my ($name, $slot, @config);
   for (my $n = $orig->clone; $n->readable; $n->next) {
     unless ($n->is_attribute and $name = $n->node_name
-	    and $slot = $spec->{trigger}{$name}) {
+	    and $slot = $spec->{trigger}{$name}
+	    and not $slot->is_output) {
       $copy->add_node(copy_array($n->current));
       next;
     }
@@ -221,7 +230,9 @@ sub expand_all_macros {
   $copy->add_filtered_copy($node->clone, [\&filter, $trigger, \ my %found]);
   if (%found) {
     foreach my Spec $spec (@$order) {
-      my $macro = $found{$spec->refid} or next;
+      my MY $macro = $found{$spec->refid} or next;
+      # XXX: disabled だけれど、他にも config がある場合は、エラーにすべき。
+      next if $macro->{disabled};
       $copy = $macro->handle($trans, $scope, $copy);
     }
     $copy;
@@ -234,12 +245,19 @@ sub filter {
   my ($trigger, $unique, $name, $value) = @_;
   if (my Slot $slot = $trigger->{$name}) {
     # ここで、rename が関係する
-    my $macro = $unique->{$slot->{cf_spec}->refid}
+    my MY $macro = $unique->{$slot->{cf_spec}->refid}
       ||= $slot->{cf_classname}->new($slot->{cf_spec});
-    # text になってないと、不便では?
-    # ← でも、<:att>....</:att> の場合も有る。
-    $macro->configure($slot->{cf_name} => copy_array($value));
-    ();
+    if ($slot->is_output) {
+      # 出力引数が明示的に与えられていた場合は、disabled モードにする。
+      $macro->{disabled} = 1;
+      # 元の引数を残す
+      copy_array($value);
+    } else {
+      # text になってないと、不便では?
+      # ← でも、<:att>....</:att> の場合も有る。
+      $macro->configure($slot->{cf_name} => copy_array($value));
+      ();
+    }
   } else {
     copy_array($value);
   }
