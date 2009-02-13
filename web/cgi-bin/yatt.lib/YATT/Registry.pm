@@ -718,7 +718,8 @@ sub declare_base {
 }
 
 sub declare_args {
-  (my Root $root, my Builder $builder, my ($scan, $nc, $parser)) = @_;
+  (my Root $root, my Builder $builder
+   , my ($scan, $nc, $parser, @configs)) = @_;
   if ($builder->{parent}) {
     die $scan->token_error("Misplaced yatt:args");
   }
@@ -726,9 +727,14 @@ sub declare_args {
   $widget->{cf_declared} = 1;
   $widget->{cf_decl_start} = $scan->{cf_last_linenum};
   $widget->{cf_body_start} = $scan->{cf_last_linenum} + $scan->{cf_last_nol};
+  $widget->configure(@configs) if @configs;
   $root->define_args($widget, $nc);
   $root->after_define_args($widget);
   $builder;
+}
+
+sub declare_params {
+  shift->declare_args(@_, public => 1);
 }
 
 sub declare_widget {

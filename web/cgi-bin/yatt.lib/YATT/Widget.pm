@@ -15,6 +15,7 @@ use YATT::Fields qw(^=arg_dict
 		    ^cf_name
 		    ^cf_filename
 		    ^cf_declared
+		    ^cf_public
 		    cf_decl_start
 		    cf_body_start
 		    ^cf_template_nsid

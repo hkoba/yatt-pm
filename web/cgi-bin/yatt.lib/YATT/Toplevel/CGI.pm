@@ -235,6 +235,9 @@ sub dispatch {
       my $dir = untaint_any(dirname($widget->filename));
       chdir($dir);
     }
+    if (not defined $param[0] and $widget->public) {
+      $param[0] = $widget->reorder_cgi_params($cgi);
+    }
     $top->dispatch_action($root, $renderer, $pkg, @param);
   }
 }

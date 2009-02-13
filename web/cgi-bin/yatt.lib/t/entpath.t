@@ -151,4 +151,7 @@ sub is_entpath {
 	, [expr => '$x[8]{y}:z']]
       , [var => 'hoe']];
 
+  is_entpath q{:foo(bar${q}baz)}
+    , [[call => 'foo'
+	, [text => 'bar${q}baz']]];
 }
