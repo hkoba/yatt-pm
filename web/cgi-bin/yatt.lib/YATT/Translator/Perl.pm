@@ -1208,7 +1208,21 @@ $calling_conv{_} = t_scalar->new(varname => '_');
 
 sub YATT::Translator::Perl::t_text::quote_assignable {
   shift;
-  'qq('.join("", map { ref $_ ? '@{['.$$_.']}' : paren_escape($_) } @_).')';
+  my ($nvars);
+  my @items = map {
+    if (ref $_) {
+      $nvars++;
+      $$_
+    } else {
+      # $var is prohibited.
+      qparen($_);
+    }
+  } @_;
+  if (@items == 1 && !$nvars) {
+    $items[0];
+  } else {
+    MY->as_join(@items);
+  }
 }
 
 # XXX: 本当に良いのか?

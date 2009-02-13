@@ -23,6 +23,20 @@ OUT:
  <h2>&lt;b&gt;bar&lt;/b&gt;</h2>
  
 
+TITLE: $var in text is just an text.
+IN:
+ <!yatt:args x=text y>
+ <yatt:foo x="x=$x,y=@{[$y*8]},z=\U,w=%s"/>
+ <!yatt:widget foo x=text>
+ <h2>&yatt:x;</h2>
+PARAM[
+- foo
+- bar
+]
+OUT:
+ <h2>x=$x,y=@{[$y*8]},z=\U,w=%s</h2>
+ 
+
 TITLE: print. type html
 IN:
  <!yatt:args x=html>
