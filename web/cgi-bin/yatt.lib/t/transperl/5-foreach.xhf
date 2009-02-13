@@ -43,7 +43,6 @@ OUT:
 
 
 TITLE: foreach list pass through
-BREAK: 1
 IN:
  <!yatt:args list=list>
  <ul>
@@ -62,6 +61,16 @@ OUT:
  <li>2</li>
  <li>3</li>
  </ul>
+
+
+TITLE: foreach list pass through, type mismatch.
+BREAK: 1
+IN:
+ <!yatt:args x>
+ <ul>
+ <yatt:foreach my=i list=x><li>&yatt:i;</li>
+ </yatt:foreach></ul>
+ERROR: ^yatt:foreach - should be list type \(list=x\)
 
 
 TITLE: foreach $_

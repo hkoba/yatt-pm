@@ -1516,7 +1516,11 @@ sub feed_arg_spec {
       # my $fc = $args->adopter_for($list);
       # my $fc = $trans->fake_cursor_from($args, $list);
       if (my $var = $trans->has_pass_through_var
-	  ($scope, $trans->fake_cursor_from($args, $list), 'list')) {
+	  ($scope, my $fc = $trans->fake_cursor_from($args, $list), 'list')) {
+	unless ($var->type_name eq 'list') {
+	  my $path = $args->parent->node_path;
+	  die $trans->node_error($fc, "$path - should be list type")
+	}
 	'@'.$var->as_lvalue;
       } else {
 	$trans->genexpr_node($scope, 0, $args->adopter_for($list));
