@@ -32,7 +32,7 @@ my ($o_args, $o_decl) = map {delete $opts{$_}} qw(args decl);
 
 my $config = MY->new_config(%opts);
 
-my $path = shift;
+my $path = shift || '.';
 
 my ($instpkg, $rootdir, $top) = do {
 
