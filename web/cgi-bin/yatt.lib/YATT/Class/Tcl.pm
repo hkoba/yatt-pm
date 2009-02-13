@@ -107,7 +107,7 @@ sub MainLoop {
 
 sub lexpand {
   (my MY $tcl, my ($list, $n)) = @_;
-  $tcl->{tcl}->lrange($list, defined $n ? $n : 0, 'end');
+  $tcl->{tcl}->invoke(lrange => $list, defined $n ? $n : 0, 'end');
 }
 
 sub lexpand_if {
