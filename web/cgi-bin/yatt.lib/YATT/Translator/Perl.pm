@@ -1259,12 +1259,6 @@ sub YATT::Translator::Perl::t_attr::entmacro_ {
 	    , join(", ", $var->as_lvalue, @expr));
 }
 
-sub YATT::Translator::Perl::t_attr::gen_getarg {
-  (my t_attr $var, my MY $gen
-   , my ($scope, $widget, $metainfo, $actual)) = @_;
-  $actual;
-}
-
 sub YATT::Translator::Perl::t_attr::as_escaped {
   my t_attr $var = shift;
   if (ref $var->{cf_subtype}) {
