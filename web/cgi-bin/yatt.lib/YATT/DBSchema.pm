@@ -3,6 +3,8 @@ use strict;
 use warnings FATAL => qw(all);
 use Carp;
 
+use File::Basename;
+
 use base qw(YATT::Class::Configurable);
 use YATT::Fields (qw(schemas tables cf_DBH
 		     cf_user
@@ -17,16 +19,21 @@ use YATT::Fields (qw(schemas tables cf_DBH
 		     )
 		 );
 
-use YATT::Types [Table => [qw(cf_name cf_additional)]
-		 , [Column => [qw(cf_name cf_type
-				  cf_inserted
-				  cf_unique
-				  cf_indexed
-				  cf_encoded_by
-				  cf_updated
-				  cf_primary_key
-				)]]];
+use YATT::Types [Item => [qw(cf_name)]];
+
+use YATT::Types -base => Item
+  , [Table => [qw(raw_create chk_unique chk_index chk_check)]
+     , [Column => [qw(cf_type
+		      cf_inserted
+		      cf_unique
+		      cf_indexed
+		      cf_decode_depth
+		      cf_encoded_by
+		      cf_updated
+		      cf_primary_key
+		    )]]];
 use YATT::Util::Symbol;
+use YATT::Util qw(coalesce);
 require YATT::Inc;
 
 #----------------------------------------
@@ -178,19 +185,31 @@ sub add_table {
   $self->{tables}{$name} ||= do {
     push @{$self->{schemas}}
       , my Table $tab = $self->Table->new;
+
+    local our %colNameCache;
+
     $tab->{cf_name} = $name;
     if (@columns) {
-      $tab->{cf_additional} = $opts;
+      # XXX: 拡張の余地あり
+      $tab->{raw_create} = $opts;
+      my $fields = $tab->fields_hash;
       foreach my $desc (@columns) {
-	my ($col, $type, @desc) = @$desc;
-	# XXX: ref $col → unique(...), key(...), check(...), primary key(..)
-	$self->add_table_column($tab, $col, $type, map {
-	  if (/^-(\w+)/) {
-	    $1 => 1
+	if (ref (my $kw = $desc->[0])) {
+	  unless ($fields->{my $fname = "chk_$$kw"}) {
+	    croak "Invalid column constraint $kw for table $name";
 	  } else {
-	    $_ => 1
+	    push @{$tab->{$fname}}, [@{$desc}[1 .. $#$desc]];
 	  }
-	} @desc);
+	} else {
+	  my ($col, $type, @desc) = @$desc;
+	  $self->add_table_column($tab, $col, $type, map {
+	    if (/^-(\w+)/) {
+	      $1 => 1
+	    } else {
+	      $_
+	    }
+	  } @desc);
+	}
       }
     } elsif (not ref $opts) {
       # $opts is used as column type.
@@ -206,8 +225,23 @@ sub add_table {
   };
 }
 
+sub is_fresh_colname {
+  (my MY $self, my Table $tab, my ($colName, $cache, $assign)) = @_;
+  if ($tab->{Column} and not %$cache) {
+    my $i;
+    foreach my Column $col (@{$tab->{Column}}) {
+      $cache->{$col->{cf_name}} = ++$i;
+    }
+  }
+  exists $cache->{$colName} ? 0 :
+    $assign ? ($cache->{$colName} = keys(%$cache) + 1) : 1;
+}
+
 sub add_table_column {
   (my MY $self, my Table $tab, my ($colName, $type, @opts)) = @_;
+  unless ($self->is_fresh_colname($tab, $colName, \ our %colNameCache, 1)) {
+    croak "Conflicting column name $colName for table $tab->{cf_name}";
+  }
   push @{$tab->{Column}}, my Column $col = $self->Column->new(@opts);
   $col->{cf_inserted} = not ($colName =~ s/^-//);
   $col->{cf_name} = $colName;
@@ -246,6 +280,10 @@ sub sql_create_table {
     push @cols, $schema->sql_create_column($tab, $col);
     push @indices, $col if $col->{cf_indexed};
   }
+  foreach my $constraint (map {$_ ? @$_ : ()} $tab->{chk_unique}) {
+    push @cols, sprintf q{unique(%s)}, join(", ", @$constraint);
+  }
+
   # XXX: SQLite specific.
   push my @create
     , sprintf qq{CREATE TABLE %s\n(%s)}, $tab->{cf_name}
@@ -256,6 +294,9 @@ sub sql_create_table {
       , sprintf q{CREATE INDEX %1$s_%2$s on %1$s(%2$s)}
 	, $tab->{cf_name}, $ix->{cf_name};
   }
+
+  # insert が有っても、構わない。
+  push @create, map {$_ ? @$_ : ()} $tab->{raw_create};
 
   wantarray ? @create : join(";\n", @create);
 }
@@ -341,6 +382,39 @@ END
 
 #========================================
 
+sub sql {
+  (my MY $self, my ($mode, $table)) = splice @_, 0, 3;
+  $self->parse_params(\@_, \ my %param);
+  $self->can("sql_${mode}")->($self, $table, \%param, @_);
+}
+
+# XXX: explain を。 cf_explain で？
+sub cmd_select {
+  my MY $self = shift;
+  $self->parse_opts(\@_, \ my %opts);
+  my $table = shift;
+  $self->parse_opts(\@_, \ %opts);
+  $self->configure(%opts) if %opts;
+  $self->parse_params(\@_, \ my %param);
+  my $sth = do {
+    if (my $sub = $self->can("select_$table")) {
+      $sub->($self, \%param, @_);
+    } elsif ($sub = $self->can("sql_select_$table")) {
+      my $s = $self->dbh->prepare($sub->($self, \%param));
+      $s->execute(@_);
+      $s;
+    } else {
+      $self->to_select($table, \%param, \@_);
+    }
+  };
+  my $null = $self->NULL;
+  my $format = $self->can('tsv_with_null');
+  print $format->($null, @{$sth->{NAME}}) unless $self->{cf_no_header};
+  while (my (@res) = $sth->fetchrow_array) {
+    print $format->($null, @res);
+  }
+}
+
 sub select {
   (my MY $schema, my ($tabName, $params)) = splice @_, 0, 3;
 
@@ -371,15 +445,49 @@ sub select {
 sub to_select {
   (my MY $schema, my ($tabName, $params, $values, $rvref)) = @_;
   my $dbh = (delete $params->{dbh}) || $schema->dbh;
-  my $sth = $dbh->prepare(scalar $schema->sql_select($tabName, $params));
-  if ($values) {
-    my $rv = $sth->execute(@$values);
+  my $sth = $dbh->prepare($schema->sql_select($tabName, $params, \ my $bind));
+  if (my $ary = $values || $bind) {
+    my $rv = $sth->execute(@$ary);
     $$rvref = $rv if $rvref;
   }
   $sth;
 }
 
-sub sql_select {
+sub sql_decode {
+  (my MY $schema, my Table $tab
+   , my ($selJoins, $depth, $alias, $until)) = @_;
+  $depth = 0 unless defined $depth;
+  $alias ||= $tab->{cf_name};
+  my @selCols;
+  foreach my Column $col (@{$tab->{Column}}) {
+    my Table $enc = $col->{cf_encoded_by};
+    if ($depth || $enc) {
+      # primary key は既に積まれている。
+      push @selCols, "$alias.$col->{cf_name}"
+	unless $col->{cf_primary_key};
+    } else {
+      push @selCols, $col->{cf_name};
+    }
+
+    if ($enc) {
+      # alias と rowid と…
+      push @$selJoins, "\nLEFT JOIN $enc->{cf_name} $col->{cf_name}"
+	. " on $alias.$col->{cf_name}"
+	  . " = $col->{cf_name}._rowid_";
+
+      if (not defined $col->{cf_decode_depth}
+	  and $depth >= coalesce($until, 0)) {
+	next;
+      }
+      push @selCols, $schema->sql_decode
+	($enc, $selJoins, $depth + 1, $col->{cf_name}
+	 , $col->{cf_decode_depth});
+    }
+  }
+  @selCols;
+}
+
+sub sql_join {
   (my MY $schema, my ($tabName, $params)) = @_;
 
   if (my $sub = $schema->can("sql_select_$tabName")) {
@@ -389,38 +497,28 @@ sub sql_select {
   my Table $tab = $schema->{tables}{$tabName}
     or croak "No such table: $tabName";
 
-  my $raw = delete $params->{raw};
+  my @selJoins = $tab->{cf_name};
+  my @selCols  = $schema->sql_decode($tab, \@selJoins);
 
-  my (@selJoins, @selCols) = ($tab->{cf_name});
-  foreach my Column $col (@{$tab->{Column}}) {
-    if (my Table $enc = $col->{cf_encoded_by}) {
-      push @selCols, "$tab->{cf_name}.$col->{cf_name}"
-	, "$col->{cf_name}.$enc->{cf_name}";
-      push @selJoins, "\nLEFT JOIN $enc->{cf_name} $col->{cf_name}"
-	. " on $tab->{cf_name}.$col->{cf_name}"
-	  . " = $col->{cf_name}.$enc->{cf_name}no";
-    } else {
-      push @selCols, $col->{cf_name};
-    }
+  my (@appendix, @bind);
+  if (my $where = delete $params->{where}) {
+    push @appendix, do {
+      if (ref $where) {
+	require SQL::Abstract;
+	(my $stmt, @bind) = SQL::Abstract->new->where($where);
+	$stmt;
+      } else {
+	$where;
+      }
+    };
   }
 
-  my $colExpr = join ", ", do {
-    if (my $val = delete $params->{columns}) {
-      ref $val ? @$val : $val;
-    } elsif ($raw) {
-      '*';
-    } else {
-      @selCols;
-    }
-  };
-
-  my @appendix;
   {
     if ($params->{offset} and not $params->{limit}) {
       die "offset needs limit!";
     }
 
-    foreach my $kw (qw(where group_by order_by limit offset)) {
+    foreach my $kw (qw(group_by order_by limit offset)) {
       if (my $val = delete $params->{$kw}) {
 	push @appendix, join(" ", map(do {s/_/ /; $_}, uc($kw)), $val);
       }
@@ -430,13 +528,29 @@ sub sql_select {
       , join(", ", map {"$_=" . $params->{$_}} keys %$params) if %$params;
   }
 
-  if (wantarray) {
-    \ (@selCols, @selJoins, @appendix);
-  } else {
-    join("\n", sprintf(q{SELECT %s FROM %s}, $colExpr
-		       , $raw ? $tabName : join("", @selJoins))
-	 , @appendix);
-  }
+  (\@selCols, \@selJoins, \@appendix, @bind ? \@bind : ());
+}
+
+sub sql_select {
+  (my MY $schema, my ($tabName, $params, $bindref)) = @_;
+
+  my $raw = delete $params->{raw};
+  my $colExpr = do {
+    if (my $val = delete $params->{columns}) {
+      ref $val ? join(", ", @$val) : $val;
+    } elsif ($raw) {
+      '*';
+    }
+  };
+
+  my ($selCols, $selJoins, $where, $bind)
+    = $schema->sql_join($tabName, $params);
+
+  $$bindref = $bind if $bind and $bindref;
+
+  join("\n", sprintf(q{SELECT %s FROM %s}, $colExpr || join(", ", @$selCols)
+		     , $raw ? $tabName : join("", @$selJoins))
+       , @$where);
 }
 
 #----------------------------------------
@@ -483,6 +597,58 @@ sub to_update {
 sub sql_update {
   (my MY $schema, my ($tabName, $colName)) = @_;
   "update $tabName set $colName = ? where _rowid_ = ?";
+}
+
+########################################
+
+sub tsv_with_null {
+  my $null = shift;
+  join("\t", map {defined $_ ? $_ : $null} @_). "\n";
+}
+
+
+########################################
+
+sub run {
+  my $pack = shift;
+  $pack->cmd_help unless @_;
+  $pack->parse_opts(\@_, \ my %opts);
+  my MY $obj = $pack->new(%opts);
+  my $cmd = shift || "help";
+  $pack->parse_opts(\@_, \ %opts);
+  $obj->configure(%opts);
+  my $method = "cmd_$cmd";
+  if (my $sub = $obj->can("cmd_$cmd")) {
+    $sub->($obj, @_);
+  } elsif ($sub = $obj->can($cmd)) {
+    my @res = $sub->($obj, @_);
+    exit 1 unless @res;
+    unless (@res == 1 and defined $res[0] and $res[0] eq "1") {
+      if (grep {defined $_ && ref $_} @res) {
+	require Data::Dumper;
+	print Data::Dumper->new([$_])->Indent(0)->Terse(1)->Dump
+	  , "\n" for @res;
+      } else {
+	print join("\n", @res), "\n";
+      }
+    }
+    exit 0
+  } else {
+    die "No such method $cmd for $pack\n";
+  }
+}
+
+sub cmd_help {
+  my ($self) = @_;
+  my $pack = ref($self) || $self;
+  my $stash = do {
+    my $pkg = $pack . '::';
+    no strict 'refs';
+    \%{$pkg};
+  };
+  my @methods = sort grep s/^cmd_//, keys %$stash;
+  die "Usage: @{[basename($0)]} method args..\n  "
+    . join("\n  ", @methods) . "\n";
 }
 
 1;
