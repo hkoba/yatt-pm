@@ -238,7 +238,11 @@ sub dispatch {
     if (not defined $param[0] and $widget->public) {
       $param[0] = $widget->reorder_cgi_params($cgi);
     }
-    $top->dispatch_action($root, $renderer, $pkg, @param);
+    if (my $handler = $pkg->can('dispatch_action')) {
+      $handler->($top, $root, $renderer, $pkg, @param);
+    } else {
+      $top->dispatch_action($root, $renderer, $pkg, @param);
+    }
   }
 }
 
