@@ -1,6 +1,7 @@
 package YATT::DBSchema;
 use strict;
 use warnings FATAL => qw(all);
+use Carp;
 
 use base qw(YATT::Class::Configurable);
 use YATT::Fields qw(schemas tables);
@@ -11,7 +12,7 @@ use YATT::Types [Table => [qw(cf_name cf_additional)]
 				  cf_updated
 				  cf_unique
 				  cf_indexed
-				  cf_encoder
+				  cf_encoded_by
 				)]]];
 
 use YATT::Util::CmdLine;
@@ -19,6 +20,7 @@ use YATT::Util::CmdLine;
 sub import {
   my ($pack) = shift;
   return unless @_;
+  my MY $schema = $pack->new(@_);
 }
 
 sub new {
@@ -70,7 +72,7 @@ sub add_table_column {
   # if ref $type, else
   $col->{cf_type} = do {
     if (ref $type) {
-      $col->{cf_encoder} = $self->add_table(@$type);
+      $col->{cf_encoded_by} = $self->add_table(@$type);
       # XXX: SQLite specific.
       'int'
     } else {
@@ -88,47 +90,98 @@ sub sql_create {
   foreach my Table $tab (@{$self->{schemas}}) {
     push @result, map {
       $wantarray ? $_ . "\n" : $_
-    } $tab->sql_create($self);
+    } $self->sql_create_table($tab);
   }
   wantarray ? @result : join(";\n", @result);
 }
 
-Table->define
-  (sql_create => sub {
-     (my Table $tab, my MY $schema) = @_;
-     my (@cols, @indices);
-     foreach my Column $col (@{$tab->{Column}}) {
-       push @cols, $col->sql_create;
-       if ($col->{cf_indexed}) {
-	 push @indices, $col;
-       }
-     }
-     # XXX: SQLite specific.
-     push my @create
-       , sprintf qq{CREATE TABLE %s\n(%s)}, $tab->{cf_name}
-	 , join "\n, ", @cols;
+sub sql_create_table {
+  (my MY $schema, my Table $tab) = @_;
+  my (@cols, @indices);
+  foreach my Column $col (@{$tab->{Column}}) {
+    push @cols, $schema->sql_create_column($tab, $col);
+    push @indices, $col if $col->{cf_indexed};
+  }
+  # XXX: SQLite specific.
+  push my @create
+    , sprintf qq{CREATE TABLE %s\n(%s)}, $tab->{cf_name}
+      , join "\n, ", @cols;
 
-     foreach my Column $ix (@indices) {
-       push @create
-	 , sprintf q{CREATE INDEX %1$s_%2$s on %1$s(%2$s)}
-	   , $tab->{cf_name}, $ix->{cf_name};
-     }
+  foreach my Column $ix (@indices) {
+    push @create
+      , sprintf q{CREATE INDEX %1$s_%2$s on %1$s(%2$s)}
+	, $tab->{cf_name}, $ix->{cf_name};
+  }
 
-     wantarray ? @create : join(";\n", @create);
-   });
+  wantarray ? @create : join(";\n", @create);
+}
 
-Column->define
-  (sql_create => sub {
-     (my Column $col, my MY $schema) = @_;
-     join " ", $col->{cf_name}, do {
-       if ($col->{cf_primary_key}) {
-	 # XXX: SQLite specific.
-	 'integer primary key'
-       } else {
-	 $col->{cf_type} . ($col->{cf_unique} ? " unique" : "");
-       }
-     };
-   });
+sub sql_create_column {
+  (my MY $schema, my Table $tab, my Column $col) = @_;
+  join " ", $col->{cf_name}, do {
+    if ($col->{cf_primary_key}) {
+      # XXX: SQLite specific.
+      'integer primary key'
+    } else {
+      $col->{cf_type} . ($col->{cf_unique} ? " unique" : "");
+    }
+  };
+}
+
+sub sql_select {
+  (my MY $schema, my ($tabName, $params)) = @_;
+  my Table $tab = $schema->{tables}{$tabName}
+    or croak "No such table: $tabName";
+
+  my $raw = delete $params->{raw};
+
+  my (@selJoins, @selCols) = ($tab->{cf_name});
+  foreach my Column $col (@{$tab->{Column}}) {
+    if (my Table $enc = $col->{cf_encoded_by}) {
+      push @selCols, "$tab->{cf_name}.$col->{cf_name}"
+	, "$col->{cf_name}.$enc->{cf_name}";
+      push @selJoins, "\nLEFT JOIN $enc->{cf_name} $col->{cf_name}"
+	. " on $tab->{cf_name}.$col->{cf_name}"
+	  . " = $col->{cf_name}.$enc->{cf_name}no";
+    } else {
+      push @selCols, $col->{cf_name};
+    }
+  }
+
+  my $colExpr = join ", ", do {
+    if (my $val = delete $params->{columns}) {
+      ref $val ? @$val : $val;
+    } elsif ($raw) {
+      '*';
+    } else {
+      @selCols;
+    }
+  };
+
+  my @appendix;
+  {
+    if ($params->{offset} and not $params->{limit}) {
+      die "offset needs limit!";
+    }
+
+    foreach my $kw (qw(where group_by order_by limit offset)) {
+      if (my $val = delete $params->{$kw}) {
+	push @appendix, join(" ", map(do {s/_/ /; $_}, uc($kw)), $val);
+      }
+    }
+
+    die "Unknown param(s) for select $tabName: "
+      , join(", ", map {"$_=" . $params->{$_}} keys %$params) if %$params;
+  }
+
+  if (wantarray) {
+    \ (@selCols, @selJoins, @appendix);
+  } else {
+    join("\n", sprintf(q{SELECT %s FROM %s}, $colExpr
+		       , $raw ? $tabName : join("", @selJoins))
+	 , @appendix);
+  }
+}
 
 1;
 # -for_dbic
