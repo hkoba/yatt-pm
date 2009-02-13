@@ -1,5 +1,5 @@
 <!yatt:args error info=value>
-<yatt:my value:error_is_object
+<yatt:my error_is_object:value
 	 ="ref $error && UNIVERSAL::isa($error, 'YATT::Exception')"/>
 <html>
 <head>
@@ -28,6 +28,7 @@
 &yatt:error;
 </yatt:if>
 
+<yatt:if "-r .htyattdebug">
 <h2>context info</h2>
 <table>
 <yatt:foreach my=key list="keys %$info">
@@ -39,6 +40,7 @@
   </tr>
 </yatt:foreach>
 </table>
+</yatt:if>
 
 </body>
 </html>

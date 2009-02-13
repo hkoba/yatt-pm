@@ -247,7 +247,7 @@ sub filter {
     # ここで、rename が関係する
     my MY $macro = $unique->{$slot->{cf_spec}->refid}
       ||= $slot->{cf_classname}->new($slot->{cf_spec});
-    if ($slot->is_output) {
+    if ($macro->{disabled} || $slot->is_output) {
       # 出力引数が明示的に与えられていた場合は、disabled モードにする。
       $macro->{disabled} = 1;
       # 元の引数を残す
