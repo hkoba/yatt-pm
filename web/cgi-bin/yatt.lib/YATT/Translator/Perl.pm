@@ -1336,6 +1336,22 @@ sub YATT::Translator::Perl::t_list::entmacro_expand {
   sprintf q{map($_ ? @$_ : (), %s)}, $was;
 }
 
+# XXX: head($n), tail($n)
+
+sub YATT::Translator::Perl::t_list::entmacro_head {
+  (my t_list $var, my MY $trans
+   , my ($scope, $node, $restExpr, $queue, @args)) = @_;
+  my $was = join "->", splice @$queue, 0;
+  sprintf q{map($_ ? $$_[0] : (), %s)}, $was;
+}
+
+sub YATT::Translator::Perl::t_list::entmacro_tail {
+  (my t_list $var, my MY $trans
+   , my ($scope, $node, $restExpr, $queue, @args)) = @_;
+  my $was = join "->", splice @$queue, 0;
+  sprintf q{map($_ ? @{$_}[1..$#$_] : (), %s)}, $was;
+}
+
 sub YATT::Translator::Perl::t_code::gen_call {
   (my t_code $argdecl, my MY $trans, my ($scope, $node)) = @_;
   my ($post, @args) = $trans->genargs_static
