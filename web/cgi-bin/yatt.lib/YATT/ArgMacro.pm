@@ -7,7 +7,7 @@ use Carp;
 
 use YATT::Util qw(checked_eval);
 use YATT::Util::Symbol qw(globref fields_hash_of_class);
-use YATT::LRXML::Node qw(copy_array);
+use YATT::LRXML::Node qw(copy_array copy_node_renamed_as);
 
 use YATT::Fields 'spec', [disabled => 0];
 
@@ -61,11 +61,16 @@ sub filter {
     # ここで、rename が関係する
     my MY $macro = $unique->{$slot->{cf_spec}->refid}
       ||= $slot->{cf_classname}->new($slot->{cf_spec});
-    if ($macro->{disabled} || $slot->is_output) {
+    if ($macro->{disabled} or my $out = $slot->is_output) {
       # 出力引数が明示的に与えられていた場合は、disabled モードにする。
       $macro->{disabled} = 1;
       # 元の引数を残す
-      copy_array($value);
+      if ($out) {
+	# rename 済みの override を返す。
+	MY->copy_node_renamed_as($macro->output_name, $value);
+      } else {
+	copy_array($value);
+      }
     } else {
       # text になってないと、不便では?
       # ← でも、<:att>....</:att> の場合も有る。
@@ -182,6 +187,10 @@ sub spec_configure_slot {
   $spec->{$name} = [map {
     Slot->create($_, mode => $mode, classname => $spec->{cf_classname})
   } @$list];
+  if ($mode eq 'out' && @{$spec->{$name}} == 1) {
+    # Only if 1 output var exists.
+    $spec->{output} = $spec->{$name}[0];
+  }
 }
 
 Spec->define(fields => \&spec_fields);
@@ -254,9 +263,10 @@ sub spec_clone_with_renaming {
 }
 
 sub output_name {
-  (my MY $macro, my $name) = @_;
+  (my MY $macro) = @_;
   my Spec $spec = $macro->{spec};
-  $spec->{output_map}{$name} || $name;
+  my Slot $out = $spec->{output};
+  $out->{cf_name};
 }
 
 #========================================

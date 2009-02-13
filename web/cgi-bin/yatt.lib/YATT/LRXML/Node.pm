@@ -17,6 +17,8 @@ BEGIN {
 
 		  create_node
 		  create_node_from
+		  copy_node_renamed_as
+
 		  create_attlist
 		  node_size
 		  node_children
@@ -138,6 +140,11 @@ sub create_node_from {
   $name = copy_array($$orig[_RAW_NAME]) unless defined $name;
   # DEPEND_ALIGNMENT: SET_NLINES:
   [$typeid, $flag, sum_node_nlines(@_), undef, $name, @_]
+}
+
+sub copy_node_renamed_as {
+  my ($pack, $name, $orig) = splice @_, 0, 3;
+  create_node_from($pack, $orig, $name, @{$orig}[_BODY .. $#$orig]);
 }
 
 sub node_headings {
