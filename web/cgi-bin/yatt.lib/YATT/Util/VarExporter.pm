@@ -29,7 +29,8 @@ sub register_into {
   *{globref($pkg, '_CACHE')} = \ $self;
   *{globref($pkg, 'import')} = sub {
     my $callpack = caller;
-    shift->export_to($callpack, @_);
+    my MY $self = shift->instance;
+    $self->export_to($callpack, @_);
   };
 }
 
@@ -39,8 +40,7 @@ sub instance {
 }
 
 sub export_to {
-  my ($mypkg, $destpkg, $page, $failok) = @_;
-  my MY $self = $mypkg->instance;
+  (my MY $self, my ($destpkg, $page, $failok)) = @_;
   my $vars = $self->find_vars($page ||= $self->page_name)
     or $failok or die "No such page: $page";
 
