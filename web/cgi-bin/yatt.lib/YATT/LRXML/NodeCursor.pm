@@ -37,6 +37,13 @@ BEGIN {
       ->after_next;
   }
 
+  sub clone {
+    my MY $orig = shift;
+    ref($orig)->new($orig->{cf_array}, $orig->{cf_path}
+		    # XXX: To compensate init()
+		    , $orig->{cf_index} - YATT::LRXML::Node::_BODY);
+  }
+
   sub parent {
     my MY $path = shift; $path->{cf_path}
   }
@@ -86,9 +93,8 @@ sub clone {
   # XXX: 他のパラメータは? 特に、継承先で足したパラメータ。
   ref($self)->new($self->{tree}
 		  , metainfo => $self->{cf_metainfo}
-		  # XXX: $self->new_path($self->{cf_path}) にしたいが、
-		  # 色々動かなくなる。
-		  , path => ($path || $self->{cf_path}));
+		  , path => ($path || ($self->{cf_path} ? $self->{cf_path}->clone
+				       : undef)));
 }
 
 sub variant_builder {

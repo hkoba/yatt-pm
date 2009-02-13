@@ -57,3 +57,16 @@ IN:
 OUT:
  3 x 8 = 24
 # eol.
+
+TITLE: hello => optional argmacro
+FILE: doc/test1/t3.html
+IN:
+ <!yatt:args>
+ <yatt:hello arg="world"/>
+ 
+ <!yatt:widget hello arg %test1;  %yatt:no_last_newline;>
+ Hello &yatt:arg;
+OUT:
+ Hello world
+# eol.
+
