@@ -27,6 +27,9 @@ sub register_into {
   (my MY $self, my $pkg) = @_;
   MY->add_isa($pkg, MY);
   *{globref($pkg, '_CACHE')} = \ $self;
+  *{globref($pkg, 'find_vars')} = sub {
+    shift->instance->find_vars(@_);
+  };
   *{globref($pkg, 'import')} = sub {
     my $callpack = caller;
     my MY $self = shift->instance;

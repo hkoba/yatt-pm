@@ -199,7 +199,6 @@ sub generate_template {
   } $gen->{cf_use};
   my @file_scope = do {
     if ($gen->{cf_pagevars}) {
-      &YATT::breakpoint;
       $gen->checked_eval(qq{require $gen->{cf_pagevars}});
       push @use, "use $gen->{cf_pagevars} (qw($tmpl->{cf_name}), 1);";
       ($gen->{cf_pagevars}->build_scope_for($gen, $tmpl->{cf_name})
