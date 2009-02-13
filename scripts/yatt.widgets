@@ -15,13 +15,13 @@ use YATT::Util::CmdLine;
 
 use YATT::Translator::Perl;
 use YATT::Registry::NS;
-use base qw(YATT::Translator::Perl File::Spec);
+# use base qw(YATT::Translator::Perl File::Spec);
 
 use YATT::LRXML::Node qw(DECLARATOR_TYPE);
 
 use YATT::Exception qw(Exception);
-use YATT::Toplevel::CGI qw(Config new_config);
 
+use base qw(YATT::Toplevel::CGI);
 sub MY () { __PACKAGE__ }
 
 MY->parse_opts(\@ARGV, \ my %opts);
@@ -31,7 +31,7 @@ my $config = MY->new_config(%opts);
 
 my $path = shift;
 
-my ($rootdir, $top) = do {
+my ($instpkg, $rootdir, $top) = do {
 
   unless (defined $path) {
     die "Usage: $0 path\n"
@@ -39,18 +39,21 @@ my ($rootdir, $top) = do {
   unless (-r $path) {
     die "$0: No such file! $path\n";
   }
+  unless (-d $path) {
+    die "$0: Not a directory! $path\n";
+  }
 
-  my $dir = dirname(MY->rel2abs($path));
+  my $dir = MY->rel2abs($path);
   $config->try_load_config($dir);
 
-  my $pack = MY;
+  my $instpkg = MY->prepare_export($config);
 
   # XXX: テンプレートディレクトリの指定も。
-  ($dir
-   , MY->new(app_prefix => $pack
-	     , default_base_class => $pack
-	     , loader => [DIR => $dir]
-	     , $config->translator_param));
+  ($instpkg
+   , $dir
+   , $instpkg->new_translator([DIR => $dir], $config->translator_param
+			      , debug_translator => $ENV{DEBUG}
+			      , no_lineinfo => YATT::Util::no_lineinfo()));
 };
 
 show_widgets_in_dir($top, $top, {});
@@ -58,7 +61,10 @@ show_widgets_in_dir($top, $top, {});
 sub show_widgets_in_dir {
   (my Root $root, my Dir $dir, my $uniq) = @_;
 
-  $root->refresh($dir);
+  if (catch {$root->refresh($dir)} \ my $error) {
+    print STDERR "ERROR: $error\n";
+    return;
+  }
 
   foreach my $fn (sort keys %{$dir->{Template}}) {
     my Template $tmpl = $root->nsobj($dir->{Template}{$fn});
@@ -66,12 +72,15 @@ sub show_widgets_in_dir {
     foreach my $wn (sort keys %{$tmpl->{Widget}}) {
       my $widget = $tmpl->{Widget}{$wn};
       next unless $widget->declared;
-      my $winfo = join("\t", grep {$_} $fn, $wn);
-      print $winfo, "\t", $tmpl->{cf_loadkey}, "\n" unless $uniq->{$winfo}++;
+      my $winfo = sprintf "<%s:%s>", $root->{cf_namespace}[-1]
+	, join(":", grep {$_} $fn, $wn);
+      (my $path = $tmpl->{cf_loadkey}) =~ s{^\Q$root->{cf_loadkey}/}{};
+      print "$path:\t$winfo\n" unless $uniq->{$winfo}++;
     }
   }
 
   foreach my $dn (sort keys %{$dir->{Dir}}) {
-    show_widgets_in_dir($root, $root->nsobj($dir->{Dir}{$dn}), $uniq);
+    my Dir $d = $root->nsobj($dir->{Dir}{$dn});
+    show_widgets_in_dir($root, $d, $uniq, $d->{cf_loadkey});
   }
 }
