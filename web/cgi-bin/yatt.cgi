@@ -25,7 +25,7 @@ sub catch (&@) {
   $$errorVar = $@;
 }
 
-sub breakpoint {}
+sub breakpoint_run {}
 
 sub prog_libdirs {
   my ($prog) = @_;
@@ -91,7 +91,7 @@ else {
       exit 1;
     }
     else {
-      breakpoint;
+      breakpoint_run;
       $class->run(cgi => @ARGV);
     }
   }
