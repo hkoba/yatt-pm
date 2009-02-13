@@ -583,6 +583,11 @@ sub entity_concat {
   join '', @_;
 }
 
+sub entity_join {
+  my ($this, $sep) = splice @_, 0, 2;
+  join $sep, grep {defined $_ && $_ ne ''} @_;
+}
+
 #========================================
 
 sub entity_param {
