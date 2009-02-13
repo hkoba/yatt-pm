@@ -342,6 +342,7 @@ sub parse_entities {
   # XXX: 行番号情報を受け取れた方が、嬉しいのだが…
   return undef unless defined $_[0]; # make sure single scalar is returned.
   return '' if $_[0] eq '';
+  return $_[0] unless defined $$self{re_entity};
   my @tokens = split $$self{re_entity}, $_[0];
   return $tokens[0] if @tokens == 1;
   my @result;
