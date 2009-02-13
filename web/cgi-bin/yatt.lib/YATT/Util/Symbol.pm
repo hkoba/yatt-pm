@@ -5,7 +5,7 @@ use strict;
 use warnings FATAL => qw(all);
 
 BEGIN {
-  our @EXPORT_OK = qw(class globref
+  our @EXPORT_OK = qw(class globref stash
 		      fields_hash fields_hash_of_class
 		      add_isa lift_isa_to
 		      declare_alias
@@ -25,6 +25,10 @@ sub globref {
   my ($thing, $name) = @_;
   no strict 'refs';
   \*{class($thing) . "::$name"};
+}
+
+sub stash {
+  *{globref($_[0], '')}{HASH}
 }
 
 sub declare_alias ($$) {

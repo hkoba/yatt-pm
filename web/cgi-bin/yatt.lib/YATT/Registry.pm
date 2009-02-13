@@ -52,6 +52,7 @@ use YATT::Fields qw(^Loader NS last_nsid ^root_is_loaded
 		    cf_no_lineinfo
 		    current_parser
 		    cf_default_base_class
+		    cf_use
 		    nspattern
 		  )
   , ['^cf_namespace' => qw(yatt perl)]

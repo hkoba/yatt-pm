@@ -12,6 +12,7 @@ use base qw(YATT::Registry);
 use YATT::Fields [cf_mode => 'render']
   , [cf_product => sub {[]}]
   , qw(target_cache
+       cf_pagevars
        cf_debug_translator);
 
 BEGIN {require Exporter; *import = \&Exporter::import}
@@ -182,16 +183,36 @@ sub forget_template {
   delete $gen->{target_cache}{$tmplid} ? 1 : 0;
 }
 
+my %calling_conv;
+
 sub generate_template {
   (my MY $gen, my Template $tmpl) = @_;
   print STDERR "Generate: $tmpl->{cf_loadkey}\n"
     if $gen->{cf_debug_translator};
   my $metainfo = $tmpl->metainfo;
-  join "", q{package } . $gen->get_package($tmpl) . ';'
-    , map {$gen->generate_widget($_, $metainfo)} @{$tmpl->widget_list};
+  my @use = map {
+    unless (defined $_) {
+      ()
+    } else {
+      map {"use $_;"} ref $_ ? @$_ : $_
+    }
+  } $gen->{cf_use};
+  my @file_scope = do {
+    if ($gen->{cf_pagevars}) {
+      &YATT::breakpoint;
+      $gen->checked_eval(qq{require $gen->{cf_pagevars}});
+      push @use, "use $gen->{cf_pagevars} (qw($tmpl->{cf_name}), 1);";
+      ($gen->{cf_pagevars}->build_scope_for($gen, $tmpl->{cf_name})
+       , [\%calling_conv]);
+    } else {
+      \%calling_conv;
+    }
+  };
+  join("", q{package } . $gen->get_package($tmpl) . ';'
+       , join("",@use)
+       , map {$gen->generate_widget($_, $metainfo, \@file_scope)}
+       @{$tmpl->widget_list});
 }
-
-my %calling_conv;
 
 sub generate_lineinfo {
   (my MY $gen, my Widget $widget, my ($start, $prefix)) = @_;
@@ -201,9 +222,9 @@ sub generate_lineinfo {
 }
 
 sub generate_widget {
-  (my MY $gen, my Widget $widget, my ($metainfo)) = @_;
+  (my MY $gen, my Widget $widget, my ($metainfo, $file_scope)) = @_;
   my @body = $gen->generate_body
-    ([{}, $widget->widget_scope([\%calling_conv])]
+    ([{}, $widget->widget_scope($file_scope)]
      , $widget->cursor(metainfo => $metainfo->clone
 		       (startline => $widget->{cf_body_start}
 			, caller_widget => $widget)));
