@@ -4,11 +4,17 @@ use warnings FATAL => qw(all);
 use Carp;
 
 use base qw(YATT::Class::Configurable);
-use YATT::Fields (qw(schemas tables cf_DBH cf_auto_create
-		     cf_no_header
+use YATT::Fields (qw(schemas tables cf_DBH
+		     cf_user
+		     cf_auth
+		     ^cf_connection_spec
 		   )
 		  , ['^cf_NULL' => '']
 		  , ['^cf_name' => 'DBSchema']
+		  , qw(
+			cf_no_header
+			cf_auto_create
+		     )
 		 );
 
 use YATT::Types [Table => [qw(cf_name cf_additional)]
@@ -51,6 +57,13 @@ sub export_and_rebless_with {
   *{$glob} = \ $schema;
   *{$glob} = sub () { $schema };
 
+  $schema->export_to($callpack);
+
+  $schema->rebless_with($callpack);
+}
+
+sub export_to {
+  (my MY $schema, my ($callpack)) = @_;
   # Install to caller
   *{globref($callpack, $schema->name)} = sub () { $schema };
   # special new for singleton.
@@ -59,8 +72,6 @@ sub export_and_rebless_with {
     $schema->configure(@_) if @_;
     $schema;
   };
-
-  $schema->rebless_with($callpack);
 }
 
 sub create {
@@ -81,44 +92,66 @@ sub parse_import {
   my ($pack, $list, $opts) = @_;
   # -bool_flag
   # key => value
-  for (my $i = 0; $i < @$list; $i++) {
-    last if ref $list->[$i];
-    if ($list->[$i] =~ /^-(\w+)/) {
+  for (; @$list; shift @$list) {
+    last if ref $list->[0];
+    if ($list->[0] =~ /^-(\w+)/) {
       $opts->{$1} = 1;
     } else {
-      croak "Option value is missing for $list->[$i]"
-	unless $i+1 < @$list;
-      $opts->{$list->[$i]} = $list->[$i+1];
-      $i++;
+      croak "Option value is missing for $list->[0]"
+	unless @$list >= 2;
+      $opts->{$list->[0]} = $list->[1];
+      shift @$list;
     }
   }
 }
 
 #========================================
 
-sub connect_sqlite {
+sub dbh {
+  (my MY $schema) = @_;
+  unless ($schema->{cf_DBH}) {
+    my $spec = $schema->connection_spec;
+    unless (defined $spec) {
+      croak "connection_spec is empty";
+    }
+    if (ref $spec eq 'ARRAY') {
+      my ($type, @args) = @$spec;
+      my $sub = $schema->can("connect_via_$type")
+	or croak "No such connection spec type: $type";
+      $sub->($schema, @args);
+    } elsif (ref $spec eq 'CODE') {
+      $schema->{cf_DBH} = $spec->($schema);
+    } else {
+      croak "Unknown connection spec obj: $spec";
+    }
+  };
+
+  $schema->{cf_DBH}
+}
+
+sub connect_via_sqlite {
   (my MY $schema, my ($dbname, $rwflag)) = @_;
   my $ro = !defined $rwflag || $rwflag !~ /w/i;
   my $dbi_dsn = "dbi:SQLite:dbname=$dbname";
   $schema->{cf_auto_create} = 1;
-  $schema->connect($dbi_dsn, undef, undef
-		   , {RaiseError => 1, PrintError => 0, AutoCommit => $ro})
+  $schema->connect_via_dbi
+    ($dbi_dsn, undef, undef
+     , {RaiseError => 1, PrintError => 0, AutoCommit => $ro});
 }
 
-sub connect {
+sub connect_via_dbi {
   (my MY $schema, my ($dbi_dsn, $user, $auth, $param)) = @_;
   my %param = %$param if $param;
   $param{RaiseError} = 1 unless defined $param{RaiseError};
   $param{PrintError} = 0 unless defined $param{PrintError};
   require DBI;
-  $schema->{cf_DBH} = DBI->connect($dbi_dsn, $user, $auth, \%param);
-  $schema->install_tables if $schema->{cf_auto_create};
-  $schema;
+  my $dbh = $schema->{cf_DBH} = DBI->connect($dbi_dsn, $user, $auth, \%param);
+  $schema->install_tables($dbh) if $schema->{cf_auto_create};
+  $dbh;
 }
 
 sub install_tables {
   (my MY $schema, my $dbh) = @_;
-  $dbh ||= $schema->{cf_DBH};
   foreach my Table $table (@{$schema->{schemas}}) {
     next if $schema->has_table($table->{cf_name}, $dbh);
     foreach my $create ($schema->sql_create_table($table)) {
@@ -129,8 +162,13 @@ sub install_tables {
 
 sub has_table {
   (my MY $schema, my ($table, $dbh)) = @_;
-  $dbh ||= $schema->{cf_DBH};
+  $dbh ||= $schema->dbh;
   $dbh->tables("", "", $table, 'TABLE');
+}
+
+sub tables {
+  my MY $schema = shift;
+  keys %{$schema->{tables}};
 }
 
 #========================================
@@ -256,7 +294,7 @@ END
 
 sub to_insert {
   (my MY $schema, my ($tabName, $params)) = @_;
-  my $dbh = delete $params->{dbh} || $schema->{cf_DBH};
+  my $dbh = delete $params->{dbh} || $schema->dbh;
   my $sth = $dbh->prepare($schema->sql_insert($tabName, \ my @insEncs));
   # ここで encode 用の sql/sth も生成せよと?
   my @encoder;
@@ -275,7 +313,7 @@ sub to_insert {
 
 sub to_encode {
   (my MY $schema, my ($encDesc, $dbh)) = @_;
-  $dbh ||= $schema->{cf_DBH};
+  $dbh ||= $schema->dbh;
   my ($table, $column) = ref $encDesc ? @$encDesc : ($encDesc, $encDesc);
   my $check_sql = <<END;
 select rowid from $table where $column = ?
@@ -331,7 +369,7 @@ sub select {
 
 sub to_select {
   (my MY $schema, my ($tabName, $params, $values, $rvref)) = @_;
-  my $dbh = (delete $params->{dbh}) || $schema->{cf_DBH};
+  my $dbh = (delete $params->{dbh}) || $schema->dbh;
   my $sth = $dbh->prepare(scalar $schema->sql_select($tabName, $params));
   if ($values) {
     my $rv = $sth->execute(@$values);
@@ -404,7 +442,7 @@ sub sql_select {
 
 sub indexed {
   (my MY $schema, my ($tabName, $colName, $value, $params)) = @_;
-  my $dbh = delete $params->{dbh} || $schema->{cf_DBH};
+  my $dbh = delete $params->{dbh} || $schema->dbh;
   my $sql = $schema->sql_indexed($tabName, $colName);
   $dbh->selectrow_hashref($sql, undef, $value);
 }
@@ -433,7 +471,7 @@ sub format_line {
 
 sub to_update {
   (my MY $schema, my ($tabName, $colName)) = @_;
-  my $sth = $schema->{cf_DBH}->prepare
+  my $sth = $schema->dbh->prepare
     ($schema->sql_update($tabName, $colName));
   sub {
     my ($colValue, $rowId) = @_;
