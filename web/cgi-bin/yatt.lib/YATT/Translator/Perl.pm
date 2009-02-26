@@ -12,6 +12,7 @@ use base qw(YATT::Registry);
 use YATT::Fields [cf_mode => 'render']
   , [cf_product => sub {[]}]
   , qw(target_cache
+       delayed_target
        cf_pagevars
        cf_debug_translator);
 
@@ -26,6 +27,7 @@ use YATT::LRXML::Node qw(node_path node_body node_name
 			 node_size node_flag
 			 node_children
 			 create_node
+			 stringify_node
 			 TEXT_TYPE ELEMENT_TYPE ENTITY_TYPE);
 
 use YATT::LRXML::EntityPath;
@@ -164,6 +166,11 @@ sub generate {
   $gen->emit;
 }
 
+sub mark_delayed_target {
+  (my MY $gen, my Widget $widget) = @_;
+  $gen->{delayed_target}{$widget->{cf_template_nsid}}++;
+}
+
 sub ensure_widget_is_generated {
   (my MY $gen, my Widget $widget) = @_;
   $gen->ensure_template_is_generated($widget->{cf_template_nsid});
@@ -172,11 +179,19 @@ sub ensure_widget_is_generated {
 sub ensure_template_is_generated {
   (my MY $gen, my $tmplid) = @_;
   $tmplid = $tmplid->cget('nsid') if ref $tmplid;
-  return if $gen->{target_cache}{$tmplid}++;
+  unless ($gen->{target_cache}{$tmplid}++) {
 
-  # eval は？
-  push @{$$gen{cf_product}}
-    , $gen->generate_template($gen->nsobj($tmplid));
+    # eval は？
+    push @{$$gen{cf_product}}
+      , $gen->generate_template($gen->nsobj($tmplid));
+  }
+  if (my @delayed = keys %{$gen->{delayed_target}}) {
+    foreach my $nsid (@delayed) {
+      next if $gen->{target_cache}{$nsid};
+      delete $gen->{delayed_target}{$nsid};
+      $gen->ensure_template_is_generated($nsid);
+    }
+  }
 }
 
 sub forget_template {
@@ -774,13 +789,13 @@ sub attr_declare_delegate {
   (my MY $trans, my ($widget, $args, $argname, $subtype, @param)) = @_;
   my @elempath = $subtype ? @$subtype : $argname;
   my Template $tmpl = $trans->get_template_from_node($args);
-  my $base = $trans->get_widget_from_template($tmpl, @elempath);
+  my Widget $base = $trans->get_widget_from_template($tmpl, @elempath);
   unless ($base) {
     die $trans->node_error($args, "No such widget %s"
 			   , join(":", @elempath));
   }
   if ($tmpl->{cf_nsid} != $base->template_nsid) {
-    $trans->ensure_widget_is_generated($base);
+    $trans->mark_delayed_target($base);
   }
 
   # pass thru する変数名の一覧。
@@ -1091,7 +1106,8 @@ sub decode_entpath {
   my $body = $node->node_body;
   substr($body, 0, 0) = ':' if defined $body and not defined $node->node_name;
   my @entpath = $trans->parse_entpath(join('', map {':'.$_} @$entns)
-				      . coalesce($body, ''));
+				      . coalesce($body, '')
+				      , $trans, $node);
 
   my $has_body = $body ? 1 : 0;
 
@@ -1233,6 +1249,24 @@ sub YATT::Translator::Perl::VarType::as_escaped {
   sprintf $var->escaped_format, $var->{cf_varname};
 }
 
+sub YATT::Translator::Perl::VarType::as_typespec {
+  shift->type_name;
+}
+
+sub YATT::Translator::Perl::VarType::as_argspec {
+  (my VarType $var) = @_;
+  my $spec = $var->as_typespec;
+  if (my $mode = $var->{cf_default_mode}) {
+    $spec .= $mode;
+    if (defined (my $default = $var->{cf_default})) {
+      $spec .= join "", map {
+	ref $_ ? map(ref $_ ? stringify_node($_) : $_, @$_) : $_
+      } $default;
+    }
+  }
+  $spec;
+}
+
 use YATT::ArgTypes
   (-type_map => \%TYPE_MAP
    , -base => VarType
@@ -1293,6 +1327,12 @@ sub YATT::Translator::Perl::t_html::gen_assignable_node {
   }
 }
 
+sub YATT::Translator::Perl::t_attr::as_typespec {
+  my t_attr $var = shift;
+  join(":", $var->type_name, $var->{cf_subtype} || $var->{cf_varname});
+}
+
+
 sub YATT::Translator::Perl::t_attr::entmacro_ {
   (my t_attr $var, my MY $trans
    , my ($scope, $node, $restExpr, $queue, @args)) = @_;
@@ -1334,6 +1374,22 @@ sub YATT::Translator::Perl::t_list::entmacro_expand {
    , my ($scope, $node, $restExpr, $queue, @args)) = @_;
   my $was = join "->", splice @$queue, 0;
   sprintf q{map($_ ? @$_ : (), %s)}, $was;
+}
+
+# XXX: head($n), tail($n)
+
+sub YATT::Translator::Perl::t_list::entmacro_head {
+  (my t_list $var, my MY $trans
+   , my ($scope, $node, $restExpr, $queue, @args)) = @_;
+  my $was = join "->", splice @$queue, 0;
+  sprintf q{map($_ ? $$_[0] : (), %s)}, $was;
+}
+
+sub YATT::Translator::Perl::t_list::entmacro_tail {
+  (my t_list $var, my MY $trans
+   , my ($scope, $node, $restExpr, $queue, @args)) = @_;
+  my $was = join "->", splice @$queue, 0;
+  sprintf q{map($_ ? @{$_}[1..$#$_] : (), %s)}, $was;
 }
 
 sub YATT::Translator::Perl::t_code::gen_call {
@@ -1693,6 +1749,15 @@ sub entmacro_if {
   # XXX: 三項演算だと、狂いが出そうな。
   sprintf q{(%s ? %s : %s)}
     , map {ref $_ ? $$_ : $_} $cond, $then, $else || q{''};
+};
+
+sub entmacro_render {
+  my ($this, $trans
+      , $scope, $node, $restExpr, $queue, @args) = @_;
+  my ($type, @expr)
+    = $trans->gen_entref_list($scope, $node, @args);
+  \ sprintf q{__PACKAGE__->can('render_'.%s)->($this, [%s])}
+    , $type, join(", ", @expr);
 };
 #========================================
 

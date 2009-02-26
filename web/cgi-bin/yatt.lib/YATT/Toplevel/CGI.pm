@@ -604,6 +604,15 @@ sub entity_param {
   $CGI->param(@_);
 }
 
+#
+# For &HTML(); shortcut.
+# To use this, special_entities should have 'HTML'.
+#
+sub entity_HTML {
+  my $this = shift;
+  \ join "", grep {defined $_} @_;
+}
+
 #========================================
 
 sub canonicalize_html_filename {

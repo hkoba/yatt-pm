@@ -49,7 +49,8 @@ sub export_to {
 
   foreach my $name (keys %$vars) {
     *{globref($destpkg, $name)} = do {
-      unless (ref $vars->{$name}) {
+      my $ref = ref $vars->{$name};
+      if (not $ref or $ref eq 'ARRAY' or $ref eq 'HASH') {
 	\ $vars->{$name};
       } else {
 	$vars->{$name}

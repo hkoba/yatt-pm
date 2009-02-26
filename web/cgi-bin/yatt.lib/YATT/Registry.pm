@@ -978,14 +978,14 @@ sub create_var {
       my $path = $loader->catfile($dirname, $name);
       # entry を作るだけ。load はしない。→ mtime も、子供側で。
       if (-d $path) {
-	next unless $name =~ /^\w+$/;
+	next unless $name =~ /^(?:\w|-)+$/; # Not CC for future widechar.
 	$dir->{Dir}{$name} ||= $loader->{Cache}{$path}
 	  ||= $root->createNS(Dir => name => $name
 			      , loadkey => untaint_any($path)
 			      , parent_nsid => $dir->{cf_nsid}
 			      , base_nsid   => $dir->{cf_base_nsid}
 			     );
-      } elsif ($name =~ /^(\w+)\.html?$/) {
+      } elsif ($name =~ /^(\w+)\.html?$/) { # XXX: Should allow '-'.
 	$dir->{Template}{$1} ||= $loader->{Cache}{$path}
 	  ||= $root->createNS(Template => name => $1
 			      , loadkey => untaint_any($path)

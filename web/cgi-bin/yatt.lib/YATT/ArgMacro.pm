@@ -7,7 +7,7 @@ use Carp;
 
 use YATT::Util qw(checked_eval);
 use YATT::Util::Symbol qw(globref fields_hash_of_class);
-use YATT::LRXML::Node qw(copy_array);
+use YATT::LRXML::Node qw(copy_array copy_node_renamed_as);
 
 use YATT::Fields 'spec', [disabled => 0];
 
@@ -30,27 +30,152 @@ use YATT::Types
 		 cf_spec cf_mode cf_type cf_doc)]]
   ;
 
-Slot->define(create => \&slot_create);
-sub slot_create {
-  my ($pack, $item, @rest) = @_;
-  my ($name, @args) = do {
-    unless (ref $item) {
-      my ($n, $t) = split /=/, $item, 2;
-      ($n, type => $t);
-    } elsif (UNIVERSAL::isa($item, Slot)) {
-      return $item->clone;
-    } else {
-      @$item
-    }
-  };
-  $pack->new(name => $name, @args, @rest);
+#========================================
+
+sub handle {
+  my ($macro, $trans, $scope, $node) = @_;
+  $macro->accept($trans, $scope, $node);
+  $node;
 }
 
-Slot->define(is_output => \&slot_is_output);
-sub slot_is_output {
-  my Slot $slot = shift;
-  $slot->{cf_mode} eq 'out';
+sub expand_all_macros {
+  my ($pack, $trans, $scope, $node, $trigger, $order) = @_;
+  my $copy = $node->variant_builder;
+  $copy->add_filtered_copy($node->clone, [\&filter, $trigger, \ my %found]);
+  if (%found) {
+    foreach my Spec $spec (@$order) {
+      my MY $macro = $found{$spec->refid} or next;
+      # XXX: disabled だけれど、他にも config がある場合は、エラーにすべき。
+      if ($macro->{disabled}) {
+	$spec->revert_into($copy, $macro);
+	next;
+      }
+      $copy = $macro->handle($trans, $scope, $copy);
+    }
+    $copy;
+  } else {
+    $node;
+  }
 }
+
+sub filter {
+  my ($trigger, $unique, $name, $value) = @_;
+  if (my Slot $slot = $trigger->{$name}) {
+    # ここで、rename が関係する
+    my MY $macro = $unique->{$slot->{cf_spec}->refid}
+      ||= $slot->{cf_classname}->new($slot->{cf_spec});
+    if ($macro->{disabled} or my $out = $slot->is_output) {
+      # 出力引数が明示的に与えられていた場合は、disabled モードにする。
+      $macro->{disabled} = 1;
+      # 元の引数を残す
+      if ($out) {
+	# rename 済みの override を返す。
+	MY->copy_node_renamed_as($macro->output_name, $value);
+      } else {
+	copy_array($value);
+      }
+    } else {
+      # text になってないと、不便では?
+      # ← でも、<:att>....</:att> の場合も有る。
+      $macro->configure($slot->{cf_name} => copy_array($value));
+      ();
+    }
+  } else {
+    copy_array($value);
+  }
+}
+
+#========================================
+
+#
+# use YATT::ArgMacro AM => out => ['name=type'], in => [qw(x y z ...)];
+#  => creates new class AM.
+#
+sub import {
+  my ($pack, $macro_name) = splice @_, 0, 2;
+  my ($callpack) = caller;
+  my $class_name = "${callpack}::$macro_name";
+  my Spec $spec = Spec->new(name => $macro_name, classname => $class_name
+			    , @_);
+
+  my $base = $spec->{cf_base} || __PACKAGE__;
+  my @fields = $spec->fields;
+
+  my $script = <<END;
+package $class_name;
+use strict;
+use base qw($base);
+use YATT::Fields qw(@fields);
+
+sub $class_name () {'$class_name'}
+END
+
+  # print STDERR $script;
+  $pack->checked_eval($script);
+
+  *{globref($class_name, 'macro_spec')} = sub () { $spec };
+}
+
+#
+# Instanciate and register ArgMacro Spec in given widget's argument list.
+#
+
+sub register_in {
+  my ($pack, $registry, $node, $widget, $rename_spec) = @_;
+  my Spec $spec = $pack->macro_spec
+    ->clone_with_renaming($rename_spec, $registry, $node);
+
+  my ($dict, $order) = $widget->macro_specs;
+  push @$order, $spec;
+
+  foreach my Slot $slot ($spec->{output} ? $spec->{output}
+			 : @{$spec->{cf_out}}) {
+    $widget->add_arg($slot->{cf_name} => $registry->create_var
+		     ($slot->{cf_type}, undef, varname => $slot->{cf_name}));
+  }
+
+  foreach my $name (keys %{$spec->{trigger}}) {
+    my Slot $slot = $spec->{trigger}{$name};
+    if (my Slot $old = $dict->{$name}) {
+      die $registry->node_error
+	($node, "ArgMacro %s conflicts with %s for %s"
+	 , $spec->call_spec(1)
+	 , $old->{cf_call_spec}, $name);
+    }
+    $dict->{$name} = $slot;
+  }
+}
+
+#
+# Directly instanciate ArgMacro spec.
+#
+
+sub create_from {
+  my ($pack, $trans, $scope, $orig, $rename_spec) = @_;
+  my Spec $spec = $pack->macro_spec
+    ->clone_with_renaming($rename_spec, $trans, $orig);
+
+  my $copy = $orig->variant_builder;
+  my ($name, $slot, @config);
+  for (my $n = $orig->clone; $n->readable; $n->next) {
+    unless ($n->is_attribute and $name = $n->node_name
+	    and $slot = $spec->{trigger}{$name}
+	    and not $slot->is_output) {
+      $copy->add_node(copy_array($n->current));
+      next;
+    }
+    push @config, $slot->{cf_name} => $n->current;
+  }
+  if (@config) {
+    my $macro = $pack->new($spec, @config);
+    $macro->accept($trans, $scope, $copy); # To avoid return value confusion.
+    ($macro, $copy)
+  } else {
+    (undef, $orig->rewind);
+  }
+}
+
+#========================================
 
 foreach my $mode (qw(in out edit)) {
   Spec->define("configure_$mode", sub {
@@ -65,6 +190,10 @@ sub spec_configure_slot {
   $spec->{$name} = [map {
     Slot->create($_, mode => $mode, classname => $spec->{cf_classname})
   } @$list];
+  if ($mode eq 'out' && @{$spec->{$name}} == 1) {
+    # Only if 1 output var exists.
+    $spec->{output} = $spec->{$name}[0];
+  }
 }
 
 Spec->define(fields => \&spec_fields);
@@ -136,131 +265,45 @@ sub spec_clone_with_renaming {
   $new;
 }
 
-sub import {
-  my ($pack, $macro_name) = splice @_, 0, 2;
-  my ($callpack) = caller;
-  my $class_name = "${callpack}::$macro_name";
-  my Spec $spec = Spec->new(name => $macro_name, classname => $class_name
-			    , @_);
-
-  my $base = $spec->{cf_base} || __PACKAGE__;
-  my @fields = $spec->fields;
-
-  my $script = <<END;
-package $class_name;
-use strict;
-use base qw($base);
-use YATT::Fields qw(@fields);
-
-sub $class_name () {'$class_name'}
-END
-
-  # print STDERR $script;
-  $pack->checked_eval($script);
-
-  *{globref($class_name, 'macro_spec')} = sub () { $spec };
-}
-
-sub register_in {
-  my ($pack, $registry, $node, $widget, $rename_spec) = @_;
-  my Spec $spec = $pack->macro_spec
-    ->clone_with_renaming($rename_spec, $registry, $node);
-
-  my ($dict, $order) = $widget->macro_specs;
-  push @$order, $spec;
-
-  foreach my Slot $slot ($spec->{output} ? $spec->{output}
-			 : @{$spec->{cf_out}}) {
-    $widget->add_arg($slot->{cf_name} => $registry->create_var
-		     ($slot->{cf_type}, undef, varname => $slot->{cf_name}));
-  }
-
-  foreach my $name (keys %{$spec->{trigger}}) {
-    my Slot $slot = $spec->{trigger}{$name};
-    if (my Slot $old = $dict->{$name}) {
-      die $registry->node_error
-	($node, "ArgMacro %s conflicts with %s for %s"
-	 , $spec->call_spec(1)
-	 , $old->{cf_call_spec}, $name);
-    }
-    $dict->{$name} = $slot;
-  }
-}
-
-sub create_from {
-  my ($pack, $trans, $scope, $orig, $rename_spec) = @_;
-  my Spec $spec = $pack->macro_spec
-    ->clone_with_renaming($rename_spec, $trans, $orig);
-
-  my $copy = $orig->variant_builder;
-  my ($name, $slot, @config);
-  for (my $n = $orig->clone; $n->readable; $n->next) {
-    unless ($n->is_attribute and $name = $n->node_name
-	    and $slot = $spec->{trigger}{$name}
-	    and not $slot->is_output) {
-      $copy->add_node(copy_array($n->current));
-      next;
-    }
-    push @config, $slot->{cf_name} => $n->current;
-  }
-  if (@config) {
-    my $macro = $pack->new($spec, @config);
-    $macro->accept($trans, $scope, $copy); # To avoid return value confusion.
-    ($macro, $copy)
-  } else {
-    (undef, $orig->rewind);
+Spec->define(revert_into => \&spec_revert_into);
+sub spec_revert_into {
+  (my Spec $spec, my $node, my MY $macro) = @_;
+  foreach my Slot $slot (map {ref $_ ? @$_ : ()} $spec->{cf_edit}) {
+    my $name = "cf_$slot->{cf_name}";
+    defined(my $expr = $macro->{$name})
+      or next;
+    $node->add_node($expr);
   }
 }
 
 sub output_name {
-  (my MY $macro, my $name) = @_;
+  (my MY $macro) = @_;
   my Spec $spec = $macro->{spec};
-  $spec->{output_map}{$name} || $name;
+  my Slot $out = $spec->{output};
+  $out->{cf_name};
 }
 
-sub handle {
-  my ($macro, $trans, $scope, $node) = @_;
-  $macro->accept($trans, $scope, $node);
-  $node;
-}
-
-sub expand_all_macros {
-  my ($pack, $trans, $scope, $node, $trigger, $order) = @_;
-  my $copy = $node->variant_builder;
-  $copy->add_filtered_copy($node->clone, [\&filter, $trigger, \ my %found]);
-  if (%found) {
-    foreach my Spec $spec (@$order) {
-      my MY $macro = $found{$spec->refid} or next;
-      # XXX: disabled だけれど、他にも config がある場合は、エラーにすべき。
-      next if $macro->{disabled};
-      $copy = $macro->handle($trans, $scope, $copy);
-    }
-    $copy;
-  } else {
-    $node;
-  }
-}
-
-sub filter {
-  my ($trigger, $unique, $name, $value) = @_;
-  if (my Slot $slot = $trigger->{$name}) {
-    # ここで、rename が関係する
-    my MY $macro = $unique->{$slot->{cf_spec}->refid}
-      ||= $slot->{cf_classname}->new($slot->{cf_spec});
-    if ($macro->{disabled} || $slot->is_output) {
-      # 出力引数が明示的に与えられていた場合は、disabled モードにする。
-      $macro->{disabled} = 1;
-      # 元の引数を残す
-      copy_array($value);
+#========================================
+Slot->define(create => \&slot_create);
+sub slot_create {
+  my ($pack, $item, @rest) = @_;
+  my ($name, @args) = do {
+    unless (ref $item) {
+      my ($n, $t) = split /=/, $item, 2;
+      ($n, type => $t);
+    } elsif (UNIVERSAL::isa($item, Slot)) {
+      return $item->clone;
     } else {
-      # text になってないと、不便では?
-      # ← でも、<:att>....</:att> の場合も有る。
-      $macro->configure($slot->{cf_name} => copy_array($value));
-      ();
+      @$item
     }
-  } else {
-    copy_array($value);
-  }
+  };
+  $pack->new(name => $name, @args, @rest);
+}
+
+Slot->define(is_output => \&slot_is_output);
+sub slot_is_output {
+  my Slot $slot = shift;
+  $slot->{cf_mode} eq 'out';
 }
 
 1;

@@ -17,6 +17,8 @@ BEGIN {
 
 		  create_node
 		  create_node_from
+		  copy_node_renamed_as
+
 		  create_attlist
 		  node_size
 		  node_children
@@ -140,6 +142,11 @@ sub create_node_from {
   [$typeid, $flag, sum_node_nlines(@_), undef, $name, @_]
 }
 
+sub copy_node_renamed_as {
+  my ($pack, $name, $orig) = splice @_, 0, 3;
+  create_node_from($pack, $orig, $name, @{$orig}[_BODY .. $#$orig]);
+}
+
 sub node_headings {
   my $node = shift;
   ([$NODE_TYPES[$$node[_TYPE]], $$node[_FLAG]]
@@ -181,6 +188,9 @@ sub is_bare_attribute {
 sub stringify_node {
   my ($node) = shift;
   my $type = $node->[_TYPE];
+  if (not defined $type or $type eq '') {
+    die "Invalid node object: ".YATT::Util::terse_dump($node);
+  }
   if (@NODE_FORMAT <= $type) {
     die "Unknown type: $type";
   }
@@ -406,13 +416,17 @@ sub node_attribute_format {
 sub attribute_stringify_as {
   my ($node) = @_;
   unless (defined $$node[_BODY]) {
-    ($$node[_RAW_NAME], '', '');
+    (join_or_string($$node[_RAW_NAME]), '', '');
   } else {
     my $Q = $$node[_FLAG] ? @QUOTE_CHAR[$$node[_FLAG]] : "";
     my ($sep, $opn, $clo) = ref $Q ? (' ', @$Q) : ('', $Q, $Q);
-    my $prefix = join_or_empty($$node[_RAW_NAME], '=').$opn;
+    my $prefix = join_or_empty(join_or_string($$node[_RAW_NAME]), '=').$opn;
     ($prefix, $sep, $clo);
   }
+}
+
+sub join_or_string {
+  ref $_[0] ? join(":", @{$_[0]}) : $_[0];
 }
 
 sub join_or_empty {
