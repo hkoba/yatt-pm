@@ -43,10 +43,27 @@ sub is_nested_entpath {
   defined $item->[0][0] and $item->[0][0] eq $_[0];
 }
 
+our ($TRANS, $NODE, $ORIG);
+
+sub mydie (@) {
+  my $fmt = shift;
+  my $diag = do {
+    if ($TRANS and $NODE) {
+      $TRANS->node_error($NODE, $fmt, @_);
+    } else {
+      sprintf $fmt, @_;
+    };
+  };
+  die $diag;
+}
+
 sub parse_entpath {
-  my ($pack, $orig) = @_;
+  my ($pack, $orig, $trans, $node) = @_;
   return undef unless defined $orig;
   local $_ = $orig;
+  local $ORIG = $orig;
+  local $TRANS = $trans;
+  local $NODE = $node;
   my @result;
   if (wantarray) {
     @result = &_parse_pipeline;
@@ -54,7 +71,7 @@ sub parse_entpath {
     $result[0] = &_parse_pipeline;
   }
   if ($_ ne '') {
-    die "Unexpected token '$_' in entpath '$orig'";
+    mydie "Unexpected token '$_' in entpath '$orig'";
   }
   wantarray ? @result : $result[0];
 }
@@ -88,7 +105,7 @@ sub _parse_pipeline {
       } elsif (defined $4) {
 	push @pipe, _parse_group(['var'], '}', \&_parse_term);
       } else {
-	die "?? $_";
+	mydie "?? $_";
       }
     } while s/^$re_var | ^(\[) | ^(\{)//x;
   }
@@ -143,12 +160,12 @@ sub _parse_group {
   my ($group, $close, $sub, @rest) = @_;
   for (my ($len, $cnt) = length($_); $_ ne ''; $len = length($_), $cnt++) {
     if (s/^ ([\)\]\}])//x) {
-      die "Paren mismatch: expect $close got $1 " if $1 ne $close;
+      mydie "Paren mismatch: expect $close got $1 " if $1 ne $close;
       last;
     }
     my @pipe = $sub->(@rest);
     if ($cnt && $len == length($_)) {
-      die "Can't match: $_";
+      mydie "Can't match: $_";
     }
     push @$group, @pipe <= 1 ? @pipe : \@pipe;
   }
@@ -158,9 +175,10 @@ sub _parse_group {
 sub _parse_group_string {
   my ($close) = @_;
   my $result = '';
-  for (my $len = length($_); $_ ne ''; $len = length($_)) {
+  for (my ($len, $prev) = length($_); $_ ne ''
+       ; $prev = $len, $len = length($_)) {
     if (s/^ ([\)\]\}])//x) {
-      die "Paren mismatch: expect $close got $1 " if $1 ne $close;
+      mydie "Paren mismatch: expect $close got $1 " if $1 ne $close;
       $result .= $1;
       last;
     }
@@ -168,6 +186,9 @@ sub _parse_group_string {
       $result .= $1;
     } elsif (s/^([\(\[\{])//) {
       $result .= &_parse_group_string($close_ch{$1});
+    }
+    if (defined $prev and $prev == length($_)) {
+      mydie "Can't parse entity_path group $ORIG (near $_)\n"
     }
   }
   $result;
@@ -177,7 +198,7 @@ sub _parse_hash {
   my @hash = ('hash');
   for (my ($len, $cnt) = length($_); $_ ne ''; $len = length($_), $cnt++) {
     if (s/^ ([\)\]\}])//x) {
-      die "Paren mismatch: expect \} got $1 " if $1 ne '}';
+      mydie "Paren mismatch: expect \} got $1 " if $1 ne '}';
       last;
     }
     # {!=,:var} を許すには…
@@ -188,11 +209,11 @@ sub _parse_hash {
     my @value = &_parse_term;
     push @hash, @value > 1 ? \@value : $value[0];
     unless (length($_) < $len) {
-      die "Infinite loop on parse_hash: $_";
+      mydie "Infinite loop on parse_hash: $_";
     }
   }
   # XXX: Give more detailed diag!
-  die "Odd number of hash elements" if (@hash - 1) % 2;
+  mydie "Odd number of hash elements" if (@hash - 1) % 2;
   \@hash;
 }
 

@@ -1106,7 +1106,8 @@ sub decode_entpath {
   my $body = $node->node_body;
   substr($body, 0, 0) = ':' if defined $body and not defined $node->node_name;
   my @entpath = $trans->parse_entpath(join('', map {':'.$_} @$entns)
-				      . coalesce($body, ''));
+				      . coalesce($body, '')
+				      , $trans, $node);
 
   my $has_body = $body ? 1 : 0;
 
@@ -1748,6 +1749,15 @@ sub entmacro_if {
   # XXX: 三項演算だと、狂いが出そうな。
   sprintf q{(%s ? %s : %s)}
     , map {ref $_ ? $$_ : $_} $cond, $then, $else || q{''};
+};
+
+sub entmacro_render {
+  my ($this, $trans
+      , $scope, $node, $restExpr, $queue, @args) = @_;
+  my ($type, @expr)
+    = $trans->gen_entref_list($scope, $node, @args);
+  \ sprintf q{__PACKAGE__->can('render_'.%s)->($this, [%s])}
+    , $type, join(", ", @expr);
 };
 #========================================
 

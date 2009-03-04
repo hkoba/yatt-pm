@@ -237,3 +237,9 @@ IN:
  bar
  baz
 ERROR: ^Use of uninitialized value in print at \S+ line 7\.\n$
+
+
+TITLE: entpath
+IN:
+ &yatt:array[func(x,:y)];
+ERROR: ^Can't parse entity_path group .*?, at file \S+ line 1\n$

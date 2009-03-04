@@ -6,7 +6,7 @@ zmodload -i zsh/parameter
 
 typeset -A repository
 repository=(
-    sf  https://yatt-pm.svn.sourceforge.net/svnroot
+    sf  http://yatt-pm.svn.sourceforge.net/svnroot
     bb  https://buribullet.net/svn
 )
 
@@ -16,11 +16,13 @@ repo_url=(
     devel  $repository[bb]/yatt-pm/web
 )
 
+: INSTALL_MODE=${INSTALL_MODE:-stable}
+
 function main {
     precheck || return 1
     
-    local mode=stable url
-    url=$repo_url[$mode]
+    local url
+    url=$repo_url[$INSTALL_MODE]
     if [[ $PWD == */cgi-bin ]]; then
 	echo Installing into existing cgi-bin ($PWD) ...
 	svn -q co $url/cgi-bin/yatt.{cgi,lib} .
@@ -44,8 +46,8 @@ function precheck {
 
 function add_apache_htaccess {
     local url_base
-    if [[ $PWD == $HOME/public_html/* ]]; then
-	url_base=/~$USER${PWD#$HOME/public_html}
+    if [[ $PWD == $HOME/(public_html|Sites)/* ]]; then
+	url_base=/~$USER${PWD#$HOME/*}
 	echo Making sure it does not violate suexec policy.
 	chmod -R g-w cgi-bin
     else
@@ -69,19 +71,19 @@ function add_sample {
     else
 	echo Adding sample index.html ...
 	cat <<-EOF > index.html
-	<yatt:hello>
-	 world!
-	</yatt:hello>
-	
-	<!yatt:widget hello body=[code]>
 	<html>
-	<head><title>Hello &yatt:body();</title></head>
+	<head><title>YATT install result</title></head>
 	<body>
-	<h2>Hello <yatt:body /></h2>
+	<h2><yatt:if "0">Install failed!</yatt:if><yatt:ok/></h2>
 	</body></html>
+	
+	<!yatt:widget ok>
+	<?perl=== "YATT works fine!"?>
 	EOF
     fi
 }
+
+# XXX: option based dispatch of each action.
 
 { main "$@" } always {
     if (($TRY_BLOCK_ERROR)); then
