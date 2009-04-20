@@ -97,9 +97,42 @@ sub run_cgi {
   if (catch {
     ($pack, $root, $cgi, $file, $param)
       = $pack->prepare_dispatch($cgi, $config);
-    } \ $error or catch {
-      $pack->dispatch($root, $cgi, $file, $param);
-    } \ $error and not is_normal_end($error)) {
+  } \ $error) {
+    $pack->dispatch_error($root, $error
+			  , {phase => 'prepare', target => $file});
+  } else {
+    $pack->run_retry_max(3, $root, $file, $cgi, $param);
+  }
+}
+
+sub run_retry_max {
+  my ($pack, $max, $root_or_config, $file, $cgi, @param) = @_;
+  my $root = do {
+    if (UNIVERSAL::isa($root_or_config, Config)) {
+      my Config $config = $root_or_config;
+      $config->{cf_registry}
+    } else {
+      $root_or_config;
+    }
+  };
+  my $rc = catch {
+    $pack->dispatch($root, $cgi, $file, @param);
+  } \ my $error;
+  if ($rc) {
+    my ($i) = (0);
+    while ($rc and ($file, $cgi) = can_retry($error)) {
+      if ($i++ > $max) {
+	$pack->dispatch_error($root, $error
+			      , {phase => 'retry', target => $file});
+	undef $error;
+	last;
+      }
+      $rc = catch {
+	$pack->dispatch($root, $cgi, $file);
+      } \ $error;
+    }
+  }
+  if ($rc and not is_normal_end($error)) {
     $pack->dispatch_error($root, $error
 			  , {phase => 'action', target => $file});
   }
@@ -211,9 +244,17 @@ sub bye {
 			    , caller => [caller], @_);
 }
 
+sub raise_retry {
+  my ($pack, $file, $cgi, @param) = @_;
+  die $pack->Exception->new(error => '', retry => [$file, $cgi, @param]
+			    , caller => [caller])
+}
+
 sub dispatch {
   my ($top, $root, $cgi, $file, @param) = @_;
   &YATT::break_dispatch;
+
+  $root->mark_load_failure;
 
   local $CGI = $cgi;
   local ($SESSION, %COOKIE, %HEADER);
@@ -595,6 +636,11 @@ sub entity_concat {
 sub entity_join {
   my ($this, $sep) = splice @_, 0, 2;
   join $sep, grep {defined $_ && $_ ne ''} @_;
+}
+
+sub entity_format {
+  my ($this, $format) = (shift, shift);
+  sprintf $format, @_;
 }
 
 #========================================

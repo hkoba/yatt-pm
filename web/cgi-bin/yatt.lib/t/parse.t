@@ -362,3 +362,17 @@ if (0)
 #  print YATT::Translator::JavaScript->new($tree)
 #    ->translate_as_function('index');
 }
+
+{
+  my $src3 = <<'END';
+<h2>&yatt:file(=@$_);</h2>
+END
+
+  my $tree = read_string YATT::LRXML($src3, filename => $0);
+  print Dumper($tree) if $ENV{DEBUG};
+
+  is $tree->size, 3, 'LRXML is correctly parsed';
+
+  eq_or_diff $tree->stringify, $src3, 'LRXML round trip';
+}
+

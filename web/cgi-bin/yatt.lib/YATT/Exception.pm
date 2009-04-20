@@ -8,7 +8,7 @@ use overload '""' => 'string';
 
 sub Exception () {__PACKAGE__}
 
-our @EXPORT_OK = qw(Exception is_normal_end);
+our @EXPORT_OK = qw(Exception is_normal_end can_retry);
 our @EXPORT = @EXPORT_OK;
 
 use YATT::LRXML::Node qw(stringify_node);
@@ -16,6 +16,7 @@ use YATT::LRXML::Node qw(stringify_node);
 use YATT::Fields qw(cf_normal cf_error
 		    cf_caller
 		    cf_other
+		    cf_retry
 		    cf_node_obj cf_node cf_file cf_line
 		    cf_error_title
 		    cf_error_fmt
@@ -74,6 +75,17 @@ sub is_normal_end {
     and UNIVERSAL::isa($err, MY)
       and not $err->{cf_error}
 	and $err->{cf_normal};
+}
+
+sub can_retry {
+  (my MY $err) = @_;
+  return unless
+    ref $err
+      and UNIVERSAL::isa($err, MY)
+	and not $err->{cf_error}
+	  and $err->{cf_retry}
+	    and ref $err->{cf_retry} eq 'ARRAY';
+  wantarray ? @{$err->{cf_retry}} : $err->{cf_retry};
 }
 
 1;

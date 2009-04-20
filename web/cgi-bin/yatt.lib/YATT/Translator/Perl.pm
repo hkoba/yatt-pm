@@ -1376,6 +1376,13 @@ sub YATT::Translator::Perl::t_list::entmacro_expand {
   sprintf q{map($_ ? @$_ : (), %s)}, $was;
 }
 
+sub YATT::Translator::Perl::t_list::entmacro_size {
+  (my t_list $var, my MY $trans
+   , my ($scope, $node, $restExpr, $queue, @args)) = @_;
+  my $was = join "->", splice @$queue, 0;
+  sprintf q{scalar(map(defined $_ ? @$_ : (), %s))}, $was;
+}
+
 # XXX: head($n), tail($n)
 
 sub YATT::Translator::Perl::t_list::entmacro_head {
