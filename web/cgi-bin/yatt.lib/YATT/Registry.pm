@@ -730,8 +730,15 @@ sub declare_base {
   my Template $this = $builder->{cf_template};
   my Template $base = $this->lookup_template($root, $path)
     or die $scan->token_error("Can't find template $path");
+
+  # XXX: refresh は lookup_template の中ですべきか？
+  $root->refresh($base);
+
   # 名前は保存しなくていいの?
   $this->{cf_base_template} = $base->{cf_nsid};
+
+  $root->add_isa($root->get_package($this)
+		 , $root->get_package($base));
 
   # builder を返すことを忘れずに。
   $builder;

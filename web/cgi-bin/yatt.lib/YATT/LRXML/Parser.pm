@@ -163,6 +163,12 @@ sub organize {
 			   , $toktype => $ns, $body);
     }
   }
+  if ($builder->{cf_endtag} and $builder->{parent}) {
+    die "Missing close tag '$builder->{cf_endtag}'"
+      ." at line $builder->{cf_startline}"
+      .$scan->{cf_metainfo}->in_file." \n";
+  }
+  
   if (wantarray) {
     ($self->tree, $self->{metainfo});
   } else {

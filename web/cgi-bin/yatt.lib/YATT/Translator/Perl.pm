@@ -177,8 +177,19 @@ sub ensure_widget_is_generated {
 }
 
 sub ensure_template_is_generated {
-  (my MY $gen, my $tmplid) = @_;
-  $tmplid = $tmplid->cget('nsid') if ref $tmplid;
+  #  (my MY $gen, my $tmplid) = @_;
+  #  $tmplid = $tmplid->cget('nsid') if ref $tmplid;
+  (my MY $gen, my $id_or_obj) = @_;
+  (my $tmplid, my Template $tmpl) = do {
+    if (ref $id_or_obj) {
+      ($id_or_obj->cget('nsid'), $id_or_obj)
+    } else {
+      ($id_or_obj, $gen->nsobj($id_or_obj));
+    }
+  };
+  if (my $baseid = $tmpl->{cf_base_template}) {
+    $gen->ensure_template_is_generated($baseid);
+  }
   unless ($gen->{target_cache}{$tmplid}++) {
 
     # eval は？
@@ -1041,6 +1052,8 @@ sub gen_entref_path {
       }
     } elsif (($name) = $trans->feed_array_if(expr => \@_)) {
       $name;
+    } elsif (my @items = $trans->feed_array_if(array => \@_)) {
+      '['.join(", ", $trans->gen_entref_list($scope, $node, @items)).']';
     } elsif (my @pairs = $trans->feed_array_if(hash => \@_)) {
       # XXX: '=>' is better.
       '{'.join(", ", $trans->gen_entref_list($scope, $node, @pairs)).'}';
@@ -1754,7 +1767,7 @@ sub entmacro_if {
   my ($cond, $then, $else)
     = $trans->gen_entref_list($scope, $node, @args);
   # XXX: 三項演算だと、狂いが出そうな。
-  sprintf q{(%s ? %s : %s)}
+  sprintf q{((%s) ? %s : %s)}
     , map {ref $_ ? $$_ : $_} $cond, $then, $else || q{''};
 };
 

@@ -13,3 +13,5 @@ my $ROOTNAME = rootname($0);
 
 __PACKAGE__->xhf_test("$ROOTNAME.tmp"
 		      , @ARGV ? @ARGV : $ROOTNAME)
+
+# To see generated code, set $ENV{DEBUG}

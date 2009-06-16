@@ -81,8 +81,8 @@ my %open_rest = qw| ( call [ aref  |;
 my %close_ch  = qw( ( ) [ ] { } );
 
 my $re_var  = qr{[:]+ (\w+) (\()?}x;
-my $re_other= qr{[\w\$\-\+\*/%<>\.:!=]}x;
-my $re_word = qr{[\w\$\-\+\*/%<>\.] $re_other*}x;
+my $re_other= qr{[\w\$\-\+\*/%<>\.=\@!:]}x;
+my $re_word = qr{[\w\$\-\+\*/%<>\.=\@] $re_other*}x;
 
 sub _parse_pipeline {
   my @pipe;
@@ -92,8 +92,7 @@ sub _parse_pipeline {
   } elsif (s/^ \{ //x) {
     push @pipe, &_parse_hash;
   }
-  if (s/^$re_var//x) {
-    do {
+  while (s/^$re_var | ^(\[) | ^(\{)//x) {
       if ($2) {
 	# '('
 	push @pipe, _parse_group([call => $1], ')', \&_parse_term);
@@ -107,7 +106,6 @@ sub _parse_pipeline {
       } else {
 	mydie "?? $_";
       }
-    } while s/^$re_var | ^(\[) | ^(\{)//x;
   }
   wantarray ? @pipe : \@pipe;
 }
@@ -131,7 +129,9 @@ sub _parse_term {
   if (s{^,}{}x) {
     return [$literal_type => ''];
   }
-  my $is_expr = s{^=}{};
+  if (my $is_expr = s{^=}{}) {
+    return &_parse_expr;
+  }
   my @result;
   unless (s{^$re_text}{}) {
     @result = &_parse_pipeline;
@@ -150,10 +150,32 @@ sub _parse_term {
 	}
       } while s{^(?: $re_text | ([\(\[\{]) | ([:\.]) ) }{}x;
     }
-    @result = [$is_expr ? 'expr' : $literal_type => $result];
+    @result = [$literal_type => $result];
   }
   s/^,//;
   @result;
+}
+
+sub _parse_expr {
+  my $literal_type = 'expr';
+  if (s{^,}{}x) {
+    return [$literal_type => ''];
+  }
+  my $result = '';
+ TEXT:
+  while (s{^(?: $re_text | ([\(\[\{]) | ([:\.]) ) }{}x) {
+    $result .= $1 if defined $1;
+    $result .= $4 if defined $4;
+    if (my $opn = $2 || $3) {
+      # open group
+      $result .= $opn;
+      $result .= &_parse_group_string($close_ch{$opn});
+    } elsif (not defined $1 and not defined $4) {
+      last TEXT;
+    }
+  }
+  s/^,//;
+  [$literal_type => $result];
 }
 
 sub _parse_group {
@@ -165,7 +187,7 @@ sub _parse_group {
     }
     my @pipe = $sub->(@rest);
     if ($cnt && $len == length($_)) {
-      mydie "Can't match: $_";
+      mydie "Can't match: $_" . (defined $close ? " for $close" : "");
     }
     push @$group, @pipe <= 1 ? @pipe : \@pipe;
   }
@@ -185,6 +207,7 @@ sub _parse_group_string {
     if (s/^($re_word | , )//x) {
       $result .= $1;
     } elsif (s/^([\(\[\{])//) {
+      $result .= $1;
       $result .= &_parse_group_string($close_ch{$1});
     }
     if (defined $prev and $prev == length($_)) {

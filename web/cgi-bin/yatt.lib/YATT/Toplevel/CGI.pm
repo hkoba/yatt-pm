@@ -139,24 +139,27 @@ sub run_retry_max {
 }
 
 sub create_toplevel {
-  (my Config $config, my ($dir)) = splice @_, 0, 2;
-
-  $dir ||= '.';
-
+  my $pack = shift;
+  my Config $config = $pack->new_config(shift);
   $config->configure(@_) if @_;
-
-  $config->try_load_config($dir);
+  my $dir = $config->{cf_docs} ||= '.';
+  $pack->can('try_load_config')->($config, $dir);
+  my $instpkg = $pack->get_instpkg($config);
 
   my @loader = (DIR => $config->{cf_docs});
-
   push @loader, LIB => $config->{cf_tmpl} if $config->{cf_tmpl};
 
-  $config->{cf_registry} = $config->new_translator
+  my $trans = $config->{cf_registry} = $instpkg->new_translator
     (\@loader, $config->translator_param);
 
-  $config;
+  ($instpkg, $trans, $config);
 }
 
+#
+# XXX: should be: create_toplevel_from_cgi($cgi, $config)
+# => ($instpkg, $trans, $config, $cgi, $file, $param);
+# since $config->{cf_registry} points $translator.
+#
 sub prepare_dispatch {
   (my ($pack, $cgi), my Config $config) = @_;
   my ($rootdir, $file, $loader, $param) = do {
@@ -203,7 +206,7 @@ END
 
   $cgi->charset($config->{cf_charset} || 'utf-8');
 
-  my $instpkg = $pack->prepare_export($config);
+  my $instpkg = $pack->get_instpkg($config);
 
   my $root = $config->{cf_registry} ||= $instpkg->new_translator
     ($loader, $config->translator_param
@@ -212,6 +215,7 @@ END
   ($instpkg, $root, $cgi, $file, $param);
 }
 
+*get_instpkg = \&prepare_export;
 sub prepare_export {
   my ($pack, $config, $instpkg) = @_;
   $instpkg ||= $config && $config->app_prefix || 'main';
@@ -517,6 +521,8 @@ sub new_config {
   $pack->new(do {
     unless (defined $config) {
       ()
+    } elsif (not ref $config) {
+      (docs => $config)
     } elsif (ref $config eq 'ARRAY') {
       @$config
     } elsif (ref $config eq 'HASH') {
@@ -657,6 +663,11 @@ sub entity_param {
 sub entity_HTML {
   my $this = shift;
   \ join "", grep {defined $_} @_;
+}
+
+sub entity_dump {
+  shift;
+  YATT::Util::terse_dump(@_);
 }
 
 #========================================

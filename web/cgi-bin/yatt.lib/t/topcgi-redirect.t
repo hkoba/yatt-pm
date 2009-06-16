@@ -20,8 +20,9 @@ my $mech = new WWW::Mechanize(agent => "YATT UnitTest by $ENV{USER}");
 unless (-e "/var/www/html/yatt/cgi-bin/yatt.cgi"
 	and -d "/var/www/html/yatt/test") {
   plan skip_all => 'yatt.cgi and testapp is not installed.'; exit;
-} elsif (not $mech->get("http://localhost/")) {
-  plan skip_all => "Can't get http://localhost/"; exit;
+} elsif (not -d "/var/www/manual"
+         or not $mech->get(my $man_url = "http://localhost/manual/")) {
+  plan skip_all => "Can't get $man_url"; exit;
 } else {
   plan qw(no_plan);
 }
