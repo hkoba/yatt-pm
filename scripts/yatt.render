@@ -24,7 +24,8 @@ MY->parse_params(\@ARGV, \ my %common);
 
 my $direct_mode = delete $opts{direct};
 
-my $config = MY->new_config(%opts);
+local $YATT::Toplevel::CGI::CONFIG
+  = my $config = MY->new_config(%opts, no_header => 1);
 
 my ($instpkg, $rootdir, $registry) = do {
   my $file = $ARGV[0]; # Keep original.

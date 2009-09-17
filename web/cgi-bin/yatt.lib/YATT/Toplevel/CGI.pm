@@ -38,6 +38,7 @@ use YATT::Types -base => __PACKAGE__
 		   cf_allow_unknown_config
 		   cf_auto_reload
 		   cf_no_chdir
+		   cf_rlimit
 		 )
 		, ['^cf_app_prefix' => 'YATT']
 		, ['^cf_find_root_upward' => 2]
@@ -170,6 +171,7 @@ sub prepare_dispatch {
     } elsif ($REDIRECT_STATUS) {
       # 404 Not found handling
       my $target = $PATH_TRANSLATED || $DOCUMENT_ROOT . $REDIRECT_URL;
+      # This ensures .htyattroot is loaded.
       ($pack->param_for_redirect($target
 				 , $SCRIPT_FILENAME || $0, $config
 				 , $REDIRECT_STATUS == 404
@@ -338,11 +340,14 @@ sub dispatch_error {
 sub dispatch_action {
   my ($top, $root, $action, $pkg, @param) = @_;
   &YATT::break_handler;
-  # XXX: $CONFIG->{cf_no_header}
-  my $html = capture { $action->($pkg, @param) };
-  # XXX: SESSION, COOKIE, HEADER...
-  print $CGI->header;
-  print $html;
+  if ($CONFIG && $CONFIG->{cf_no_header}) {
+    $action->($pkg, @param);
+  } else {
+    my $html = capture { $action->($pkg, @param) };
+    # XXX: SESSION, COOKIE, HEADER...
+    print $CGI->header;
+    print $html;
+  }
   $top->bye;
 }
 
@@ -432,13 +437,13 @@ sub try_load_config {
 
   return unless -r $file;
 
+  # XXX: configure_by_file
   my @param = do {
     require YATT::XHF;
     my $parser = new YATT::XHF(filename => $file);
     $parser->read_as('pairlist');
   };
-
-  $config->classify_config_param(@param);
+  $config->heavy_configure(@param);
 }
 
 sub trim_trailing_pathinfo {
@@ -535,18 +540,19 @@ END
   });
 }
 
-sub classify_config_param {
+sub heavy_configure {
   my Config $config = shift;
   my $config_keys = $config->fields_hash;
   my $trans_keys = $config->load_type('Translator')->fields_hash_of_class;
   my (@mine, @trans, @unknown);
   while (my ($name, $value) = splice @_, 0, 2) {
-    if ($config_keys->{"cf_$name"}) {
+    my $mine = $config_keys->{"cf_$name"};
+    if ($mine) {
       push @mine, $name, $value;
     }
     if ($trans_keys->{"cf_$name"}) {
       push @trans, [$name, $value];
-    } else {
+    } elsif (not $mine) {
       push @unknown, [$name, $value];
     }
   }
@@ -558,10 +564,27 @@ sub classify_config_param {
     }
   }
   $config->{cf_translator_param}{$_->[0]} = $_->[1] for @trans;
-  if (@unknown and $config->{cf_allow_unknown_config}) {
+  if (@unknown) {
+    unless ($config->{cf_allow_unknown_config}) {
+      croak "Unknown config opts: "
+	. join(", ", map {join("=", @$_)} @unknown);
+    }
     $config->{cf_user_config}{$_->[0]} = $_->[1] for @unknown;
   }
   $config;
+}
+
+sub configure_rlimit {
+  (my Config $config, my $rlimit_hash) = @_;
+  my $class = 'YATT::Util::RLimit';
+  eval qq{require $class} or die $@;
+  while (my ($rsrc, $limit) = each %$rlimit_hash) {
+    if (my $sub = $class->can("rlimit_" . $rsrc)) {
+      $sub->($limit);
+    } else {
+      $class->can('rlimit')->("RLIMIT_" . uc($rsrc), $limit);
+    }
+  }
 }
 
 sub extract_cgi_params {
