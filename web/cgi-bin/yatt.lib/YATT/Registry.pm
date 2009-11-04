@@ -18,7 +18,9 @@ use YATT::Exception;
 		      cf_nsid cf_parent_nsid cf_base_nsid
 		      cf_pkg cf_special_entities
 		      cf_name cf_vpath cf_loadkey
-		      cf_mtime cf_age);
+		      cf_mtime cf_age
+		      ^is_loaded
+		    );
   # When fields is empty, %FIELDS doesn't blessed.
   # This causes "Pseudo-hashes are deprecated"
 
@@ -43,7 +45,7 @@ use YATT::Registry::NS;
 use YATT::Util::Symbol;
 
 use base Dir;
-use YATT::Fields qw(^Loader NS last_nsid ^root_is_loaded
+use YATT::Fields qw(^Loader NS last_nsid
 		    cf_auto_reload
 		    cf_type_map
 		    cf_debug_registry
@@ -53,6 +55,7 @@ use YATT::Fields qw(^Loader NS last_nsid ^root_is_loaded
 		    current_parser
 		    cf_default_base_class
 		    cf_use
+		    loading
 		    nspattern
 		  )
   , ['^cf_namespace' => qw(yatt perl)]
@@ -76,7 +79,7 @@ sub new {
   $root->refresh($root);
 
   # Now safe to lift @ISA.
-  $root->{root_is_loaded} = 1;
+  $root->{is_loaded} = 1;
 
   $root;
 }
@@ -285,10 +288,26 @@ sub refresh {
   return if $node->{cf_age} and not $root->{cf_auto_reload};
   return unless $root->{Loader};
 
+  # age があるのに、 is_loaded に達してない == まだ構築の途中。
+  return if $node->{cf_age} and not $node->{is_loaded};
+  $root->{loading}{$node->{cf_nsid}} = 1;
+
   print STDERR "Referesh: $node->{cf_loadkey}\n"
     if $root->{cf_debug_registry};
 
   $root->{Loader}->handle_refresh($root, $node);
+  $node->{is_loaded} = 1;
+  delete $root->{loading}{$node->{cf_nsid}};
+}
+
+sub mark_load_failure {
+  my Root $root = shift;
+  while ((my $nsid, undef) = each %{$root->{loading}}) {
+    my NS $ns = $root->nsobj($nsid);
+    # 仮に、一度は load 済みだとする。
+    $ns->{is_loaded} = 1;
+    delete $root->{loading}{$nsid};
+  }
 }
 
 sub get_ns {
@@ -711,8 +730,15 @@ sub declare_base {
   my Template $this = $builder->{cf_template};
   my Template $base = $this->lookup_template($root, $path)
     or die $scan->token_error("Can't find template $path");
+
+  # XXX: refresh は lookup_template の中ですべきか？
+  $root->refresh($base);
+
   # 名前は保存しなくていいの?
   $this->{cf_base_template} = $base->{cf_nsid};
+
+  $root->add_isa($root->get_package($this)
+		 , $root->get_package($base));
 
   # builder を返すことを忘れずに。
   $builder;
@@ -874,7 +900,6 @@ sub create_var {
     my $type = $node->type_name;
     if (my $sub = $loader->can("refresh_$type")) {
       $sub->($loader, $root, $node);
-      $node->{cf_age} ||= 1;
     } else {
       confess "Can't refresh type: $type";
     }
@@ -921,6 +946,9 @@ sub create_var {
     # ファイルリストの処理.
     return unless $loader->is_modified($dirname, $dir->{cf_mtime}{$dirname});
 
+    my $is_reload = $dir->{cf_age}++;
+    undef $dir->{is_loaded};
+
     if (is_tainted($dirname)) {
       croak "Directory $dirname is tainted"
     }
@@ -934,12 +962,10 @@ sub create_var {
       $loader->load_dir($root, $dir, $dirname);
     }
 
-    my $is_reload = $dir->{cf_age}++;
-
     # RC 読み込みの前に、 default_base_class を設定。
     if ($root->{cf_default_base_class}
 	and ($root->{cf_default_base_class} ne $root->{cf_pkg}
-	     or $root->root_is_loaded)) {
+	     or $root->{is_loaded})) {
       # XXX: add_isa じゃなくて ensure_isa だね。
       #print STDERR "loading default_base_class $root->{cf_default_base_class}"
       # . " for dir $dirname\n";
@@ -1014,6 +1040,9 @@ sub create_var {
     if (my $cleaner = $root->can("forget_template")) {
       $cleaner->($root, $tmpl);
     }
+
+    my $is_reload = $tmpl->{cf_age}++;
+    undef $tmpl->{is_loaded};
 
     $root->add_isa(my $pkg = $root->get_package($tmpl)
 		   , $root->get_package($tmpl->{cf_parent_nsid}));

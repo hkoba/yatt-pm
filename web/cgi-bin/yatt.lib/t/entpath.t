@@ -93,6 +93,25 @@ sub is_entpath {
   is_entpath q{:foo[3][8]}
     , [[var => 'foo'], [aref => [expr => '3']], [aref => [expr => '8']]];
 
+  is_entpath q{:x[0][:y][1]}
+    , [[var => 'x']
+       , [aref => [expr => '0']]
+       , [aref => [var => 'y']]
+       , [aref => [expr => '1']]];
+
+  is_entpath q{:x[:y[0][:z]][1]}
+    , [[var => 'x']
+       , [aref =>
+	  [[var => 'y']
+	   , [aref => [expr => '0']]
+	   , [aref => [var => 'z']]]]
+       , [aref => [expr => '1']]];
+
+  is_entpath q{:foo([3][8])}
+    , [[call => foo =>
+	[[array => [text => '3']]
+	 , [aref => [expr => '8']]]]];
+
   #----------------------------------------
 
   is_entpath q{:where({user=hkoba,status=[assigned,:status,pending]})}
@@ -199,4 +218,31 @@ sub is_entpath {
   is_entpath q{:foo(bar${q}baz)}
     , [[call => 'foo'
 	, [text => 'bar${q}baz']]];
+
+  is_entpath q{:foo(bar,baz,[3])}
+    , [[call => 'foo'
+	, [text => 'bar']
+	, [text => 'baz']
+	, [array => [text => '3']]]];
+
+  is_entpath q{:if(=$$list[0]*$$list[1]==24,yes,no)}
+    , [[call => 'if'
+	, [expr => '$$list[0]*$$list[1]==24']
+	, [text => 'yes']
+	, [text => 'no']]];
+
+  is_entpath q{:if(=($$list[0]+$$list[1])==11,yes,no)}
+    , [[call => 'if'
+	, [expr => '($$list[0]+$$list[1])==11']
+	, [text => 'yes']
+	, [text => 'no']]];
+
+  is_entpath q{:if(=($x+$y)==$z,baz)}
+    , [[call => 'if'
+	, [expr => '($x+$y)==$z']
+	, [text => 'baz']]];
+    
+  is_entpath q{:foo(=@bar)}
+    , [[call => 'foo'
+	, [expr => '@bar']]];
 }

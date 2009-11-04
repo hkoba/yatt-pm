@@ -21,6 +21,18 @@ IN: use YATT::Registry special_entities => [qw(sum)];
    }
    $mul
  }
+ 
+  sub entity_HTML {
+    my $this = shift;
+    \ join "", grep {defined $_} @_;
+  }
+ 
+ sub entity_dump {
+    shift;
+    YATT::Util::terse_dump(@_);
+ }
+
+
 
 TITLE: &yatt:sum(3,4,5);
 IN:
@@ -146,3 +158,66 @@ PARAM[
 ]
 ]
 ERROR: ^Unexpected token '\]\[0\]'
+
+
+TITLE: array literal
+IN:
+ &yatt:HTML(:dump([3]));
+OUT:
+ ['3']
+
+TITLE: array literal and aref
+IN:
+ &yatt:HTML([=3][0]);
+OUT:
+ 3
+
+
+TITLE: expr: or
+IN:
+ <!yatt:args list=list>
+ &yatt:if(=$$list[0]or$$list[1],yes,no);
+PARAM[
+[
+- 1
+- 0
+]
+]
+OUT:
+ yes
+
+
+TITLE: expr: ==
+IN:
+ <!yatt:args list=list>
+ &yatt:if(=$$list[0]*$$list[1]==24,yes,no);
+PARAM[
+[
+- 3
+- 8
+]
+]
+OUT:
+ yes
+
+
+TITLE: expr: (..)
+IN:
+ <!yatt:args list=list>
+ &yatt:if(=($$list[0]+$$list[1])==11,yes,no);
+PARAM[
+[
+- 3
+- 8
+]
+]
+OUT:
+ yes
+
+TITLE: expr: @var
+IN:
+ <?perl my @var = 3..8?>
+ &yatt:HTML(=@var);
+OUT:
+ 
+ 345678

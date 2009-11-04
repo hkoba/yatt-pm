@@ -14,6 +14,7 @@ use File::Find;
 my %prereq = ('YATT::Toplevel::FCGI' => ['FCGI']
 	      , 'YATT::Toplevel::Server' => ['HTTP::Server::Simple']
 	      , 'YATT::Class::Tcl' => ['Tcl']
+	      , 'YATT::Util::RLimit' => ['BSD::Resource']
 	     );
 
 my %ignore; map ++$ignore{$_},

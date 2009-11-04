@@ -163,6 +163,12 @@ sub organize {
 			   , $toktype => $ns, $body);
     }
   }
+  if ($builder->{cf_endtag} and $builder->{parent}) {
+    die "Missing close tag '$builder->{cf_endtag}'"
+      ." at line $builder->{cf_startline}"
+      .$scan->{cf_metainfo}->in_file." \n";
+  }
+  
   if (wantarray) {
     ($self->tree, $self->{metainfo});
   } else {
@@ -609,7 +615,7 @@ sub re_subscript {
 sub re_entity_pathexpr {
   my ($self, $capture, $ns) = @_;
   $ns = $self->re_prefix(0, $self->entity_ns($ns), '');
-  my $body = qr{[:\.\w\$\-\+\*/%<>=\[\]\{\}\(,\)]*};
+  my $body = qr{[\@:\.\w\$\-\+\*/%<>=\[\]\{\}\(,\)]*};
   if (defined $capture and $capture > 1) {
     qr{&($ns\b$body);}xs;
   } else {

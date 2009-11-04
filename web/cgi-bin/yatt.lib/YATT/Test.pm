@@ -338,7 +338,7 @@ sub wait_for_time {
   my $now = Time::HiRes::time;
   my $diff = $time - $now;
   return if $diff <= 0;
-  usleep($diff);
+  usleep(int($diff * 1000 * 1000));
   $diff;
 }
 

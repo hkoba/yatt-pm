@@ -12,20 +12,24 @@ repository=(
 
 typeset -A repo_url
 repo_url=(
-    stable $repository[sf]/yatt-pm/trunk/yatt-pm/web
-    devel  $repository[bb]/yatt-pm/web
+    stable $repository[sf]/yatt-pm/trunk/yatt-pm
+    devel  $repository[bb]/yatt-pm
 )
 
-: INSTALL_MODE=${INSTALL_MODE:-stable}
+INSTALL_MODE=${INSTALL_MODE:-stable}
 
 function main {
     precheck || return 1
     
-    local url
+    local url e
     url=$repo_url[$INSTALL_MODE]
     if [[ $PWD == */cgi-bin ]]; then
-	echo Installing into existing cgi-bin ($PWD) ...
-	svn -q co $url/cgi-bin/yatt.{cgi,lib} .
+	echo Installing into existing cgi-bin "($PWD)" ...
+	# XXX: If $PWD is not writable, sudo to owner of $PWD.
+	svn -q co $url yatt.co
+	for e in cgi lib docs tmpl; do
+	    ln -s yatt.co/web/cgi-bin/yatt.$e .
+	done
 	echo Please make sure $PWD is allowed to run CGI.
 	echo See \'Options +ExecCGI\' in Apache manual.
     else
@@ -33,7 +37,7 @@ function main {
 	    die Sorry, you already have cgi-bin. Please retry in $PWD/cgi-bin.
 	fi
 	echo Creating new cgi-bin...
-	svn -q co $url/cgi-bin
+	svn -q co $url/web/cgi-bin
 	add_apache_htaccess
 	add_sample
     fi

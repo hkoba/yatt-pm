@@ -4,6 +4,21 @@ FILE: doc/.htyattroot
 IN:
  no_lineinfo: 0
 
+TITLE: (static) missing close tag
+IN:
+ foo
+ <yatt:my bar>
+ERROR: Missing close tag 'my' at line 2
+
+
+TITLE: (static) tag open/close mismatch
+IN:
+ foo
+ <yatt:my bar>
+ </yatt:foreach>
+ERROR: TAG 'my' line 2 closed by /foreach at file \S+ line 3
+
+
 TITLE: (static) var in toplevel
 IN:
  &yatt:x;

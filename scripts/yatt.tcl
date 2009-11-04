@@ -14,12 +14,15 @@ $perl eval [subst -novariable {
 set html [$perl eval {
     our $ROOTNAME;
     use File::Basename;
-    unshift @INC, "$ROOTNAME.lib";
-    require YATT::Toplevel::CGI;
-    our $YATT = new YATT::Toplevel::CGI([DIR => dirname($ROOTNAME)
-					 , LIB => "$ROOTNAME.tmpl"]);
-
-    $YATT->dispatch_captured("/index.html", $YATT->new_cgi);
+    BEGIN {unshift @INC, "$ROOTNAME.lib"}
+    use base qw(YATT::Toplevel::CGI);
+    sub MY () {__PACKAGE__}
+    my ($instpkg, $trans, $config) = MY->create_toplevel('.');
+    # $YATT->dispatch_captured("/index.html", $YATT->new_cgi);
+    my ($sub, $pkg) = $trans->get_handler_to(render => 'index');
+    YATT::Util::capture {
+	$sub->($pkg);
+    }
 }]
 
 puts "html=($html)"

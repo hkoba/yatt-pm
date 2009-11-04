@@ -104,19 +104,33 @@ IN:
 #========================================
 # ファイルの継承 (同一ディレクトリ)
 
-FILE: doc/fromfile/index.html
-TITLE: Inherit from template
-IN:
- <!yatt:base "base">
- <yatt:foo x="bar"/>
-OUT:
- <h2>bar</h2>
- 
-
 FILE: doc/fromfile/base.html
 IN:
  <!yatt:widget foo x>
  <h2>&yatt:x;</h2>
+
+FILE: doc/fromfile/base2.html
+IN:
+ <!yatt:widget bar x>
+ <h2>&yatt:x;</h2>
+
+FILE: doc/fromfile/index.html
+TITLE: Inherit from template
+IN:
+ <!yatt:base "base">
+ <yatt:foo x=baz/>
+OUT:
+ <h2>baz</h2>
+ 
+
+FILE: doc/fromfile/index2.html
+TITLE: Render from inherited template
+IN:
+ <!yatt:base "base2">
+ &yatt:render(bar,bar);
+OUT:
+ <h2>bar</h2>
+ 
 
 #========================================
 # ファイルの継承 (継承した、別ディレクトリから)
@@ -160,14 +174,13 @@ FILE: doc/mix/index.html
 IN:
  <yatt:envelope>
  <:yatt:title>Mixed</:yatt:title>
- <h4>ok?</4>
+ <h4>ok?</4></yatt:envelope>
 OUT:
  <div id="title">Mixed</div>
  <div id="contents">
  <h4>ok?</4>
- 
  </div>
-
+ 
 
 #========================================
 # XXX: 同一ファイル内の widget 参照

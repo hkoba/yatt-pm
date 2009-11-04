@@ -48,8 +48,30 @@ OUT:
  <h2><b>foo</b></h2>
 
 
+TITLE: type list, expand & size
+IN:
+ <!yatt:args x=list>
+ (&yatt:x:expand();) &yatt:x:size();
+PARAM[
+[
+- a
+- b
+- c
+]
+]
+OUT:
+ (abc) 3
+
+TITLE: type list, expand & size for undef
+IN:
+ <!yatt:args x=list>
+ (&yatt:x:expand();) &yatt:x:size();
+PARAM[
+]
+OUT:
+ () 0
+
 TITLE: type html, bare pass thru.
-BREAK: 1
 IN:
  <!yatt:args x=value>
  <h2><yatt:foo y=&yatt:x;/></h2>

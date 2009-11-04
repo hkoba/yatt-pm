@@ -38,6 +38,7 @@ use YATT::Types -base => __PACKAGE__
 		   cf_allow_unknown_config
 		   cf_auto_reload
 		   cf_no_chdir
+		   cf_rlimit
 		 )
 		, ['^cf_app_prefix' => 'YATT']
 		, ['^cf_find_root_upward' => 2]
@@ -97,33 +98,69 @@ sub run_cgi {
   if (catch {
     ($pack, $root, $cgi, $file, $param)
       = $pack->prepare_dispatch($cgi, $config);
-    } \ $error or catch {
-      $pack->dispatch($root, $cgi, $file, $param);
-    } \ $error and not is_normal_end($error)) {
+  } \ $error) {
+    $pack->dispatch_error($root, $error
+			  , {phase => 'prepare', target => $file});
+  } else {
+    $pack->run_retry_max(3, $root, $file, $cgi, $param);
+  }
+}
+
+sub run_retry_max {
+  my ($pack, $max, $root_or_config, $file, $cgi, @param) = @_;
+  my $root = do {
+    if (UNIVERSAL::isa($root_or_config, Config)) {
+      my Config $config = $root_or_config;
+      $config->{cf_registry}
+    } else {
+      $root_or_config;
+    }
+  };
+  my $rc = catch {
+    $pack->dispatch($root, $cgi, $file, @param);
+  } \ my $error;
+  if ($rc) {
+    my ($i) = (0);
+    while ($rc and ($file, $cgi) = can_retry($error)) {
+      if ($i++ > $max) {
+	$pack->dispatch_error($root, $error
+			      , {phase => 'retry', target => $file});
+	undef $error;
+	last;
+      }
+      $rc = catch {
+	$pack->dispatch($root, $cgi, $file);
+      } \ $error;
+    }
+  }
+  if ($rc and not is_normal_end($error)) {
     $pack->dispatch_error($root, $error
 			  , {phase => 'action', target => $file});
   }
 }
 
 sub create_toplevel {
-  (my Config $config, my ($dir)) = splice @_, 0, 2;
-
-  $dir ||= '.';
-
+  my $pack = shift;
+  my Config $config = $pack->new_config(shift);
   $config->configure(@_) if @_;
-
-  $config->try_load_config($dir);
+  my $dir = $config->{cf_docs} ||= '.';
+  $pack->can('try_load_config')->($config, $dir);
+  my $instpkg = $pack->get_instpkg($config);
 
   my @loader = (DIR => $config->{cf_docs});
-
   push @loader, LIB => $config->{cf_tmpl} if $config->{cf_tmpl};
 
-  $config->{cf_registry} = $config->new_translator
+  my $trans = $config->{cf_registry} = $instpkg->new_translator
     (\@loader, $config->translator_param);
 
-  $config;
+  ($instpkg, $trans, $config);
 }
 
+#
+# XXX: should be: create_toplevel_from_cgi($cgi, $config)
+# => ($instpkg, $trans, $config, $cgi, $file, $param);
+# since $config->{cf_registry} points $translator.
+#
 sub prepare_dispatch {
   (my ($pack, $cgi), my Config $config) = @_;
   my ($rootdir, $file, $loader, $param) = do {
@@ -134,6 +171,7 @@ sub prepare_dispatch {
     } elsif ($REDIRECT_STATUS) {
       # 404 Not found handling
       my $target = $PATH_TRANSLATED || $DOCUMENT_ROOT . $REDIRECT_URL;
+      # This ensures .htyattroot is loaded.
       ($pack->param_for_redirect($target
 				 , $SCRIPT_FILENAME || $0, $config
 				 , $REDIRECT_STATUS == 404
@@ -170,7 +208,7 @@ END
 
   $cgi->charset($config->{cf_charset} || 'utf-8');
 
-  my $instpkg = $pack->prepare_export($config);
+  my $instpkg = $pack->get_instpkg($config);
 
   my $root = $config->{cf_registry} ||= $instpkg->new_translator
     ($loader, $config->translator_param
@@ -179,6 +217,7 @@ END
   ($instpkg, $root, $cgi, $file, $param);
 }
 
+*get_instpkg = \&prepare_export;
 sub prepare_export {
   my ($pack, $config, $instpkg) = @_;
   $instpkg ||= $config && $config->app_prefix || 'main';
@@ -211,9 +250,17 @@ sub bye {
 			    , caller => [caller], @_);
 }
 
+sub raise_retry {
+  my ($pack, $file, $cgi, @param) = @_;
+  die $pack->Exception->new(error => '', retry => [$file, $cgi, @param]
+			    , caller => [caller])
+}
+
 sub dispatch {
   my ($top, $root, $cgi, $file, @param) = @_;
   &YATT::break_dispatch;
+
+  $root->mark_load_failure;
 
   local $CGI = $cgi;
   local ($SESSION, %COOKIE, %HEADER);
@@ -293,11 +340,14 @@ sub dispatch_error {
 sub dispatch_action {
   my ($top, $root, $action, $pkg, @param) = @_;
   &YATT::break_handler;
-  # XXX: $CONFIG->{cf_no_header}
-  my $html = capture { $action->($pkg, @param) };
-  # XXX: SESSION, COOKIE, HEADER...
-  print $CGI->header;
-  print $html;
+  if ($CONFIG && $CONFIG->{cf_no_header}) {
+    $action->($pkg, @param);
+  } else {
+    my $html = capture { $action->($pkg, @param) };
+    # XXX: SESSION, COOKIE, HEADER...
+    print $CGI->header;
+    print $html;
+  }
   $top->bye;
 }
 
@@ -387,13 +437,13 @@ sub try_load_config {
 
   return unless -r $file;
 
+  # XXX: configure_by_file
   my @param = do {
     require YATT::XHF;
     my $parser = new YATT::XHF(filename => $file);
     $parser->read_as('pairlist');
   };
-
-  $config->classify_config_param(@param);
+  $config->heavy_configure(@param);
 }
 
 sub trim_trailing_pathinfo {
@@ -476,6 +526,8 @@ sub new_config {
   $pack->new(do {
     unless (defined $config) {
       ()
+    } elsif (not ref $config) {
+      (docs => $config)
     } elsif (ref $config eq 'ARRAY') {
       @$config
     } elsif (ref $config eq 'HASH') {
@@ -488,18 +540,19 @@ END
   });
 }
 
-sub classify_config_param {
+sub heavy_configure {
   my Config $config = shift;
   my $config_keys = $config->fields_hash;
   my $trans_keys = $config->load_type('Translator')->fields_hash_of_class;
   my (@mine, @trans, @unknown);
   while (my ($name, $value) = splice @_, 0, 2) {
-    if ($config_keys->{"cf_$name"}) {
+    my $mine = $config_keys->{"cf_$name"};
+    if ($mine) {
       push @mine, $name, $value;
     }
     if ($trans_keys->{"cf_$name"}) {
       push @trans, [$name, $value];
-    } else {
+    } elsif (not $mine) {
       push @unknown, [$name, $value];
     }
   }
@@ -511,10 +564,27 @@ sub classify_config_param {
     }
   }
   $config->{cf_translator_param}{$_->[0]} = $_->[1] for @trans;
-  if (@unknown and $config->{cf_allow_unknown_config}) {
+  if (@unknown) {
+    unless ($config->{cf_allow_unknown_config}) {
+      croak "Unknown config opts: "
+	. join(", ", map {join("=", @$_)} @unknown);
+    }
     $config->{cf_user_config}{$_->[0]} = $_->[1] for @unknown;
   }
   $config;
+}
+
+sub configure_rlimit {
+  (my Config $config, my $rlimit_hash) = @_;
+  my $class = 'YATT::Util::RLimit';
+  eval qq{require $class} or die $@;
+  while (my ($rsrc, $limit) = each %$rlimit_hash) {
+    if (my $sub = $class->can("rlimit_" . $rsrc)) {
+      $sub->($limit);
+    } else {
+      $class->can('rlimit')->("RLIMIT_" . uc($rsrc), $limit);
+    }
+  }
 }
 
 sub extract_cgi_params {
@@ -597,6 +667,11 @@ sub entity_join {
   join $sep, grep {defined $_ && $_ ne ''} @_;
 }
 
+sub entity_format {
+  my ($this, $format) = (shift, shift);
+  sprintf $format, @_;
+}
+
 #========================================
 
 sub entity_param {
@@ -611,6 +686,11 @@ sub entity_param {
 sub entity_HTML {
   my $this = shift;
   \ join "", grep {defined $_} @_;
+}
+
+sub entity_dump {
+  shift;
+  YATT::Util::terse_dump(@_);
 }
 
 #========================================
