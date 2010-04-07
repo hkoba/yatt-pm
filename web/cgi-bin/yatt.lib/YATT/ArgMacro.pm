@@ -33,13 +33,13 @@ use YATT::Types
 #========================================
 
 sub handle {
-  my ($macro, $trans, $scope, $node) = @_;
-  $macro->accept($trans, $scope, $node);
+  my ($macro, $trans, $scope, $node, $widget) = @_;
+  $macro->accept($trans, $scope, $node, $widget);
   $node;
 }
 
 sub expand_all_macros {
-  my ($pack, $trans, $scope, $node, $trigger, $order) = @_;
+  my ($pack, $trans, $scope, $node, $widget, $trigger, $order) = @_;
   my $copy = $node->variant_builder;
   $copy->add_filtered_copy($node->clone, [\&filter, $trigger, \ my %found]);
   if (%found) {
@@ -50,7 +50,7 @@ sub expand_all_macros {
 	$spec->revert_into($copy, $macro);
 	next;
       }
-      $copy = $macro->handle($trans, $scope, $copy);
+      $copy = $macro->handle($trans, $scope, $copy, $widget);
     }
     $copy;
   } else {
