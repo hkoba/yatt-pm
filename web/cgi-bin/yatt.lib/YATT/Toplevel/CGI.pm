@@ -452,9 +452,6 @@ sub try_load_config {
   }
 
   $config->configure(docs => $dir);
-  if (-d (my $libdir = "$dir/lib")) {
-    unshift @INC, $libdir;
-  }
 
   return unless -r $file;
 

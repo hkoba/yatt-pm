@@ -8,11 +8,11 @@ use YATT::Fields qw(pages);
 use YATT::Util::Symbol;
 
 sub import {
-  my ($pack) = shift;
-  my $sym = globref($pack, "_CACHE");
-  my $cache = *{$sym}{SCALAR} || do {
-    *$sym = \ $pack->new
-  };
+  my $pack = shift;
+  my $callpack = caller;
+  my $self = $pack->new(@_);
+  $self->register_into($callpack);
+  # $callpack に cache を作り、かつ、 import を作る
 }
 
 sub new {
@@ -71,7 +71,7 @@ sub find_vars {
   }
 }
 
-# YATT ��ͭ���ɤ���͡�
+# YATT 固有で良いよね。
 
 sub build_scope_for {
   my ($mypkg, $gen, $page) = @_;

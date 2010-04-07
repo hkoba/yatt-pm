@@ -919,6 +919,14 @@ sub create_var {
   use base qw(YATT::Registry::Loader File::Spec);
   use YATT::Fields qw(cf_DIR cf_LIB);
   sub initargs { qw(cf_DIR) }
+  sub init {
+    my ($self, $dir) = splice @_, 0, 2;
+    $self->SUPER::init($dir, @_);
+    if (-d (my $libdir = "$dir/lib")) {
+      require lib; import lib $libdir
+    }
+    $self;
+  }
 
   use YATT::Registry::NS;
   use YATT::Util;
