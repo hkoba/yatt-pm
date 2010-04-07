@@ -1,5 +1,15 @@
 Revision history for YATT
 
-0.0.1  Sat Dec 15 00:19:16 2007
-       Initial release.
+0.0.3  2010-04-07
 
+- Stable release. (Just before minor change)
+
+0.0.2  2008-05-15
+
+- Basically usable. Internal change is still in progress.
+
+- Massive directory restructuring.
+
+0.0.1  2007-12-15
+
+- Initial release.
