@@ -30,6 +30,10 @@ BEGIN {
   use fields qw(baz);
 }
 
+SKIP: {
+  skip 1, "Hash::Util is only used for newer perl" unless $] >= 5.009;
+  require_ok('Hash::Util');
+};
 require_ok('YATT::Util::Symbol');
 
 my $orig = util_test_base->new;

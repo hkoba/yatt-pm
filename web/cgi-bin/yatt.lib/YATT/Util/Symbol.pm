@@ -57,9 +57,9 @@ sub rebless_array_with {
 
 sub rebless_hash_with {
   my ($self, $newclass) = @_;
-  Hash::Util::unlock_keys($self);
+  Hash::Util::unlock_keys(%$self);
   bless $self, $newclass;
-  Hash::Util::lock_keys($self, keys %{fields_hash_of_class($newclass)});
+  Hash::Util::lock_keys(%$self, keys %{fields_hash_of_class($newclass)});
   $self
 }
 
