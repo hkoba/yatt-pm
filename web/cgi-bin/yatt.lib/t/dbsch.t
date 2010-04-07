@@ -20,7 +20,8 @@ require_ok($CLS);
 
 {
   my $schema = $CLS->create
-    ([foo => []
+    ($ENV{DEBUG} ? (-verbose) : ()
+     , [foo => []
       , [foo => 'text', -indexed]
       , [bar_id => [bar => []
 		    , [bar_id => 'integer', -primary_key]
@@ -46,6 +47,12 @@ END
       ->fetchall_arrayref
 	, [['Foo', 'BAR', 'baz']]
 	  , 'to_select where {bar => "BAR"}';
+
+  is_deeply $schema->select
+    (foo => {hashref => 1, limit => 1, order_by => 'foo.rowid desc'
+             , columns => [qw(foo bar baz)]})
+      , {foo => 'Foo', bar => 'BAR', baz => 'baz'}
+        , 'select {}';
 
   $schema->dbh->commit;
 }
