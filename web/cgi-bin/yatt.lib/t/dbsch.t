@@ -80,7 +80,7 @@ END
        , ['foo', 'bar', 'baz']
        , ['Foo', 'BAR', 'baz']], 'inserted.';
 
-  is_deeply $schema->to_select
+  is_deeply $schema->prepare_select
     (foo => {where => {bar => 'BAR'}, columns => [qw(foo bar baz)]})
       ->fetchall_arrayref
 	, [['Foo', 'BAR', 'baz']]

@@ -454,7 +454,7 @@ sub cmd_select {
       $s->execute(@_);
       $s;
     } else {
-      $self->to_select($table, \%param, \@_);
+      $self->prepare_select($table, \%param, \@_);
     }
   };
   my $null = $self->NULL;
@@ -475,7 +475,7 @@ sub select {
   my (@fetch) = grep {delete $params->{$_}} qw(hashref arrayref array);
   die "Conflict! @fetch" if @fetch > 1;
 
-  my $sth = $schema->to_select($tabName, $params, \@_);
+  my $sth = $schema->prepare_select($tabName, $params, \@_);
 
   if ($is_text) {
     # Debugging aid.
@@ -493,7 +493,7 @@ sub select {
 }
 
 # $sth 返しなのは、$sth->{NAME} を取りたいから。でも、単純なケースでは不便よね。
-sub to_select {
+sub prepare_select {
   (my MY $schema, my ($tabName, $params, $values, $rvref)) = @_;
   my $dbh = (delete $params->{dbh}) || $schema->dbh;
   my $sth = $dbh->prepare($schema->sql_select($tabName, $params, \ my $bind));
