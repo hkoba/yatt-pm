@@ -227,7 +227,8 @@ sub _parse_hash {
     # {!=,:var} を許すには…
     if (s/^([\w\.\-]+) [:=] //x || s/^($re_other+) ,?//x) {
       # ↑ array でも許すべきか?
-      push @hash, [text => $1];
+      my $str = $1;
+      push @hash, [$str =~ s/^:// ? 'var' : 'text', $str];
     }
     my @value = &_parse_term;
     push @hash, @value > 1 ? \@value : $value[0];

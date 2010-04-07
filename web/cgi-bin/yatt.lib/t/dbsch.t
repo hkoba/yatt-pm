@@ -21,16 +21,15 @@ require_ok($CLS);
 {
   my $schema = $CLS->create
     ([foo => []
-      , [id => 'integer', -auto_increment, -primary_key]
       , [foo => 'text', -indexed]
       , [bar_id => [bar => []
-		    , [bar_id => 'integer', -auto_increment, -primary_key]
+		    , [bar_id => 'integer', -primary_key]
 		    , [bar => 'text', -unique]]]
       , [baz => 'text']]);
 
   $schema->connect_via_sqlite($MEMDB, 'w');
 
-  my $ins = $schema->to_insert(foo => qw(foo bar_id baz));
+  my $ins = $schema->to_insert('foo');
   $ins->('FOO', 'bar', 'BAZ');
   $ins->('foo', 'bar', 'baz');
   $ins->('Foo', 'BAR', 'baz');

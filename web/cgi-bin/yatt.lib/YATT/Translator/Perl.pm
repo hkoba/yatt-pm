@@ -1064,7 +1064,10 @@ sub gen_entref_path {
             $dont_call++;
 	    $handler->($var, $trans, $scope, $node, \@_, [], @args);
 	  } else {
-	    $var->as_lvalue;
+	    # XXX: 本当は $pkg よりもファイル名を出すべき。
+	    die $trans->node_error
+	      ($node, "not implemented call '%s' for %s in %s"
+	       , $name, $pkg, $node->node_body);
 	  }
 	} elsif (my $handler = $trans->can("entmacro_$name")) {
 	  # XXX: $pkg->can の方が、拡張向きで良いのだが…
