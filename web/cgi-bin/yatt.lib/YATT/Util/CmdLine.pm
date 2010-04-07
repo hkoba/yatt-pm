@@ -7,10 +7,12 @@ BEGIN {require Exporter; *import = \&Exporter::import}
 our @EXPORT_OK = qw(parse_opts parse_params);
 our @EXPORT = @EXPORT_OK;
 
+# posix style option.
 sub parse_opts {
   my ($pack, $list, $result) = @_;
+  my $wantarray = wantarray;
   unless (defined $result) {
-    $result = wantarray ? [] : {};
+    $result = $wantarray ? [] : {};
   }
   while (@$list
 	 and my ($n, $v) = $list->[0] =~ /^--(?:([\w\.\-]+)(?:=(.*))?)?/) {
@@ -23,16 +25,27 @@ sub parse_opts {
       push @$result, $n, $v;
     }
   }
-  $result;
+  $wantarray && ref $result ne 'HASH' ? @$result : $result;
 }
 
+# 'Make' style parameter.
 sub parse_params {
   my ($pack, $list, $hash) = @_;
-  $hash = {} unless defined $hash;
+  my $explicit;
+  unless (defined $hash) {
+    $hash = {}
+  } else {
+    $explicit++;
+  }
   for (; @$list and $list->[0] =~ /^([^=]+)=(.*)/; shift @$list) {
     $hash->{$1} = $2;
   }
-  $hash;
+  if (not $explicit and wantarray) {
+    # return empty list if hash is empty
+    %$hash ? $hash : ();
+  } else {
+    $hash
+  }
 }
 
 1;

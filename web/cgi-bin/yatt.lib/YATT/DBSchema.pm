@@ -4,12 +4,14 @@ use warnings FATAL => qw(all);
 use Carp;
 
 use File::Basename;
+use YATT::Util::CmdLine;
 
 use base qw(YATT::Class::Configurable);
 use YATT::Fields (qw(schemas tables cf_DBH
 		     cf_user
 		     cf_auth
 		     ^cf_connection_spec
+		     ^cf_verbose
 		   )
 		  , ['^cf_NULL' => '']
 		  , ['^cf_name' => 'DBSchema']
@@ -22,8 +24,9 @@ use YATT::Fields (qw(schemas tables cf_DBH
 use YATT::Types [Item => [qw(cf_name)]];
 
 use YATT::Types -base => Item
-  , [Table => [qw(raw_create chk_unique chk_index chk_check)]
-     , [Column => [qw(cf_type
+  , [Table => [qw(pk raw_create chk_unique chk_index chk_check colNames)]
+     , [Column => [qw(colnum
+		      cf_type
 		      cf_inserted
 		      cf_unique
 		      cf_indexed
@@ -31,6 +34,7 @@ use YATT::Types -base => Item
 		      cf_encoded_by
 		      cf_updated
 		      cf_primary_key
+		      cf_auto_increment
 		    )]]];
 use YATT::Util::Symbol;
 use YATT::Util qw(coalesce);
@@ -38,7 +42,26 @@ require YATT::Inc;
 
 #----------------------------------------
 
+sub YATT::DBSchema::Table::rowid_spec {
+  (my Table $tab, my $schema) = @_;
+  if (my Column $pk = $tab->{pk}) {
+    $pk->{cf_name}
+  } else {
+    $schema->rowid_col;
+  }
+}
+
+sub rowid_col { 'rowid' }
+
 #========================================
+# Class Hierachy in case of 'package YourApp; use YATT::DBSchema':
+#
+#   YATT::DBSchema (or its subclass)
+#    ↑
+#   YourApp::DBSchema  (holds singleton $SCHEMA and &SCHEMA)
+#    ↑
+#   YourApp
+#
 
 sub import {
   my ($pack) = shift;
@@ -81,6 +104,8 @@ sub export_to {
   };
 }
 
+#========================================
+
 sub create {
   my ($pack) = shift;
   $pack->parse_import(\@_, \ my %opts);
@@ -114,18 +139,19 @@ sub parse_import {
 
 #========================================
 
+sub has_connection {
+  my MY $schema = shift;
+  $schema->{cf_DBH}
+}
+
 sub dbh {
-  (my MY $schema) = @_;
+  (my MY $schema, my $spec) = @_;
   unless ($schema->{cf_DBH}) {
-    my $spec = $schema->connection_spec;
-    unless (defined $spec) {
+    unless (defined ($spec ||= $schema->connection_spec)) {
       croak "connection_spec is empty";
     }
     if (ref $spec eq 'ARRAY') {
-      my ($type, @args) = @$spec;
-      my $sub = $schema->can("connect_via_$type")
-	or croak "No such connection spec type: $type";
-      $sub->($schema, @args);
+      $schema->connect_to(@$spec);
     } elsif (ref $spec eq 'CODE') {
       $schema->{cf_DBH} = $spec->($schema);
     } else {
@@ -136,17 +162,26 @@ sub dbh {
   $schema->{cf_DBH}
 }
 
-sub connect_via_sqlite {
+sub connect_to {
+  (my MY $schema, my ($type)) = splice @_, 0, 2;
+  if (my $sub = $schema->can("connect_to_$type")) {
+    $sub->($schema, @_);
+  } else {
+    croak sprintf("%s: Unknown connection type: %s", MY, $type);
+  }
+}
+
+sub connect_to_sqlite {
   (my MY $schema, my ($dbname, $rwflag)) = @_;
   my $ro = !defined $rwflag || $rwflag !~ /w/i;
   my $dbi_dsn = "dbi:SQLite:dbname=$dbname";
   $schema->{cf_auto_create} = 1;
-  $schema->connect_via_dbi
+  $schema->connect_to_dbi
     ($dbi_dsn, undef, undef
      , {RaiseError => 1, PrintError => 0, AutoCommit => $ro});
 }
 
-sub connect_via_dbi {
+sub connect_to_dbi {
   (my MY $schema, my ($dbi_dsn, $user, $auth, $param)) = @_;
   my %param = %$param if $param;
   $param{RaiseError} = 1 unless defined $param{RaiseError};
@@ -201,8 +236,6 @@ sub add_table {
     push @{$self->{schemas}}
       , my Table $tab = $self->Table->new;
 
-    local our %colNameCache;
-
     $tab->{cf_name} = $name;
     if (@columns) {
       # XXX: 拡張の余地あり
@@ -240,24 +273,14 @@ sub add_table {
   };
 }
 
-sub is_fresh_colname {
-  (my MY $self, my Table $tab, my ($colName, $cache, $assign)) = @_;
-  if ($tab->{Column} and not %$cache) {
-    my $i;
-    foreach my Column $col (@{$tab->{Column}}) {
-      $cache->{$col->{cf_name}} = ++$i;
-    }
-  }
-  exists $cache->{$colName} ? 0 :
-    $assign ? ($cache->{$colName} = keys(%$cache) + 1) : 1;
-}
-
 sub add_table_column {
   (my MY $self, my Table $tab, my ($colName, $type, @opts)) = @_;
-  unless ($self->is_fresh_colname($tab, $colName, \ our %colNameCache, 1)) {
+  if ($tab->{colNames}{$colName}) {
     croak "Conflicting column name $colName for table $tab->{cf_name}";
   }
   push @{$tab->{Column}}, my Column $col = $self->Column->new(@opts);
+  $tab->{colNames}{$colName} = $col->{colnum} = @{$tab->{Column}};
+
   $col->{cf_inserted} = not ($colName =~ s/^-//);
   $col->{cf_name} = $colName;
   # if ref $type, else
@@ -270,6 +293,9 @@ sub add_table_column {
       $type
     }
   };
+  if ($col->{cf_primary_key}) {
+    $tab->{pk} = $col;
+  }
   # XXX: Validation: name/option conflicts and others.
   $col;
 }
@@ -331,28 +357,37 @@ sub sql_create_column {
 #========================================
 
 sub sql_insert {
-  (my MY $schema, my ($tabName, $insEncs)) = @_;
+  (my MY $schema, my ($tabName, @fields)) = @_;
   my Table $tab = $schema->{tables}{$tabName}
     or croak "No such table: $tabName";
-  my @insNames;
-  foreach my Column $col (@{$tab->{Column}}) {
+  my (@insNames, @insEncs);
+  foreach my Column $col (@fields ? (map {
+    unless (my $colno = $tab->{colNames}{$_}) {
+      die "No such column $_ in $tabName\n";
+    } else {
+      $tab->{Column}[$colno - 1];
+    }
+  } @fields) : @{$tab->{Column}}) {
     push @insNames, $col->{cf_name} if $col->{cf_inserted};
-    if (ref $insEncs eq 'ARRAY'
-	and my Table $encTab = $col->{cf_encoded_by}) {
-      push @$insEncs, [$#insNames => $encTab->{cf_name}];
+    if (my Table $encTab = $col->{cf_encoded_by}) {
+      push @insEncs, [$#insNames => $encTab->{cf_name}];
     }
   }
 
-  <<END;
-insert into $tabName (@{[join ", ", @insNames]})
+  my $sql = <<END;
+INSERT INTO $tabName(@{[join ", ", @insNames]})
 values(@{[join ", ", map {q|?|} @insNames]})
 END
+
+  wantarray ? ($sql, @insEncs) : $sql;
 }
 
 sub to_insert {
-  (my MY $schema, my ($tabName, $params)) = @_;
-  my $dbh = delete $params->{dbh} || $schema->dbh;
-  my $sth = $dbh->prepare($schema->sql_insert($tabName, \ my @insEncs));
+  (my MY $schema, my ($tabName, @fields)) = @_;
+  my $dbh = $schema->dbh;
+  my ($sql, @insEncs) = $schema->sql_insert($tabName, @fields);
+  print STDERR "$sql\n" if $schema->{cf_verbose};
+  my $sth = $dbh->prepare($sql);
   # ここで encode 用の sql/sth も生成せよと?
   my @encoder;
   foreach my $item (@insEncs) {
@@ -376,7 +411,7 @@ sub to_encode {
 select rowid from $table where $column = ?
 END
   my $ins_sql = <<END;
-insert into $table($column) values(?)
+INSERT INTO $table($column) values(?)
 END
 
   # XXX: sth にまでするべきか。prepare_cached 廃止案。
@@ -399,8 +434,8 @@ END
 
 sub sql {
   (my MY $self, my ($mode, $table)) = splice @_, 0, 3;
-  $self->parse_params(\@_, \ my %param);
-  $self->can("sql_${mode}")->($self, $table, \%param, @_);
+  unshift @_, $self->parse_params(\@_);
+  $self->can("sql_${mode}")->($self, $table, @_);
 }
 
 # XXX: explain を。 cf_explain で？
@@ -457,6 +492,7 @@ sub select {
   }
 }
 
+# $sth 返しなのは、$sth->{NAME} を取りたいから。でも、単純なケースでは不便よね。
 sub to_select {
   (my MY $schema, my ($tabName, $params, $values, $rvref)) = @_;
   my $dbh = (delete $params->{dbh}) || $schema->dbh;
@@ -486,9 +522,10 @@ sub sql_decode {
 
     if ($enc && $depth < coalesce($until, 1)) {
       # alias と rowid と…
-      push @$selJoins, "\nLEFT JOIN $enc->{cf_name} $col->{cf_name}"
+      my $enc_alias = $col->{cf_name};
+      push @$selJoins, "\nLEFT JOIN $enc->{cf_name} $enc_alias"
 	. " on $alias.$col->{cf_name}"
-	  . " = $col->{cf_name}._rowid_";
+	  . " = $enc_alias." . $enc->rowid_spec($schema);
 
       push @selCols, $schema->sql_decode
 	($enc, $selJoins, $depth + 1, $col->{cf_name}
@@ -607,7 +644,8 @@ sub to_update {
 
 sub sql_update {
   (my MY $schema, my ($tabName, $colName)) = @_;
-  "update $tabName set $colName = ? where _rowid_ = ?";
+  my $rowid = $schema->{tables}{$tabName}->rowid_spec($schema);
+  "UPDATE $tabName SET $colName = ? WHERE $rowid = ?";
 }
 
 ########################################
@@ -623,11 +661,9 @@ sub tsv_with_null {
 sub run {
   my $pack = shift;
   $pack->cmd_help unless @_;
-  $pack->parse_opts(\@_, \ my %opts);
-  my MY $obj = $pack->new(%opts);
+  my MY $obj = $pack->new(MY->parse_opts(\@_));
   my $cmd = shift || "help";
-  $pack->parse_opts(\@_, \ %opts);
-  $obj->configure(%opts);
+  $obj->configure(MY->parse_opts(\@_));
   my $method = "cmd_$cmd";
   if (my $sub = $obj->can("cmd_$cmd")) {
     $sub->($obj, @_);
@@ -643,7 +679,6 @@ sub run {
 	print join("\n", @res), "\n";
       }
     }
-    exit 0
   } else {
     die "No such method $cmd for $pack\n";
   }
@@ -660,6 +695,16 @@ sub cmd_help {
   my @methods = sort grep s/^cmd_//, keys %$stash;
   die "Usage: @{[basename($0)]} method args..\n  "
     . join("\n  ", @methods) . "\n";
+}
+
+#========================================
+
+sub ymd_hms {
+  my ($pack, $time, $as_utc) = @_;
+  my ($S, $M, $H, $d, $m, $y) = map {
+    $as_utc ? gmtime($_) : localtime($_)
+  } $time;
+  sprintf q{%04d-%02d-%02d %02d:%02d:%02d}, 1900+$y, $m+1, $d, $H, $M, $S;
 }
 
 1;

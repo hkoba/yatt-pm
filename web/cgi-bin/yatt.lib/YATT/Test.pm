@@ -260,7 +260,9 @@ sub xhf_do_sections {
     my @loader = (DIR => "$DIR/doc");
     push @loader, LIB => do {
       if (-d "$DIR/lib") {
-	"$DIR/lib";
+	my $libdir = "$DIR/lib";
+	chmod 0755, $libdir;
+	$libdir;
       } else {
 	getcwd;
       }
