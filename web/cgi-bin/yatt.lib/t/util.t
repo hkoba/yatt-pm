@@ -20,3 +20,19 @@ is escape(copy(q{<foo "bar"&'baz'>}))
 is join("", escape(\ q{<a>}, copy(q{<b>bar</b>}), \ q{</a>}))
   , q{<a>&lt;b&gt;bar&lt;/b&gt;</a>}, 'escape - list context, scalar ref';
 
+BEGIN {
+  package util_test_base;
+  use fields qw(foo bar);
+  sub new {fields::new(shift)}
+
+  package util_test;
+  use base qw(util_test_base);
+  use fields qw(baz);
+}
+
+require_ok('YATT::Util::Symbol');
+
+my $orig = util_test_base->new;
+
+is ref YATT::Util::Symbol::rebless_with($orig, 'util_test')
+  , 'util_test', 'rebless_with';
