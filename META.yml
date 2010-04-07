@@ -1,12 +1,10 @@
 ---
 name: YATT
-version: 0.0.2
+version: 0.0.3
 author:
   - '"KOBAYASI, Hiroaki" <hkoba@cpan.org>'
 abstract: Yet Another Template Toolkit
 license: perl
-resources:
-  license: http://dev.perl.org/licenses/
 requires:
   File::Remove: 0
   List::Util: 0
@@ -14,10 +12,14 @@ requires:
   Test::More: 0
   perl: 5.7.2
   version: 0
+generated_by: Module::Build version 0.32
+meta-spec:
+  url: http://module-build.sourceforge.net/META-spec-v1.2.html
+  version: 1.2
 provides:
   YATT:
     file: web/cgi-bin/yatt.lib/YATT.pm
-    version: 0.0.2
+    version: 0.0.3
   YATT::ArgMacro:
     file: web/cgi-bin/yatt.lib/YATT/ArgMacro.pm
   YATT::ArgTypes:
@@ -26,6 +28,10 @@ provides:
     file: web/cgi-bin/yatt.lib/YATT/Class/ArrayScanner.pm
   YATT::Class::Configurable:
     file: web/cgi-bin/yatt.lib/YATT/Class/Configurable.pm
+  YATT::Class::Tcl:
+    file: web/cgi-bin/yatt.lib/YATT/Class/Tcl.pm
+  YATT::DBSchema:
+    file: web/cgi-bin/yatt.lib/YATT/DBSchema.pm
   YATT::Exception:
     file: web/cgi-bin/yatt.lib/YATT/Exception.pm
   YATT::Fields:
@@ -70,6 +76,8 @@ provides:
     file: web/cgi-bin/yatt.lib/YATT/Toplevel/Server.pm
   YATT::Translator::Perl:
     file: web/cgi-bin/yatt.lib/YATT/Translator/Perl.pm
+  YATT::Translator::Perl::macro_dbfetch:
+    file: web/cgi-bin/yatt.lib/YATT/Translator/Perl/macro_dbfetch.pm
   YATT::Types:
     file: web/cgi-bin/yatt.lib/YATT/Types.pm
   YATT::Util:
@@ -84,15 +92,21 @@ provides:
     file: web/cgi-bin/yatt.lib/YATT/Util/Enum.pm
   YATT::Util::Finalizer:
     file: web/cgi-bin/yatt.lib/YATT/Util/Finalizer.pm
+  YATT::Util::RLimit:
+    file: web/cgi-bin/yatt.lib/YATT/Util/RLimit.pm
   YATT::Util::Symbol:
     file: web/cgi-bin/yatt.lib/YATT/Util/Symbol.pm
+  YATT::Util::SymbolHash:
+    file: web/cgi-bin/yatt.lib/YATT/Util/SymbolHash.pm
   YATT::Util::Taint:
     file: web/cgi-bin/yatt.lib/YATT/Util/Taint.pm
+  YATT::Util::VarExporter:
+    file: web/cgi-bin/yatt.lib/YATT/Util/VarExporter.pm
+  YATT::Util::attr:
+    file: web/cgi-bin/yatt.lib/YATT/Util.pm
   YATT::Widget:
     file: web/cgi-bin/yatt.lib/YATT/Widget.pm
   YATT::XHF:
     file: web/cgi-bin/yatt.lib/YATT/XHF.pm
-generated_by: Module::Build version 0.2808
-meta-spec:
-  url: http://module-build.sourceforge.net/META-spec-v1.2.html
-  version: 1.2
+resources:
+  license: ~
