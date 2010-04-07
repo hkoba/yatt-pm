@@ -669,7 +669,7 @@ sub has_single_bare_varexpr {
 sub has_pass_through_var {
   (my MY $trans, my ($scope, $args, $name)) = @_;
   return if $args->node_size >= 2;
-  if ($args->node_size == 1 and $args->node_flag == 0) {
+  if ($args->node_size == 1 and ($args->node_flag || 0) == 0) {
     # bareword 渡し。
     $trans->find_var($scope, $args->node_body);
   } elsif ($args->node_size == 0) {

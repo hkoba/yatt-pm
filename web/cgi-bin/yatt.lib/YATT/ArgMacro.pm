@@ -7,7 +7,8 @@ use Carp;
 
 use YATT::Util qw(checked_eval);
 use YATT::Util::Symbol qw(globref fields_hash_of_class);
-use YATT::LRXML::Node qw(copy_array copy_node_renamed_as);
+use YATT::LRXML::Node qw(copy_array copy_node_renamed_as
+			 create_node_from node_name node_size);
 
 use YATT::Fields 'spec', [disabled => 0];
 
@@ -68,11 +69,17 @@ sub filter {
       # 出力引数が明示的に与えられていた場合は、disabled モードにする。
       $macro->{disabled} = 1;
       # 元の引数を残す
-      if ($out) {
-	# rename 済みの override を返す。
+      # rename 済みの override を返す。
+      unless ($out) {
+	copy_array($value);
+      } elsif (node_size($value)) {
+	# label_list=lh ===> label=lh
 	MY->copy_node_renamed_as($macro->output_name, $value);
       } else {
-	copy_array($value);
+	# header_list   ===> header=header_list
+	MY->create_node_from($value
+			     , $macro->output_name
+			     , node_name($value));
       }
     } else {
       # text になってないと、不便では?
