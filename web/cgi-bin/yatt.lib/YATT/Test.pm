@@ -88,15 +88,20 @@ sub is_rendered ($$$) {
     $trans->get_handler_to(render => @$path)
   };
   Test::More::is $error, undef, "$title - compiled.";
-  if (!$error && $sub) {
-    my $out = capture {
-      &YATT::break_handler;
-      $sub->($pkg, @args);
-    };
-    $out =~ s{\r}{}g if defined $out;
-    eq_or_diff($out, $cmp, $title);
-  } else {
-    Test::More::fail "skipped. $title";
+  eval {
+    if (!$error && $sub) {
+      my $out = capture {
+	&YATT::break_handler;
+	$sub->($pkg, @args);
+      };
+      $out =~ s{\r}{}g if defined $out;
+      eq_or_diff($out, $cmp, $title);
+    } else {
+      Test::More::fail "skipped. $title";
+    }
+  };
+  if ($@) {
+    Test::More::fail "$title: runtime error: $@";
   }
 }
 
