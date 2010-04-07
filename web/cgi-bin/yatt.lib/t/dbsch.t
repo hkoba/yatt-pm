@@ -81,20 +81,20 @@ END
        , ['Foo', 'BAR', 'baz']], 'inserted.';
 
   is_deeply $schema->prepare_select
-    (foo => {where => {bar => 'BAR'}, columns => [qw(foo bar baz)]})
-      ->fetchall_arrayref
-	, [['Foo', 'BAR', 'baz']]
-	  , 'to_select where {bar => "BAR"}';
+    (foo => [qw(foo bar baz)]
+     , where => {bar => 'BAR'})->fetchall_arrayref
+       , [['Foo', 'BAR', 'baz']]
+	 , 'prepare_select where {bar => "BAR"}';
 
   is_deeply $schema->select
-    (foo => {hashref => 1, limit => 1, order_by => 'foo.rowid desc'
-             , columns => [qw(foo bar baz)]})
+    (foo => [qw(foo bar baz)]
+     , hashref => 1, limit => 1, order_by => 'foo.rowid desc')
       , {foo => 'Foo', bar => 'BAR', baz => 'baz'}
         , 'select hashref {}';
 
   is_deeply $schema->select
-    (foo => {arrayref => 1, limit => 1, order_by => 'foo.rowid desc'
-             , columns => [qw(foo bar baz)]})
+    (foo => [qw(foo bar baz)]
+     , arrayref => 1, limit => 1, order_by => 'foo.rowid desc')
       , ['Foo', 'BAR', 'baz']
         , 'select arrayref []';
 

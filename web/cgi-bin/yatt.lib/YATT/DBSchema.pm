@@ -446,17 +446,17 @@ sub cmd_select {
   $self->parse_opts(\@_, \ %opts);
   $self->configure(%opts) if %opts;
   $self->parse_params(\@_, \ my %param);
-  my $sth = do {
+  my ($sth, $bind) = do {
     if (my $sub = $self->can("select_$table")) {
+      # XXX: select_zzz は execute してはいけない
       $sub->($self, \%param, @_);
     } elsif ($sub = $self->can("sql_select_$table")) {
-      my $s = $self->dbh->prepare($sub->($self, \%param));
-      $s->execute(@_);
-      $s;
+      $self->dbh->prepare($sub->($self, \%param));
     } else {
-      $self->prepare_select($table, \%param, \@_);
+      $self->prepare_select($table, \@_, %param);
     }
   };
+  $sth->execute($bind ? @$bind : @_);
   my $null = $self->NULL;
   my $format = $self->can('tsv_with_null');
   print $format->($null, @{$sth->{NAME}}) unless $self->{cf_no_header};
@@ -466,16 +466,16 @@ sub cmd_select {
 }
 
 sub select {
-  (my MY $schema, my ($tabName, $params)) = splice @_, 0, 3;
+  (my MY $schema, my ($tabName, $columns, %param)) = @_;
 
-  my $is_text = delete $params->{text};
-  my $separator = delete $params->{separator} || "\t";
-  ($is_text, $separator) = (1, "\t") if delete $params->{tsv};
+  my $is_text = delete $param{text};
+  my $separator = delete $param{separator} || "\t";
+  ($is_text, $separator) = (1, "\t") if delete $param{tsv};
 
-  my (@fetch) = grep {delete $params->{$_}} qw(hashref arrayref array);
+  my (@fetch) = grep {delete $param{$_}} qw(hashref arrayref array);
   die "Conflict! @fetch" if @fetch > 1;
 
-  my $sth = $schema->prepare_select($tabName, $params, \@_);
+  my ($sth, $bind) = $schema->prepare_select($tabName, $columns, %param);
 
   if ($is_text) {
     # Debugging aid.
@@ -488,18 +488,35 @@ sub select {
 	 , map { $schema->format_line($_, $separator, $null) } @$res)
   } else {
     my $method = $fetch[0] || 'arrayref';
+    $sth->execute($bind ? @$bind : ());
     $sth->can("fetchrow_$method")->($sth);
   }
 }
 
+# to_selectrow/selectall に分ければいいか。
+sub to_select {
+  (my MY $schema, my ($tabName, $columns, %params)) = @_;
+  my $type = do {
+    my (@fetch) = grep {delete $params{$_}} qw(hashref arrayref array);
+    die "Conflict! @fetch" if @fetch > 1;
+    $fetch[0] || 'arrayref';
+  };
+  my ($sth, $bind) = $schema->prepare_select($tabName, $columns, %params);
+  my $sub = sub {
+    $sth->execute(@_);
+    my $method = wantarray ? "fetchall_$type" : "fetchrow_$type";
+    $sth->$method;
+  };
+  wantarray ? ($sub, ($bind ? $bind : ())) : $sub;
+}
+
 # $sth 返しなのは、$sth->{NAME} を取りたいから。でも、単純なケースでは不便よね。
 sub prepare_select {
-  (my MY $schema, my ($tabName, $params, $values, $rvref)) = @_;
-  my $dbh = (delete $params->{dbh}) || $schema->dbh;
-  my $sth = $dbh->prepare($schema->sql_select($tabName, $params, \ my $bind));
-  if (my $ary = $values || $bind) {
-    my $rv = $sth->execute(@$ary);
-    $$rvref = $rv if $rvref;
+  (my MY $schema, my ($tabName, $columns, %params)) = @_;
+  my ($sql, $bind) = $schema->sql_select($tabName, \%params, @$columns);
+  my $sth = $schema->dbh->prepare($sql);
+  if ($bind) {
+    $sth->execute(@$bind);
   }
   $sth;
 }
@@ -580,12 +597,12 @@ sub sql_join {
 }
 
 sub sql_select {
-  (my MY $schema, my ($tabName, $params, $bindref)) = @_;
+  (my MY $schema, my ($tabName, $params)) = splice @_, 0, 3;
 
   my $raw = delete $params->{raw};
   my $colExpr = do {
-    if (my $val = delete $params->{columns}) {
-      ref $val ? join(", ", @$val) : $val;
+    if (@_) {
+      join(", ", @_);
     } elsif ($raw) {
       '*';
     }
@@ -594,11 +611,12 @@ sub sql_select {
   my ($selCols, $selJoins, $where, $bind)
     = $schema->sql_join($tabName, $params);
 
-  $$bindref = $bind if $bind and $bindref;
+  my $sql = join("\n", sprintf(q{SELECT %s FROM %s}
+			       , $colExpr || join(", ", @$selCols)
+			       , $raw ? $tabName : join("", @$selJoins))
+		 , @$where);
 
-  join("\n", sprintf(q{SELECT %s FROM %s}, $colExpr || join(", ", @$selCols)
-		     , $raw ? $tabName : join("", @$selJoins))
-       , @$where);
+  wantarray ? ($sql, (defined $bind ? $bind : ())) : $sql;
 }
 
 #----------------------------------------
