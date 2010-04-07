@@ -29,6 +29,7 @@ use YATT::Exception;
 use base qw(YATT::Class::Configurable);
 use YATT::Types -base => __PACKAGE__
   , [Config => [qw(^cf_registry
+		   cf_driver
 		   cf_docs cf_tmpl
 		   cf_charset
 		   cf_debug_allowed_ip
@@ -214,7 +215,24 @@ END
     ($loader, $config->translator_param
      , debug_translator => $ENV{DEBUG});
 
+  $instpkg->set_random_list;
+
+  $instpkg->force_parameter_convention($cgi); # XXX: unless $config->{...}
+
   ($instpkg, $root, $cgi, $file, $param);
+}
+
+our $PARAM_CONVENTION = qr{^[\w:\-]};
+
+sub force_parameter_convention {
+  my ($pack, $cgi) = @_;
+  my @deleted;
+  foreach my $name ($cgi->param) {
+    next if $name =~ $PARAM_CONVENTION;
+    push @deleted, [$name => $cgi->param($name)];
+    $cgi->delete($name);
+  }
+  @deleted;
 }
 
 *get_instpkg = \&prepare_export;
@@ -518,7 +536,7 @@ sub new_cgi {
 
 sub new_config {
   my $pack = shift;
-  my $config = @_ == 1 ? shift : \@_;
+  my Config $config = @_ == 1 ? shift : \@_;
   return $config if defined $config
     and ref $config and UNIVERSAL::isa($config, Config);
 
@@ -526,7 +544,7 @@ sub new_config {
     $pack = $pack->Config;
   }
 
-  $pack->new(do {
+  $config = $pack->new(do {
     unless (defined $config) {
       ()
     } elsif (not ref $config) {
@@ -541,6 +559,10 @@ Invalid configuration parameter: $config
 END
     }
   });
+
+  $config->{cf_driver} = $0;
+
+  $config;
 }
 
 sub heavy_configure {
@@ -675,6 +697,50 @@ sub entity_format {
   sprintf $format, @_;
 }
 
+sub entity_is_debug_allowed {
+  my ($this) = @_;
+  unless (defined $CGI->{'.allow_debug'}) {
+    $CGI->{'.allow_debug'} = $this->is_debug_allowed($CGI->remote_addr);
+  }
+  $CGI->{'.allow_debug'};
+}
+
+sub is_debug_allowed {
+  my ($this, $ip) = @_;
+  my $pat = $$CONFIG{cf_debug_allowed_ip};
+  unless (defined $pat) {
+    $pat = $$CONFIG{cf_debug_allowed_ip} = $this->load_htdebug;
+  } elsif (ref $pat) {
+    $pat = $$CONFIG{cf_debug_allowed_ip} = qr{@{[join "|", map {"^$_"} @$pat]}};
+  } elsif ($pat eq '') {
+    return 0
+  }
+  $ip =~ $pat;
+}
+
+sub load_htdebug {
+  my ($this) = @_;
+  my $dir = untaint_any(dirname($CONFIG->{cf_driver}));
+  my $fn = "$dir/.htdebug";
+  return '' unless -r $fn;
+  open my $fh, '<', $fn or die "Can't open $fn: $!";
+  local $_;
+  my @pat;
+  while (<$fh>) {
+    chomp;
+    s/\#.*//;
+    next unless /\S/;
+    push @pat, '^'.quotemeta($_);
+  }
+  qr{@{[join "|", @pat]}};
+}
+
+sub entity_CGI { $CGI }
+
+sub entity_remote_addr {
+  $CGI->remote_addr
+}
+
 #========================================
 
 sub entity_param {
@@ -728,11 +794,6 @@ sub YATT::Toplevel::CGI::Config::translator_param {
       , $config->{cf_translator_param})
 }
 
-# Config に
-sub is_debug_allowed {
-  (my Config $config, my ($cgi)) = @_;
-  
-}
 
 #========================================
 package YATT::Toplevel::CGI::Batch; use YATT::Inc;
