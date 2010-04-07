@@ -54,13 +54,13 @@ sub YATT::DBSchema::Table::rowid_spec {
 sub rowid_col { 'rowid' }
 
 #========================================
-# Class Hierachy in case of 'package YourApp; use YATT::DBSchema':
+# Class Hierarchy in case of 'package YourSchema; use YATT::DBSchema':
 #
 #   YATT::DBSchema (or its subclass)
 #    ↑
-#   YourApp::DBSchema  (holds singleton $SCHEMA and &SCHEMA)
+#   YourSchema::DBSchema  (holds singleton $SCHEMA and &SCHEMA)
 #    ↑
-#   YourApp
+#   YourSchema
 #
 
 sub import {

@@ -69,33 +69,33 @@ END
   $schema->connect_to(sqlite => $MEMDB, 'w');
 
   my $ins = $schema->to_insert('foo');
-  $ins->('FOO', 'bar', 'BAZ');
-  $ins->('foo', 'bar', 'baz');
-  $ins->('Foo', 'BAR', 'baz');
+  $ins->('FOOx', 'bar', 'BAZ');
+  $ins->('fooy', 'bar', 'baz');
+  $ins->('Fooz', 'BAR', 'baz');
 
   is_deeply $schema->dbh->selectall_arrayref(<<END)
 select foo, bar, baz from foo left join bar using(bar_id)
 END
-    , [['FOO', 'bar', 'BAZ']
-       , ['foo', 'bar', 'baz']
-       , ['Foo', 'BAR', 'baz']], 'inserted.';
+    , [['FOOx', 'bar', 'BAZ']
+       , ['fooy', 'bar', 'baz']
+       , ['Fooz', 'BAR', 'baz']], 'inserted.';
 
   is_deeply $schema->prepare_select
     (foo => [qw(foo bar baz)]
      , where => {bar => 'BAR'})->fetchall_arrayref
-       , [['Foo', 'BAR', 'baz']]
+       , [['Fooz', 'BAR', 'baz']]
 	 , 'prepare_select where {bar => "BAR"}';
 
   is_deeply $schema->select
     (foo => [qw(foo bar baz)]
      , hashref => 1, limit => 1, order_by => 'foo.rowid desc')
-      , {foo => 'Foo', bar => 'BAR', baz => 'baz'}
+      , {foo => 'Fooz', bar => 'BAR', baz => 'baz'}
         , 'select hashref {}';
 
   is_deeply $schema->select
     (foo => [qw(foo bar baz)]
      , arrayref => 1, limit => 1, order_by => 'foo.rowid desc')
-      , ['Foo', 'BAR', 'baz']
+      , ['Fooz', 'BAR', 'baz']
         , 'select arrayref []';
 
   $schema->dbh->commit;
