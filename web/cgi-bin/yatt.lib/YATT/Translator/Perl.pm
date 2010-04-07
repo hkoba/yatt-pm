@@ -983,6 +983,34 @@ sub gen_pass_through_arg_typed {
   }
 }
 
+sub try_pass_through {
+  (my MY $trans, my ($scope, $cursor, $rawNode, $defaultFlag)) = @_;
+  if (node_size($rawNode) == 1 and node_flag($rawNode) == 0
+     and (my $nm = node_body($rawNode)) =~ /^\w+$/) {
+
+    # [name=bareword_ident]
+    # Must be an existing variable.
+    if (my $var = $trans->find_var($scope, $nm)) {
+      $var->as_lvalue;
+    } else {
+      die $trans->node_error($cursor, "No such variable '%s'", $nm);
+    }
+  } elsif (node_size($rawNode) == 0) {
+
+    # [name]
+    # variable or flag.
+    if (my $var = $trans->find_var($scope, my $nm = node_name($rawNode))) {
+      $var->as_lvalue;
+    } elsif (defined $defaultFlag) {
+      $defaultFlag
+    } else {
+      die $trans->node_error($cursor, "No such variable '%s'", $nm);
+    }
+  } else {
+    undef;
+  }
+}
+
 sub mark_vars {
   (my MY $trans, my ($scope, $early_escaped, $node)) = @_;
   my @result;
