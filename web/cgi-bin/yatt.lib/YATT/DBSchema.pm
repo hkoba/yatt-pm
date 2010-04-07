@@ -186,7 +186,7 @@ sub connect_to {
 
 sub connect_to_sqlite {
   (my MY $schema, my ($dbname, $rwflag)) = @_;
-  my $ro = !defined $rwflag || $rwflag !~ /w/i;
+  my $ro = defined $rwflag && $rwflag =~ /ro/i;
   my $dbi_dsn = "dbi:SQLite:dbname=$dbname";
   $schema->{cf_auto_create} = 1;
   $schema->connect_to_dbi
@@ -382,13 +382,11 @@ sub sql_create_column {
 
 sub sqlite_sql_create_column {
   (my MY $schema, my Table $tab, my Column $col, my $opts) = @_;
-  join " ", $col->{cf_name}, do {
-    if ($col->{cf_primary_key}) {
-      'integer primary key'
-    } else {
-      $col->{cf_type} . ($col->{cf_unique} ? " unique" : "");
-    }
-  };
+  if ($col->{cf_type} =~ /^int/i && $col->{cf_primary_key}) {
+    "$col->{cf_name} integer primary key"
+  } else {
+    $schema->sql_create_column($tab, $col, $opts);
+  }
 }
 
 sub sql_drop {

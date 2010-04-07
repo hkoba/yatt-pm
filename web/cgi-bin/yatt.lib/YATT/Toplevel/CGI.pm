@@ -40,6 +40,7 @@ use YATT::Types -base => __PACKAGE__
 		   cf_auto_reload
 		   cf_no_chdir
 		   cf_rlimit
+		   cf_use_session
 		 )
 		, ['^cf_app_prefix' => 'YATT']
 		, ['^cf_find_root_upward' => 2]
@@ -282,6 +283,9 @@ sub dispatch {
 
   local $CGI = $cgi;
   local ($SESSION, %COOKIE, %HEADER);
+  if ($CONFIG->{cf_use_session}) {
+    $SESSION = $top->new_session($cgi);
+  }
   my @elpath = $root->parse_elempath($top->canonicalize_html_filename($file));
   my ($found, $renderer, $pkg, $widget);
 
@@ -366,7 +370,7 @@ sub dispatch_action {
   } else {
     my $html = capture { $action->($pkg, @param) };
     # XXX: SESSION, COOKIE, HEADER...
-    print $CGI->header;
+    print $SESSION ? $SESSION->header : $CGI->header;
     print $html;
   }
   $top->bye;
@@ -529,6 +533,28 @@ sub new_cgi {
   } else {
     $class->new(defined $oldcgi ? $oldcgi : ());
   }
+}
+
+sub new_session {
+  my ($toplevel, $cgi) = @_;
+  require CGI::Session;
+  my ($dsn, @opts) = do {
+    if (ref $CONFIG->{cf_use_session}) {
+      @{$CONFIG->{cf_use_session}}
+    } else {
+      $CONFIG->{cf_use_session}
+    }
+  };
+  CGI::Session->new($dsn, $cgi, @opts);
+}
+
+sub entity_session {
+  my ($pack, $name) = @_;
+  $SESSION->param($name);
+}
+
+sub entity_save_session {
+  $SESSION->save_param;
 }
 
 sub new_config {

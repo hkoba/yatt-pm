@@ -1801,6 +1801,39 @@ sub feed_arg_spec {
   }
 }
 
+sub macro_dbfetch {
+  require YATT::Translator::Perl::macro_dbfetch;
+  shift->YATT::Translator::Perl::macro_dbfetch::macro(@_);
+}
+
+sub feed_arg_or_make_hash_of {
+  (my $trans
+   , my ($type, $scope, $args, $arg_dict, $arg_order)) = splice @_, 0, 6;
+  my (@primary, @secondary);
+  for (my $nth = 0; $args->readable; $args->next) {
+    last unless $args->is_primary_attribute;
+    my ($name, @ext) = $args->node_path;
+    unless (defined $name) {
+      $name = $arg_order->[$nth++]
+	or die $trans->node_error($args, "Too many args");
+    }
+    if ($name =~ /^-(.*)/) {
+      # XXX: そもそも -name=[...] で構造化したかった
+      push @secondary, [$name, $trans->faked_gentype
+			($type => $scope, $args, $args->current)];
+      next;
+    }
+    defined (my $argno = $arg_dict->{$name}) or do {
+      push @primary, [$name, $trans->faked_gentype
+			($type => $scope, $args, $args->current)];
+      next;
+    };
+
+    $_[$argno] = $args->current;
+  }
+  grep {@$_ ? $_ : ()} (\@primary, \@secondary);
+}
+
 #========================================
 sub entmacro_if {
   my ($this, $trans
