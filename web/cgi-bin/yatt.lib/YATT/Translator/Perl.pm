@@ -13,6 +13,7 @@ use YATT::Fields [cf_mode => 'render']
   , [cf_product => sub {[]}]
   , qw(target_cache
        delayed_target
+       generating_widget
        cf_pagevars
        cf_debug_translator);
 
@@ -248,8 +249,14 @@ sub generate_lineinfo {
     , $start, $widget->{cf_filename};
 }
 
+sub generating_widget {
+  my MY $gen = shift;
+  $gen->{generating_widget}[0];
+}
+
 sub generate_widget {
   (my MY $gen, my Widget $widget, my ($metainfo, $file_scope)) = @_;
+  local $gen->{generating_widget}[0] = $widget;
   my @body = $gen->generate_body
     ([{}, $widget->widget_scope($file_scope)]
      , $widget->cursor(metainfo => $metainfo->clone
@@ -635,7 +642,7 @@ sub gencall {
   if (my ($dict, $order) = $trans->has_unique_argmacro
       ($widget, $node->metainfo->caller_widget)) {
     $node = YATT::ArgMacro->expand_all_macros
-      ($trans, $scope, $node, $dict, $order);
+      ($trans, $scope, $node, $widget, $dict, $order);
   }
 
   my $func = $trans->get_funcname_to($trans->{cf_mode}, $widget);
@@ -686,8 +693,10 @@ sub genargs_static {
       $name = $arg_order->[$nth++]
 	or die $trans->node_error($args, "Too many args");
     }
-    my $argdecl = $arg_dict->{$name}
-      or die $trans->node_error($args, "Unknown arg '%s'", $name);
+    my $argdecl = $arg_dict->{$name};
+    unless ($argdecl) {
+      die $trans->node_error($args, "Unknown arg '%s'", $name);
+    }
     # XXX: $typename (attname:type の type) を活用していない。
     # XXX: code 型引数を primary で渡したときにまで、 print が作られてる。
     # $args->is_quoted_by_element で判別せよ。
@@ -1185,7 +1194,9 @@ sub faked_gentype {
   (my MY $trans, my ($type, $scope, $baseNC, $targetNode)) = @_;
   my $node = $targetNode ? $trans->fake_cursor_from($baseNC, $targetNode)
     : $baseNC;
-  $trans->can("t_$type")->()->gen_assignable_node($trans, $scope, $node);
+  my $sub = $trans->can("t_$type")
+    or die $trans->node_error($node, "No such argtype: %s", $type);
+  $sub->()->gen_assignable_node($trans, $scope, $node);
 }
 
 # expr 専用。デフォルト値も渡せる。
