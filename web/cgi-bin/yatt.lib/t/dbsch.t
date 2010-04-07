@@ -95,6 +95,11 @@ END
 
 }
 
+# t/test-mysql.pass should contain
+# * dbname=$mysql_dbname
+# * $user
+# * $pass
+
 foreach my $dbspec ([undef, sqlite => $MEMDB, 'w']
 		    , ["test-mysql.pass", dbi => 'dbi:mysql']) {
   my ($passfn, @spec) = @$dbspec;
@@ -130,11 +135,17 @@ END
        , ['fooy', 'AAA', 'baz']
        , ['Fooz', 'bbb', 'baz']], "[@spec[0,1]]. and 2 rows inserted.";
 
-  is_deeply $schema->prepare_select
+  is_deeply $schema->to_fetch
     (foo => [qw(foo bar baz)]
      , where => {bar => 'bbb'})->fetchall_arrayref
        , [['Fooz', 'bbb', 'baz']]
-	 , "[@spec[0,1]]. prepare_select where {bar => 'bbb'}";
+	 , "[@spec[0,1]]. to_fetch->fetchall_arrayref where {bar => 'bbb'}";
+
+  is_deeply $schema->to_select
+    (foo => [qw(foo bar baz)]
+     , where => {bar => 'bbb'})->()
+       , [['Fooz', 'bbb', 'baz']]
+	 , "[@spec[0,1]]. to_select()->() where {bar => 'bbb'}";
 
   is_deeply $schema->select
     (foo => [qw(foo bar baz)]
@@ -147,6 +158,15 @@ END
      , arrayref => 1, limit => 1, order_by => 'foo_id desc')
       , ['Fooz', 'bbb', 'baz']
         , "[@spec[0,1]]. select arrayref []";
+
+  {
+    my $id = $schema->select(foo => foo_id =>
+			     where => {foo => 'Fooz'})->[0];
+    $schema->to_update(foo => 'baz')->("bazzzz", $id);
+    is_deeply $schema->select(foo => 'baz'
+			     , where => {foo => 'Fooz'})->[0], "bazzzz"
+      , "[@spec[0,1]]. update foo baz=bazzzz";
+  }
 
   $schema->drop;
   $schema->dbh->commit;

@@ -543,7 +543,7 @@ sub select {
   }
 }
 
-# to_selectrow/selectall に分ければいいか。
+# XXX: to_selectrow/selectall に分ければいいかも？
 sub to_select {
   (my MY $schema, my ($tabName, $columns, %params)) = @_;
   my $type = do {
@@ -553,22 +553,28 @@ sub to_select {
   };
   my ($sth, $bind) = $schema->prepare_select($tabName, $columns, %params);
   my $sub = sub {
-    $sth->execute(@_);
+    $sth->execute($bind ? @$bind : @_);
     my $method = wantarray ? "fetchall_$type" : "fetchrow_$type";
     $sth->$method;
   };
   wantarray ? ($sub, ($bind ? $bind : ())) : $sub;
 }
 
+# 後は fetchrow するだけ、の sth を返す。
+sub to_fetch {
+  (my MY $schema, my ($tabName, $columns, %params)) = @_;
+  my ($sth, $bind) = $schema->prepare_select($tabName, $columns, %params);
+  $sth->execute($bind ? @$bind : ());
+  $sth;
+}
+
 # $sth 返しなのは、$sth->{NAME} を取りたいから。でも、単純なケースでは不便よね。
 sub prepare_select {
   (my MY $schema, my ($tabName, $columns, %params)) = @_;
-  my ($sql, $bind) = $schema->sql_select($tabName, \%params, @$columns);
+  my ($sql, $bind) = $schema->sql_select($tabName, \%params
+					 , ref $columns ? @$columns : $columns);
   my $sth = $schema->dbh->prepare($sql);
-  if ($bind) {
-    $sth->execute(@$bind);
-  }
-  $sth;
+  wantarray ? ($sth, ($bind ? $bind : ())) : $sth;
 }
 
 sub sql_decode {
@@ -702,8 +708,9 @@ sub format_line {
 
 sub to_update {
   (my MY $schema, my ($tabName, $colName)) = @_;
-  my $sth = $schema->dbh->prepare
-    ($schema->sql_update($tabName, $colName));
+  my $sql = $schema->sql_update($tabName, $colName);
+  print STDERR "$sql\n" if $schema->{cf_verbose};
+  my $sth = $schema->dbh->prepare($sql);
   sub {
     my ($colValue, $rowId) = @_;
     $sth->execute($colValue, $rowId);
