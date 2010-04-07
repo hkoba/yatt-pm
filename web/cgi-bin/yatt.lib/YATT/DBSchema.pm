@@ -13,6 +13,7 @@ use YATT::Fields (qw(schemas tables cf_DBH
 		     ^cf_connection_spec
 		     ^cf_verbose
 		   )
+		  , ['^cf_dbtype' => 'sqlite']
 		  , ['^cf_NULL' => '']
 		  , ['^cf_name' => 'DBSchema']
 		  , qw(
@@ -27,7 +28,7 @@ use YATT::Types -base => Item
   , [Table => [qw(pk raw_create chk_unique chk_index chk_check colNames)]
      , [Column => [qw(colnum
 		      cf_type
-		      cf_inserted
+		      cf_hidden
 		      cf_unique
 		      cf_indexed
 		      cf_decode_depth
@@ -163,11 +164,11 @@ sub dbh {
 }
 
 sub connect_to {
-  (my MY $schema, my ($type)) = splice @_, 0, 2;
-  if (my $sub = $schema->can("connect_to_$type")) {
+  (my MY $schema, my ($dbtype)) = splice @_, 0, 2;
+  if (my $sub = $schema->can("connect_to_$dbtype")) {
     $sub->($schema, @_);
   } else {
-    croak sprintf("%s: Unknown connection type: %s", MY, $type);
+    croak sprintf("%s: Unknown dbtype: %s", MY, $dbtype);
   }
 }
 
@@ -178,15 +179,17 @@ sub connect_to_sqlite {
   $schema->{cf_auto_create} = 1;
   $schema->connect_to_dbi
     ($dbi_dsn, undef, undef
-     , {RaiseError => 1, PrintError => 0, AutoCommit => $ro});
+     , RaiseError => 1, PrintError => 0, AutoCommit => $ro);
 }
 
 sub connect_to_dbi {
-  (my MY $schema, my ($dbi_dsn, $user, $auth, $param)) = @_;
-  my %param = %$param if $param;
-  $param{RaiseError} = 1 unless defined $param{RaiseError};
-  $param{PrintError} = 0 unless defined $param{PrintError};
+  (my MY $schema, my ($dbi_dsn, $user, $auth, %param)) = @_;
+  map {$param{$$_[0]} = $$_[1]}
+    ([RaiseError => 1], [PrintError => 0], [AutoCommit => 0]);
   require DBI;
+  if ($dbi_dsn =~ m{^dbi:(\w+):}) {
+    $schema->configure(dbtype => lc($1));
+  }
   my $dbh = $schema->{cf_DBH} = DBI->connect($dbi_dsn, $user, $auth, \%param);
   $schema->install_tables($dbh) if $schema->{cf_auto_create};
   $dbh;
@@ -194,9 +197,11 @@ sub connect_to_dbi {
 
 sub install_tables {
   (my MY $schema, my $dbh) = @_;
+  $dbh ||= $schema->dbh;
   foreach my Table $table (@{$schema->{schemas}}) {
     next if $schema->has_table($table->{cf_name}, $dbh);
     foreach my $create ($schema->sql_create_table($table)) {
+      print STDERR "$create\n" if $schema->{cf_verbose};
       $dbh->do($create);
     }
   }
@@ -226,6 +231,13 @@ sub columns_hash {
   $sth->execute;
   my %hash = %{$sth->{NAME_hash}};
   \%hash;
+}
+
+sub drop {
+  (my MY $schema) = @_;
+  foreach my $sql ($schema->sql_drop) {
+    $schema->dbh->do($sql);
+  }
 }
 
 #========================================
@@ -281,7 +293,8 @@ sub add_table_column {
   push @{$tab->{Column}}, my Column $col = $self->Column->new(@opts);
   $tab->{colNames}{$colName} = $col->{colnum} = @{$tab->{Column}};
 
-  $col->{cf_inserted} = not ($colName =~ s/^-//);
+  $col->{cf_hidden} = ($colName =~ s/^-//
+		      || $col->{cf_auto_increment});
   $col->{cf_name} = $colName;
   # if ref $type, else
   $col->{cf_type} = do {
@@ -303,22 +316,18 @@ sub add_table_column {
 #========================================
 
 sub sql_create {
-  (my MY $self) = @_;
-  my @result;
-  my $wantarray = wantarray;
-  foreach my Table $tab (@{$self->{schemas}}) {
-    push @result, map {
-      $wantarray ? $_ . "\n" : $_
-    } $self->sql_create_table($tab);
-  }
-  wantarray ? @result : join(";\n", @result);
+  (my MY $schema, my %opts) = @_;
+  $schema->foreach_tables_do('sql_create_table', \%opts)
 }
 
 sub sql_create_table {
-  (my MY $schema, my Table $tab) = @_;
+  (my MY $schema, my Table $tab, my $opts) = @_;
   my (@cols, @indices);
+  my $dbtype = $opts->{dbtype} || $schema->dbtype;
+  my $sub = $schema->can($dbtype.'_sql_create_column')
+    || $schema->can('sql_create_column');
   foreach my Column $col (@{$tab->{Column}}) {
-    push @cols, $schema->sql_create_column($tab, $col);
+    push @cols, $sub->($schema, $tab, $col, $opts);
     push @indices, $col if $col->{cf_indexed};
   }
   foreach my $constraint (map {$_ ? @$_ : ()} $tab->{chk_unique}) {
@@ -342,16 +351,52 @@ sub sql_create_table {
   wantarray ? @create : join(";\n", @create);
 }
 
+# XXX: text => varchar(80)
+sub map_coltype {
+  (my MY $schema, my $typeName) = @_;
+}
+
 sub sql_create_column {
-  (my MY $schema, my Table $tab, my Column $col) = @_;
+  (my MY $schema, my Table $tab, my Column $col, my $opts) = @_;
+  join(" ", $col->{cf_name}
+       , $col->{cf_type}
+       , ($col->{cf_primary_key} ? "primary key" : ())
+       , ($col->{cf_unique} ? "unique" : ())
+       , ($col->{cf_auto_increment} ? "auto_increment" : ()));
+}
+
+sub sqlite_sql_create_column {
+  (my MY $schema, my Table $tab, my Column $col, my $opts) = @_;
   join " ", $col->{cf_name}, do {
     if ($col->{cf_primary_key}) {
-      # XXX: SQLite specific.
       'integer primary key'
     } else {
       $col->{cf_type} . ($col->{cf_unique} ? " unique" : "");
     }
   };
+}
+
+sub sql_drop {
+  shift->foreach_tables_do
+    (sub {
+       (my Table $tab) = @_;
+       qq{drop table $tab->{cf_name}};
+     })
+}
+
+sub foreach_tables_do {
+  (my MY $self, my $method, my $opts) = @_;
+  my $code = ref $method ? $method : sub {
+    $self->$method(@_);
+  };
+  my @result;
+  my $wantarray = wantarray;
+  foreach my Table $tab (@{$self->{schemas}}) {
+    push @result, map {
+      $wantarray ? $_ . "\n" : $_
+    } $code->($tab, $opts);
+   }
+  wantarray ? @result : join(";\n", @result);
 }
 
 #========================================
@@ -368,7 +413,7 @@ sub sql_insert {
       $tab->{Column}[$colno - 1];
     }
   } @fields) : @{$tab->{Column}}) {
-    push @insNames, $col->{cf_name} if $col->{cf_inserted};
+    push @insNames, $col->{cf_name} unless $col->{cf_hidden};
     if (my Table $encTab = $col->{cf_encoded_by}) {
       push @insEncs, [$#insNames => $encTab->{cf_name}];
     }
@@ -407,12 +452,17 @@ sub to_encode {
   (my MY $schema, my ($encDesc, $dbh)) = @_;
   $dbh ||= $schema->dbh;
   my ($table, $column) = ref $encDesc ? @$encDesc : ($encDesc, $encDesc);
+  my Table $tab = $schema->{tables}{$table};
+  my $rowid = $tab->rowid_spec($schema);
   my $check_sql = <<END;
-select rowid from $table where $column = ?
+select $rowid from $table where $column = ?
 END
+  print STDERR "$check_sql\n" if $schema->{cf_verbose};
+
   my $ins_sql = <<END;
 INSERT INTO $table($column) values(?)
 END
+  print STDERR "$ins_sql\n" if $schema->{cf_verbose};
 
   # XXX: sth にまでするべきか。prepare_cached 廃止案。
   sub {
@@ -424,7 +474,7 @@ END
     unless (defined $rowid) {
       my $ins = $dbh->prepare_cached($ins_sql, undef, 1);
       $ins->execute($list->[$nth]);
-      $rowid = $dbh->func('last_insert_rowid');
+      $rowid = $dbh->last_insert_id(undef, undef, $table, $rowid);
     }
     $list->[$nth] = $rowid;
   }
