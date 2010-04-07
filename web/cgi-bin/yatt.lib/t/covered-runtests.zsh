@@ -54,7 +54,10 @@ fi
 
 export HARNESS_PERL_SWITCHES
 if ((!$+opts[-nocover])) {
-    cover_opt=(-ignore /dev/null)
+    cover_opt=(
+	-ignore /dev/null
+	-ignore '^/usr/local'
+    )
 
     # Additional opts are passed to test harness.
     while ((ARGC >= 2)) && [[ $1 = [+-]* ]]; do
