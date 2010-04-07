@@ -2,11 +2,18 @@
 # -*- mode: perl; coding: utf-8 -*-
 use strict;
 use warnings FATAL => qw(all);
-use Test::More qw(no_plan);
+use Test::More;
 use Test::Differences;
 
 use FindBin;
 use lib "$FindBin::Bin/..";
+
+foreach my $req (qw(DBD::SQLite SQL::Abstract)) {
+  unless (eval qq{require $req}) {
+    plan skip_all => "$req is not installed."; exit;
+  }
+}
+plan qw(no_plan);
 
 use YATT::Util::Finalizer;
 
