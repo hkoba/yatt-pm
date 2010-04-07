@@ -446,7 +446,15 @@ sub to_insert {
   (my MY $schema, my ($tabName, $fields)) = @_;
   my $dbh = $schema->dbh;
   my ($sql, @insEncs) = $schema->sql_insert
-    ($tabName, ref $fields ? @$fields : $fields);
+    ($tabName, do {
+      unless ($fields) {
+	()
+      } elsif (ref $fields) {
+	@$fields
+      } else {
+	$fields
+      }
+    });
   print STDERR "$sql\n" if $schema->{cf_verbose};
   my $sth = $dbh->prepare($sql);
   # ここで encode 用の sql/sth も生成せよと?
