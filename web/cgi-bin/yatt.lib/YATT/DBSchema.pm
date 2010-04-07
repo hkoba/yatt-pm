@@ -19,6 +19,7 @@ use YATT::Fields (qw(schemas tables cf_DBH
 		  , qw(
 			cf_no_header
 			cf_auto_create
+			cf_as_base
 		     )
 		 );
 
@@ -67,7 +68,7 @@ sub rowid_col { 'rowid' }
 sub import {
   my ($pack) = shift;
   return unless @_;
-  my MY $schema = $pack->create(@_);
+  my MY $schema = $pack->define(@_);
 
   $schema->export_and_rebless_with(caller);
 }
@@ -81,7 +82,8 @@ sub export_and_rebless_with {
   eval sprintf q{use strict; package %s; use base qw(%s)}
     , $classFullName, ref $schema;
   # MY->add_isa($classFullName, $pack);
-  eval qq{use strict; package $callpack; use base qw($classFullName)};
+  eval qq{use strict; package $callpack; use base qw($classFullName)}
+    if $schema->{cf_as_base};
   # MY->add_isa($callpack, $classFullName);
 
   my $glob = globref($classFullName, "SCHEMA");
@@ -90,14 +92,15 @@ sub export_and_rebless_with {
 
   $schema->export_to($callpack);
 
-  $schema->rebless_with($callpack);
+  $schema->rebless_with($callpack)
+    if $schema->{cf_as_base};
 }
 
 sub export_to {
   (my MY $schema, my ($callpack)) = @_;
   # Install to caller
   *{globref($callpack, $schema->name)} = sub () { $schema };
-  # special new for singleton.
+  # XXX: special new for singleton. (for schema->new->run)
   *{globref($callpack, 'new')} = sub {
     shift;
     $schema->configure(@_) if @_;
@@ -106,8 +109,17 @@ sub export_to {
 }
 
 #========================================
+sub DESTROY {
+  my MY $schema = shift;
+  if ($schema->{cf_DBH}) {
+    # XXX: sqlite specific commit.
+    $schema->{cf_DBH}->commit;
+  }
+}
 
-sub create {
+#========================================
+
+sub define {
   my ($pack) = shift;
   $pack->parse_import(\@_, \ my %opts);
   my MY $self = $pack->new(%opts);
@@ -184,20 +196,23 @@ sub connect_to_sqlite {
 
 sub connect_to_dbi {
   (my MY $schema, my ($dbi_dsn, $user, $auth, %param)) = @_;
-  map {$param{$$_[0]} = $$_[1]}
+  map {$param{$$_[0]} = $$_[1] unless defined $param{$$_[0]}}
     ([RaiseError => 1], [PrintError => 0], [AutoCommit => 0]);
   require DBI;
   if ($dbi_dsn =~ m{^dbi:(\w+):}) {
     $schema->configure(dbtype => lc($1));
   }
   my $dbh = $schema->{cf_DBH} = DBI->connect($dbi_dsn, $user, $auth, \%param);
-  $schema->install_tables($dbh) if $schema->{cf_auto_create};
+  $schema->create if $schema->{cf_auto_create};
   $dbh;
 }
 
-sub install_tables {
-  (my MY $schema, my $dbh) = @_;
-  $dbh ||= $schema->dbh;
+#
+# ./lib/MyApp.pm create sqlite data/myapp.db3
+#
+sub create {
+  (my MY $schema, my @spec) = @_;
+  my $dbh = $schema->dbh(@spec ? \@spec : ());
   foreach my Table $table (@{$schema->{schemas}}) {
     next if $schema->has_table($table->{cf_name}, $dbh);
     foreach my $create ($schema->sql_create_table($table)) {
@@ -428,9 +443,10 @@ END
 }
 
 sub to_insert {
-  (my MY $schema, my ($tabName, @fields)) = @_;
+  (my MY $schema, my ($tabName, $fields)) = @_;
   my $dbh = $schema->dbh;
-  my ($sql, @insEncs) = $schema->sql_insert($tabName, @fields);
+  my ($sql, @insEncs) = $schema->sql_insert
+    ($tabName, ref $fields ? @$fields : $fields);
   print STDERR "$sql\n" if $schema->{cf_verbose};
   my $sth = $dbh->prepare($sql);
   # ここで encode 用の sql/sth も生成せよと?
@@ -439,12 +455,14 @@ sub to_insert {
     my ($i, $table) = @$item;
     push @encoder, [$schema->to_encode($table, $dbh), $i];
   }
+  my $rowid = $schema->{tables}{$tabName}->rowid_spec($schema);
   sub {
     my (@values) = @_;
     foreach my $enc (@encoder) {
       $enc->[0]->(\@values, $enc->[1]);
     }
     $sth->execute(@values);
+    $dbh->last_insert_id(undef, undef, $tabName, $rowid);
   }
 }
 
@@ -757,6 +775,7 @@ sub run {
   } else {
     die "No such method $cmd for $pack\n";
   }
+  $obj->DESTROY; # To make sure committed.
 }
 
 sub cmd_help {

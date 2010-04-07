@@ -46,7 +46,7 @@ my @test1 = ($ENV{DEBUG} ? (-verbose) : ()
 		, [baz => 'varchar(80)']]);
 
 {
-  my $schema = $CLS->create(@test1);
+  my $schema = $CLS->define(@test1);
 
   eq_or_diff scalar $schema->sql_create(dbtype => 'sqlite')
     , trim <<END, "sql_create dbtype=sqlite";
@@ -100,21 +100,23 @@ END
 # * $user
 # * $pass
 
+SKIP:
 foreach my $dbspec ([undef, sqlite => $MEMDB, 'w']
-		    , ["test-mysql.pass", dbi => 'dbi:mysql']) {
+		    , ["test-mysql.dsn", dbi => 'dbi:mysql']) {
   my ($passfn, @spec) = @$dbspec;
   if (defined $passfn) {
-    next unless -r $passfn;
-    my ($dbiarg, $user, $pass) = cat($passfn);
+    skip "DSN not configured: $passfn", 8 unless -r $passfn;
+    my ($dbiarg, $user, $pass) = my @lines = cat($passfn);
+    ok @lines >= 3, "DSN has enough lines";
     $spec[1] .= ":$dbiarg";
     @spec[2,3] = ($user, $pass);
   }
-  my $schema = $CLS->create(@test1);
+  my $schema = $CLS->define(@test1);
 
   $schema->connect_to(@spec);
   if (defined $passfn) {
     $schema->drop;
-    $schema->install_tables;
+    $schema->create;
   }
 
   my $ins = $schema->to_insert('foo');
@@ -177,7 +179,8 @@ END
 {
   {
     package dbsch_test;
-    $CLS->import(connection_spec => [sqlite => ':memory:', 'w']
+    $CLS->import(-as_base
+		 , connection_spec => [sqlite => ':memory:', 'w']
 		 , [foo => []
 		    , [foo => 'varchar', -indexed]
 		    , [bar_id => [bar => []
