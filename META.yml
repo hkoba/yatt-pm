@@ -1,6 +1,6 @@
 ---
 name: YATT
-version: 0.0.3
+version: 0.0.4
 author:
   - '"KOBAYASI, Hiroaki" <hkoba@cpan.org>'
 abstract: Yet Another Template Toolkit
@@ -19,7 +19,7 @@ meta-spec:
 provides:
   YATT:
     file: web/cgi-bin/yatt.lib/YATT.pm
-    version: 0.0.3
+    version: 0.0.4
   YATT::ArgMacro:
     file: web/cgi-bin/yatt.lib/YATT/ArgMacro.pm
   YATT::ArgTypes:
