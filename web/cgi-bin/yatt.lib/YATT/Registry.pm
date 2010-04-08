@@ -133,7 +133,7 @@ sub after_configure {
       $result[0] = eval $prog;
     }
     # XXX: $prog をどう見せたいかが、状況で色々変化する。
-    die "$@\n" . _lined($prog) if $@;
+    die $@ if $@;
     wantarray ? @result : $result[0];
   }
 
