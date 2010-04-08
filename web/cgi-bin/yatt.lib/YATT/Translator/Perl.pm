@@ -706,8 +706,10 @@ sub genargs_static {
 	$argdecl->early_escaped ? $var->as_escaped : $var->as_lvalue;
       } elsif (defined $args->node_body) {
 	$argdecl->gen_assignable_node($trans, $scope, $args);
-      } else {
+      } elsif ($argdecl->isa($trans->t_scalar)) {
 	$argdecl->quote_assignable(my $copy = 1);
+      } else {
+	die $trans->node_error($args, "valueless arg '%s'", $name);
       }
     };
   }
@@ -1057,10 +1059,12 @@ sub gen_entref_path {
       my $call = do {
 	# XXX: codevar は、path の先頭だけ。
 	# 引数にも現れるから、
-	if ($var = $trans->find_var($scope, $name)) {
-	  if (ref $var and $var->can('arg_specs')) {
-	    sprintf('%1$s && %1$s->', $var->as_lvalue);
-	  } elsif (my $handler = $var->can("entmacro_")) {
+	if ($pkg->can(my $en = "entity_$name")) {
+	  sprintf('%s->%s', $pkg, $en);
+	} elsif ($var = $trans->find_codearg($scope, $name)) {
+	  sprintf('%1$s && %1$s->', $var->as_lvalue);
+	} elsif ($var = $trans->find_var($scope, $name)) {
+	  if (my $handler = $var->can("entmacro_")) {
             $dont_call++;
 	    $handler->($var, $trans, $scope, $node, \@_, [], @args);
 	  } else {
@@ -1074,8 +1078,6 @@ sub gen_entref_path {
 	  # 予約語も持ちたい。
           $dont_call++;
 	  $handler->($pkg, $trans, $scope, $node, \@_, [], @args);
-	} elsif ($pkg->can(my $en = "entity_$name")) {
-	  sprintf('%s->%s', $pkg, $en);
 	} else {
 	  die $trans->node_error($node, "not implemented call '%s' in %s"
 				 , $name, $node->node_body);
