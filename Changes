@@ -1,5 +1,10 @@
 Revision history for YATT
 
+0.0.4  2010-04-08
+
+- To skip rlimit test if BSD::Resource is missing.
+- VarExporter behavior is changed.
+
 0.0.3  2010-04-07
 
 - Stable release. (Just before minor change)
