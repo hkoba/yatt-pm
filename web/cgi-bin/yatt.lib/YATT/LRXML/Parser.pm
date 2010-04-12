@@ -615,7 +615,7 @@ sub re_subscript {
 sub re_entity_pathexpr {
   my ($self, $capture, $ns) = @_;
   $ns = $self->re_prefix(0, $self->entity_ns($ns), '');
-  my $body = qr{[\@:\.\w\$\-\+\*/%<>=\[\]\{\}\(,\)]*};
+  my $body = qr{[\w\$\-\+\*/%<>\.=\@\|!:\[\]\{\}\(,\)]*};
   if (defined $capture and $capture > 1) {
     qr{&($ns\b$body);}xs;
   } else {

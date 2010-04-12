@@ -3,19 +3,16 @@
 use strict;
 use warnings FATAL => qw(all);
 use Test::More qw(no_plan);
-use Test::Differences;
 
 use FindBin;
 use lib "$FindBin::Bin/..";
 
 use YATT;
+use YATT::Test;
 use YATT::LRXML::Node qw(TEXT_TYPE);
 require YATT::Test;
 
 use Data::Dumper;
-sub dumper {
-  Data::Dumper->new(\@_)->Terse(1)->Indent(0)->Dump;
-}
 
 require_ok('YATT::LRXML::Parser');
 YATT::break_parser;

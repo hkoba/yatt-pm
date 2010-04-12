@@ -29,6 +29,7 @@ use YATT::Exception;
 use base qw(YATT::Class::Configurable);
 use YATT::Types -base => __PACKAGE__
   , [Config => [qw(^cf_registry
+		   cf_driver
 		   cf_docs cf_tmpl
 		   cf_charset
 		   cf_debug_allowed_ip
@@ -39,6 +40,7 @@ use YATT::Types -base => __PACKAGE__
 		   cf_auto_reload
 		   cf_no_chdir
 		   cf_rlimit
+		   cf_use_session
 		 )
 		, ['^cf_app_prefix' => 'YATT']
 		, ['^cf_find_root_upward' => 2]
@@ -214,7 +216,24 @@ END
     ($loader, $config->translator_param
      , debug_translator => $ENV{DEBUG});
 
+  $instpkg->set_random_list;
+
+  $instpkg->force_parameter_convention($cgi); # XXX: unless $config->{...}
+
   ($instpkg, $root, $cgi, $file, $param);
+}
+
+our $PARAM_CONVENTION = qr{^[\w:\-]};
+
+sub force_parameter_convention {
+  my ($pack, $cgi) = @_;
+  my @deleted;
+  foreach my $name ($cgi->param) {
+    next if $name =~ $PARAM_CONVENTION;
+    push @deleted, [$name => $cgi->param($name)];
+    $cgi->delete($name);
+  }
+  @deleted;
 }
 
 *get_instpkg = \&prepare_export;
@@ -264,6 +283,9 @@ sub dispatch {
 
   local $CGI = $cgi;
   local ($SESSION, %COOKIE, %HEADER);
+  if ($CONFIG->{cf_use_session}) {
+    $SESSION = $top->new_session($cgi);
+  }
   my @elpath = $root->parse_elempath($top->canonicalize_html_filename($file));
   my ($found, $renderer, $pkg, $widget);
 
@@ -276,6 +298,9 @@ sub dispatch {
   } elsif (not $found) {
     # XXX: これも。
     $top->dispatch_not_found($root, $file, @param);
+  } elsif (not defined $renderer) {
+    $top->dispatch_error($root, "Can't compile: $file"
+			 , {phase => 'get_handler', target => $file});
   } else {
     unless ($CONFIG->{cf_no_chdir}) {
       # XXX: これもエラー処理を
@@ -345,7 +370,7 @@ sub dispatch_action {
   } else {
     my $html = capture { $action->($pkg, @param) };
     # XXX: SESSION, COOKIE, HEADER...
-    print $CGI->header;
+    print $SESSION ? $SESSION->header : $CGI->header;
     print $html;
   }
   $top->bye;
@@ -431,9 +456,6 @@ sub try_load_config {
   }
 
   $config->configure(docs => $dir);
-  if (-d (my $libdir = "$dir/lib")) {
-    unshift @INC, $libdir;
-  }
 
   return unless -r $file;
 
@@ -513,9 +535,31 @@ sub new_cgi {
   }
 }
 
+sub new_session {
+  my ($toplevel, $cgi) = @_;
+  require CGI::Session;
+  my ($dsn, @opts) = do {
+    if (ref $CONFIG->{cf_use_session}) {
+      @{$CONFIG->{cf_use_session}}
+    } else {
+      $CONFIG->{cf_use_session}
+    }
+  };
+  CGI::Session->new($dsn, $cgi, @opts);
+}
+
+sub entity_session {
+  my ($pack, $name) = @_;
+  $SESSION->param($name);
+}
+
+sub entity_save_session {
+  $SESSION->save_param;
+}
+
 sub new_config {
   my $pack = shift;
-  my $config = @_ == 1 ? shift : \@_;
+  my Config $config = @_ == 1 ? shift : \@_;
   return $config if defined $config
     and ref $config and UNIVERSAL::isa($config, Config);
 
@@ -523,7 +567,7 @@ sub new_config {
     $pack = $pack->Config;
   }
 
-  $pack->new(do {
+  $config = $pack->new(do {
     unless (defined $config) {
       ()
     } elsif (not ref $config) {
@@ -538,6 +582,10 @@ Invalid configuration parameter: $config
 END
     }
   });
+
+  $config->{cf_driver} = $0;
+
+  $config;
 }
 
 sub heavy_configure {
@@ -672,6 +720,50 @@ sub entity_format {
   sprintf $format, @_;
 }
 
+sub entity_is_debug_allowed {
+  my ($this) = @_;
+  unless (defined $CGI->{'.allow_debug'}) {
+    $CGI->{'.allow_debug'} = $this->is_debug_allowed($CGI->remote_addr);
+  }
+  $CGI->{'.allow_debug'};
+}
+
+sub is_debug_allowed {
+  my ($this, $ip) = @_;
+  my $pat = $$CONFIG{cf_debug_allowed_ip};
+  unless (defined $pat) {
+    $pat = $$CONFIG{cf_debug_allowed_ip} = $this->load_htdebug;
+  } elsif (ref $pat) {
+    $pat = $$CONFIG{cf_debug_allowed_ip} = qr{@{[join "|", map {"^$_"} @$pat]}};
+  } elsif ($pat eq '') {
+    return 0
+  }
+  $ip =~ $pat;
+}
+
+sub load_htdebug {
+  my ($this) = @_;
+  my $dir = untaint_any(dirname($CONFIG->{cf_driver}));
+  my $fn = "$dir/.htdebug";
+  return '' unless -r $fn;
+  open my $fh, '<', $fn or die "Can't open $fn: $!";
+  local $_;
+  my @pat;
+  while (<$fh>) {
+    chomp;
+    s/\#.*//;
+    next unless /\S/;
+    push @pat, '^'.quotemeta($_);
+  }
+  qr{@{[join "|", @pat]}};
+}
+
+sub entity_CGI { $CGI }
+
+sub entity_remote_addr {
+  $CGI->remote_addr
+}
+
 #========================================
 
 sub entity_param {
@@ -725,11 +817,6 @@ sub YATT::Toplevel::CGI::Config::translator_param {
       , $config->{cf_translator_param})
 }
 
-# Config に
-sub is_debug_allowed {
-  (my Config $config, my ($cgi)) = @_;
-  
-}
 
 #========================================
 package YATT::Toplevel::CGI::Batch; use YATT::Inc;

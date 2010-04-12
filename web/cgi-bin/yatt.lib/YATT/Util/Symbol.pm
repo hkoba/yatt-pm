@@ -55,16 +55,10 @@ sub rebless_array_with {
   bless $self, $newclass;
 }
 
-sub rebless_hash_with {
-  my ($self, $newclass) = @_;
-  Hash::Util::unlock_keys($self);
-  Hash::Util::lock_keys($self, keys %{fields_hash_of_class($newclass)});
-  bless $self, $newclass;
-}
-
 *rebless_with = do {
   if ($] >= 5.009) {
-    \&rebless_hash_with;
+    require YATT::Util::SymbolHash;
+    \&YATT::Util::SymbolHash::rebless_hash_with;
   } else {
     \&rebless_array_with;
   }

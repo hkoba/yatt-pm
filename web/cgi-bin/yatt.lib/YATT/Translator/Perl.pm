@@ -13,6 +13,7 @@ use YATT::Fields [cf_mode => 'render']
   , [cf_product => sub {[]}]
   , qw(target_cache
        delayed_target
+       generating_widget
        cf_pagevars
        cf_debug_translator);
 
@@ -235,10 +236,13 @@ sub generate_template {
       \%calling_conv;
     }
   };
+  my @script;
+  foreach my $widget (@{$tmpl->widget_list}) {
+    push @script, $gen->generate_widget($widget, $metainfo, \@file_scope);
+  }
   join("", q{package } . $gen->get_package($tmpl) . ';'
        , join("",@use)
-       , map {$gen->generate_widget($_, $metainfo, \@file_scope)}
-       @{$tmpl->widget_list});
+       , @script);
 }
 
 sub generate_lineinfo {
@@ -248,8 +252,14 @@ sub generate_lineinfo {
     , $start, $widget->{cf_filename};
 }
 
+sub generating_widget {
+  my MY $gen = shift;
+  $gen->{generating_widget}[0];
+}
+
 sub generate_widget {
   (my MY $gen, my Widget $widget, my ($metainfo, $file_scope)) = @_;
+  local $gen->{generating_widget}[0] = $widget;
   my @body = $gen->generate_body
     ([{}, $widget->widget_scope($file_scope)]
      , $widget->cursor(metainfo => $metainfo->clone
@@ -635,7 +645,7 @@ sub gencall {
   if (my ($dict, $order) = $trans->has_unique_argmacro
       ($widget, $node->metainfo->caller_widget)) {
     $node = YATT::ArgMacro->expand_all_macros
-      ($trans, $scope, $node, $dict, $order);
+      ($trans, $scope, $node, $widget, $dict, $order);
   }
 
   my $func = $trans->get_funcname_to($trans->{cf_mode}, $widget);
@@ -662,7 +672,7 @@ sub has_single_bare_varexpr {
 sub has_pass_through_var {
   (my MY $trans, my ($scope, $args, $name)) = @_;
   return if $args->node_size >= 2;
-  if ($args->node_size == 1 and $args->node_flag == 0) {
+  if ($args->node_size == 1 and ($args->node_flag || 0) == 0) {
     # bareword 渡し。
     $trans->find_var($scope, $args->node_body);
   } elsif ($args->node_size == 0) {
@@ -686,8 +696,10 @@ sub genargs_static {
       $name = $arg_order->[$nth++]
 	or die $trans->node_error($args, "Too many args");
     }
-    my $argdecl = $arg_dict->{$name}
-      or die $trans->node_error($args, "Unknown arg '%s'", $name);
+    my $argdecl = $arg_dict->{$name};
+    unless ($argdecl) {
+      die $trans->node_error($args, "Unknown arg '%s'", $name);
+    }
     # XXX: $typename (attname:type の type) を活用していない。
     # XXX: code 型引数を primary で渡したときにまで、 print が作られてる。
     # $args->is_quoted_by_element で判別せよ。
@@ -697,8 +709,10 @@ sub genargs_static {
 	$argdecl->early_escaped ? $var->as_escaped : $var->as_lvalue;
       } elsif (defined $args->node_body) {
 	$argdecl->gen_assignable_node($trans, $scope, $args);
-      } else {
+      } elsif ($argdecl->isa($trans->t_scalar)) {
 	$argdecl->quote_assignable(my $copy = 1);
+      } else {
+	die $trans->node_error($args, "valueless arg '%s'", $name);
       }
     };
   }
@@ -807,6 +821,11 @@ sub attr_declare_delegate {
   }
   if ($tmpl->{cf_nsid} != $base->template_nsid) {
     $trans->mark_delayed_target($base);
+  }
+
+  if ($base->{arg_dict}{$argname}) {
+    die $trans->node_error($args, q{delegate '%1$s' hides argument '%1$s' of widget %2$s}
+			   , $argname, join(":", @elempath));
   }
 
   # pass thru する変数名の一覧。
@@ -974,6 +993,34 @@ sub gen_pass_through_arg_typed {
   }
 }
 
+sub try_pass_through {
+  (my MY $trans, my ($scope, $cursor, $rawNode, $defaultFlag)) = @_;
+  if (node_size($rawNode) == 1 and node_flag($rawNode) == 0
+     and (my $nm = node_body($rawNode)) =~ /^\w+$/) {
+
+    # [name=bareword_ident]
+    # Must be an existing variable.
+    if (my $var = $trans->find_var($scope, $nm)) {
+      $var->as_lvalue;
+    } else {
+      die $trans->node_error($cursor, "No such variable '%s'", $nm);
+    }
+  } elsif (node_size($rawNode) == 0) {
+
+    # [name]
+    # variable or flag.
+    if (my $var = $trans->find_var($scope, my $nm = node_name($rawNode))) {
+      $var->as_lvalue;
+    } elsif (defined $defaultFlag) {
+      $defaultFlag
+    } else {
+      die $trans->node_error($cursor, "No such variable '%s'", $nm);
+    }
+  } else {
+    undef;
+  }
+}
+
 sub mark_vars {
   (my MY $trans, my ($scope, $early_escaped, $node)) = @_;
   my @result;
@@ -1020,22 +1067,25 @@ sub gen_entref_path {
       my $call = do {
 	# XXX: codevar は、path の先頭だけ。
 	# 引数にも現れるから、
-	if ($var = $trans->find_var($scope, $name)) {
-	  if (ref $var and $var->can('arg_specs')) {
-	    sprintf('%1$s && %1$s->', $var->as_lvalue);
-	  } elsif (my $handler = $var->can("entmacro_")) {
+	if ($pkg->can(my $en = "entity_$name")) {
+	  sprintf('%s->%s', $pkg, $en);
+	} elsif ($var = $trans->find_codearg($scope, $name)) {
+	  sprintf('%1$s && %1$s->', $var->as_lvalue);
+	} elsif ($var = $trans->find_var($scope, $name)) {
+	  if (my $handler = $var->can("entmacro_")) {
             $dont_call++;
 	    $handler->($var, $trans, $scope, $node, \@_, [], @args);
 	  } else {
-	    $var->as_lvalue;
+	    # XXX: 本当は $pkg よりもファイル名を出すべき。
+	    die $trans->node_error
+	      ($node, "not implemented call '%s' for %s in %s"
+	       , $name, $pkg, $node->node_body);
 	  }
 	} elsif (my $handler = $trans->can("entmacro_$name")) {
 	  # XXX: $pkg->can の方が、拡張向きで良いのだが…
 	  # 予約語も持ちたい。
           $dont_call++;
 	  $handler->($pkg, $trans, $scope, $node, \@_, [], @args);
-	} elsif ($pkg->can(my $en = "entity_$name")) {
-	  sprintf('%s->%s', $pkg, $en);
 	} else {
 	  die $trans->node_error($node, "not implemented call '%s' in %s"
 				 , $name, $node->node_body);
@@ -1185,7 +1235,9 @@ sub faked_gentype {
   (my MY $trans, my ($type, $scope, $baseNC, $targetNode)) = @_;
   my $node = $targetNode ? $trans->fake_cursor_from($baseNC, $targetNode)
     : $baseNC;
-  $trans->can("t_$type")->()->gen_assignable_node($trans, $scope, $node);
+  my $sub = $trans->can("t_$type")
+    or die $trans->node_error($node, "No such argtype: %s", $type);
+  $sub->()->gen_assignable_node($trans, $scope, $node);
 }
 
 # expr 専用。デフォルト値も渡せる。
@@ -1286,7 +1338,7 @@ use YATT::ArgTypes
    , -type_fmt => join("::", MY, 't_%s')
    , [text => -alias => '']
    , [html => \ lvalue_format => '$html_%s', \ early_escaped => 1]
-   , [scalar => -alias => 'value']
+   , [scalar => -alias => ['value', 'flag']]
    , ['list']
    , [attr => -base => 'text']
    , [code   => -alias => 'expr', \ can_call => 1
@@ -1757,6 +1809,39 @@ sub feed_arg_spec {
 	    , $format
 	    , $trans->as_join($trans->generate_body([{}, $scope], $args)));
   }
+}
+
+sub macro_dbfetch {
+  require YATT::Translator::Perl::macro_dbfetch;
+  shift->YATT::Translator::Perl::macro_dbfetch::macro(@_);
+}
+
+sub feed_arg_or_make_hash_of {
+  (my $trans
+   , my ($type, $scope, $args, $arg_dict, $arg_order)) = splice @_, 0, 6;
+  my (@primary, @secondary);
+  for (my $nth = 0; $args->readable; $args->next) {
+    last unless $args->is_primary_attribute;
+    my ($name, @ext) = $args->node_path;
+    unless (defined $name) {
+      $name = $arg_order->[$nth++]
+	or die $trans->node_error($args, "Too many args");
+    }
+    if ($name =~ /^-(.*)/) {
+      # XXX: そもそも -name=[...] で構造化したかった
+      push @secondary, [$name, $trans->faked_gentype
+			($type => $scope, $args, $args->current)];
+      next;
+    }
+    defined (my $argno = $arg_dict->{$name}) or do {
+      push @primary, [$name, $trans->faked_gentype
+			($type => $scope, $args, $args->current)];
+      next;
+    };
+
+    $_[$argno] = $args->current;
+  }
+  grep {@$_ ? $_ : ()} (\@primary, \@secondary);
 }
 
 #========================================

@@ -8,11 +8,11 @@ use YATT::Fields qw(pages);
 use YATT::Util::Symbol;
 
 sub import {
-  my ($pack) = shift;
-  my $sym = globref($pack, "_CACHE");
-  my $cache = *{$sym}{SCALAR} || do {
-    *$sym = \ $pack->new
-  };
+  my $pack = shift;
+  my $callpack = caller;
+  my $self = $pack->new(@_);
+  $self->register_into($callpack);
+  # $callpack に cache を作り、かつ、 import を作る
 }
 
 sub new {
@@ -48,14 +48,24 @@ sub export_to {
     or $failok or die "No such page: $page";
 
   foreach my $name (keys %$vars) {
-    *{globref($destpkg, $name)} = do {
-      my $ref = ref $vars->{$name};
-      if (not $ref or $ref eq 'ARRAY' or $ref eq 'HASH') {
-	\ $vars->{$name};
-      } else {
-	$vars->{$name}
-      }
-    };
+    my $value = $vars->{$name};
+    if ($failok and ref $value and UNIVERSAL::can($value, 'varname')
+	and UNIVERSAL::can($value, 'value')) {
+      # For $failok case (== from yatt)
+      my $glob = globref($destpkg, $value->varname($name));
+      (*$glob) = map {ref $_ ? $_ : \ $_} $value->value;
+    } else {
+      my $glob = globref($destpkg, $name);
+      *$glob = do {
+	if (not ref $value or ref $value eq 'ARRAY' or ref $value eq 'HASH') {
+	  \ $value
+	} else {
+	  $value;
+	}
+      };
+      # 関数の場合は、関数だけでなく、スカラ変数にも入れておく。
+      *$glob = \ $value if ref $value eq 'CODE';
+    }
   }
 }
 
@@ -71,24 +81,44 @@ sub find_vars {
   }
 }
 
-# YATT ��ͭ���ɤ���͡�
+# YATT 固有で良いよね。
 
 sub build_scope_for {
   my ($mypkg, $gen, $page) = @_;
   my MY $self = $mypkg->instance;
   my $vars = $self->find_vars($page);
+  &YATT::breakpoint;
   my %scope;
   foreach my $name (keys %$vars) {
     my $value = $vars->{$name};
-    unless (ref $value) {
-      $scope{$name} = $gen->t_text->new(varname => $name);
-    } elsif (ref $value eq 'ARRAY') {
-      $scope{$name} = $gen->t_list->new(varname => $name);
-    } else {
-      $scope{$name} = $gen->t_scalar->new(varname => $name);
-    }
+    my $type = do {
+      unless (ref $value) {
+	$gen->t_text;
+      } elsif (ref $value eq 'ARRAY') {
+	$gen->t_list
+      } elsif (ref $value eq 'CODE') {
+	$gen->t_code
+      } elsif (UNIVERSAL::can($value, 'varname')
+	       and UNIVERSAL::can($value, 'value')) {
+	$gen->t_html;
+      } else {
+	$gen->t_scalar;
+      }
+    };
+    $scope{$name} = $type->new(varname => $name);
   }
   \%scope;
 }
+
+sub as_html {
+  my ($text) = @_;
+  bless \ $text, 'YATT::Util::VarExporter::html';
+}
+
+package
+YATT::Util::VarExporter::html;
+use overload '""' => 'value';
+sub varname {shift; 'html_'. shift}
+sub value {${shift()}}
 
 1;

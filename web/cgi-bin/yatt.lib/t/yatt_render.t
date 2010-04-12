@@ -15,6 +15,10 @@ unless (-x $SCRIPT) {
   plan skip_all => "yatt.render is missing"; exit
 }
 
+if (do {eval {require BSD::Resource}; $@}) {
+  plan skip_all => "BSD::Resource is required to test rlimit."; exit
+}
+
 my $tester = sub {
   my $out = qx($^X -I$FindBin::Bin/../ $SCRIPT @_ 2>&1);
   chomp($out);

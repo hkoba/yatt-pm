@@ -133,7 +133,7 @@ sub after_configure {
       $result[0] = eval $prog;
     }
     # XXX: $prog をどう見せたいかが、状況で色々変化する。
-    die "$@\n" . _lined($prog) if $@;
+    die $@ if $@;
     wantarray ? @result : $result[0];
   }
 
@@ -341,7 +341,7 @@ sub get_widget_from_template {
   (my Root $root, my Template $tmpl, my ($nsname)) = splice @_, 0, 3;
   my $widget;
 
-  # Relative lookup.
+  # Relative lookup. ($nsname case is for [delegate])
   $widget = $tmpl->lookup_widget($root, @_ ? @_ : $nsname)
     and return $widget;
 
@@ -367,7 +367,7 @@ sub get_widget_from_dir {
   } elsif (@elempath == 1) {
     $dir->widget_by_name($root, @elempath);
   } else {
-    croak "empty element path";
+    return;
   }
 }
 
@@ -919,6 +919,14 @@ sub create_var {
   use base qw(YATT::Registry::Loader File::Spec);
   use YATT::Fields qw(cf_DIR cf_LIB);
   sub initargs { qw(cf_DIR) }
+  sub init {
+    my ($self, $dir) = splice @_, 0, 2;
+    $self->SUPER::init($dir, @_);
+    if (-d (my $libdir = "$dir/lib")) {
+      require lib; import lib $libdir
+    }
+    $self;
+  }
 
   use YATT::Registry::NS;
   use YATT::Util;
