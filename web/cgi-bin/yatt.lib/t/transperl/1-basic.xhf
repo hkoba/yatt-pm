@@ -1,10 +1,4 @@
 # -*- coding: utf-8 -*-
-FILE: doc/.htyattrc
-IN: use YATT::Registry base => 'normal'
-
-FILE: doc/normal/.htyattrc
-IN: sub bar {"BAR"}
-
 TITLE: toplevel template
 TAG: pi
 IN:
