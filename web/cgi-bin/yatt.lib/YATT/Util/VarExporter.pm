@@ -87,7 +87,6 @@ sub build_scope_for {
   my ($mypkg, $gen, $page) = @_;
   my MY $self = $mypkg->instance;
   my $vars = $self->find_vars($page);
-  &YATT::breakpoint;
   my %scope;
   foreach my $name (keys %$vars) {
     my $value = $vars->{$name};
