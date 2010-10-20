@@ -1,0 +1,137 @@
+#!/usr/bin/perl
+use strict;
+use warnings FATAL => qw(all);
+use base qw(File::Spec);
+sub MY () {__PACKAGE__}
+
+use IO::Socket::UNIX;
+use Fcntl;
+# use POSIX qw(:sys_wait_h);
+
+use Getopt::Long;
+
+GetOptions("s|server!" => \ my $is_server
+	   , "c|client!" => \ my $is_client
+	   , 'v|verbose!' => \ my $verbose
+	   , 'n=i' => \ (my $GOAL = 100)
+	  )
+  or exit 1;
+
+if ($is_server and $is_client) {
+  die "$0: -server and -client is exclusive\n";
+}
+
+my $sessdir  = MY->tmpdir . "/fcgitest$$";
+my $sockfile = "$sessdir/socket";
+
+unless (mkdir $sessdir, 0700) {
+  die "Can't mkdir $sessdir: $!";
+}
+
+if ($is_server or (defined $is_client and not $is_client)
+    or my $kid = fork) {
+  # parent
+  require Test::More;
+  import Test::More;
+
+  MY->procfile($kid)
+    or plan(skip_all => '/proc/$pid/status is not available for your system');
+
+  my $fcgi = MY->which('cgi-fcgi')
+    or plan(skip_all => "cgi-fcgi is not installed");
+
+  plan(tests => 1);
+
+  # First request.
+  my @res = MY->send_request($fcgi, $sockfile, GET => '/');
+  print "# ", join("|", @res), "\n" if $verbose;
+
+  # Memory size after processing of first request.
+  my $at_start = MY->memsize($kid);
+
+  for (my $cnt = 1; $cnt < $GOAL; $cnt++) {
+    my @res = MY->send_request($fcgi, $sockfile, GET => '/');
+    print "# ", join("|", @res), "\n" if $verbose;
+  }
+
+  Test::More::is(MY->memsize($kid), $at_start, "memsize after $GOAL calls");
+
+  kill TERM => $kid;
+  waitpid($kid, 0);
+
+  unlink $sockfile if -e $sockfile;
+  rmdir $sessdir;
+
+} else {
+  die "Can't fork: $!" if not defined $is_client and not defined $kid;
+
+  require FCGI;
+
+  my $sock = FCGI::OpenSocket($sockfile, 100)
+    or die "Can't open socket '$sockfile': $!";
+
+  my $request = FCGI::Request(\*STDIN, \*STDOUT, \*STDERR, \%ENV
+			      , $sock, &FCGI::FAIL_ACCEPT_ON_INTR);
+
+  my $count = 0;
+  while ($request->Accept() >= 0) {
+    print ++$count; # Plaintext is enough because this is not talking to httpd.
+    FCGI::finish();
+    # last if $count >= $GOAL;
+  }
+  # exit;
+}
+
+#========================================
+
+sub send_request {
+  my ($pack, $fcgi, $sock, $method, $path, @query) = @_;
+  local $ENV{SERVER_SOFTWARE} = 'PERL_FCGI_LEAKTEST';
+  local $ENV{REQUEST_METHOD} = uc($method);
+  local $ENV{REQUEST_URI} = $path;
+  local $ENV{QUERY_STRING} = @query ? join("&", @query) : undef;
+
+  open my $pipe, "-|", $fcgi, qw(-bind -connect) => $sock
+    or die "Can't invoke $fcgi: $!";
+  local $/ = "\r\n";
+  my @result; chomp(@result = <$pipe>);
+  @result;
+}
+
+#========================================
+sub fgrep (&@);
+
+sub which {
+  my ($pack, $exe) = @_;
+  foreach my $path ($pack->path) {
+    if (-x (my $fn = $pack->join($path, $exe))) {
+      return $fn;
+    }
+  }
+}
+
+sub procfile {
+  my ($pack, $pid) = @_;
+  my $proc = "/proc/$pid/status";
+  return unless -r $proc;
+  $proc;
+}
+
+sub memsize {
+  my ($pack, $pid) = @_;
+  scalar fgrep {s/^VmRSS:\s+(\d+)\D+$/$1/} $pack->procfile($pid);
+}
+
+#========================================
+
+sub fgrep (&@) {
+  my ($sub, @files) = @_;
+  local @ARGV = @files;
+  local $_;
+  my (@result);
+  while (<>) {
+    next unless $sub->();
+    push @result, $_;
+  }
+  wantarray ? @result : $result[0];
+}
