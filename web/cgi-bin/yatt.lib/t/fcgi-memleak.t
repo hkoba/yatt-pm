@@ -106,7 +106,9 @@ if ($is_server or (defined $is_client and not $is_client)
   while ($request->Accept() >= 0) {
     print ++$count; # Plaintext is enough because this is not talking to httpd.
     {
-      local $SIG{__DIE__} = 0;
+      # To avoid "Use of uninitialized value in numeric eq (==) at /usr/lib64/perl5/FCGI.pm line 59."
+      local $SIG{__DIE__} = sub {}; local $SIG{__WARN__} = sub {};
+
       FCGI::finish();
     }
     # last if $count >= $GOAL;
