@@ -8,9 +8,7 @@ FILE: doc/lib/pagevars.pm
 IN: package pagevars;
  use YATT::Util::VarExporter
    (index => {foo => "FOO", bar => "BARRR"
-             , baz => bless(\ (my $cp = "foo<b>bar</b>baz"), __PACKAGE__)});
- sub varname {shift; 'html_'. shift}
- sub value {${shift()}}
+             , baz => YATT::Util::VarExporter::as_html("foo<b>bar</b>baz")});
  1;
 
 FILE: doc/index.html

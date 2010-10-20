@@ -49,8 +49,8 @@ sub export_to {
 
   foreach my $name (keys %$vars) {
     my $value = $vars->{$name};
-    if ($failok and ref $value and $value->can('varname')
-	and $value->can('value')) {
+    if ($failok and ref $value and UNIVERSAL::can($value, 'varname')
+	and UNIVERSAL::can($value, 'value')) {
       # For $failok case (== from yatt)
       my $glob = globref($destpkg, $value->varname($name));
       (*$glob) = map {ref $_ ? $_ : \ $_} $value->value;
@@ -98,7 +98,8 @@ sub build_scope_for {
 	$gen->t_list
       } elsif (ref $value eq 'CODE') {
 	$gen->t_code
-      } elsif ($value->can('varname') and $value->can('value')) {
+      } elsif (UNIVERSAL::can($value, 'varname')
+	       and UNIVERSAL::can($value, 'value')) {
 	$gen->t_html;
       } else {
 	$gen->t_scalar;
@@ -108,5 +109,16 @@ sub build_scope_for {
   }
   \%scope;
 }
+
+sub as_html {
+  my ($text) = @_;
+  bless \ $text, 'YATT::Util::VarExporter::html';
+}
+
+package
+YATT::Util::VarExporter::html;
+use overload '""' => 'value';
+sub varname {shift; 'html_'. shift}
+sub value {${shift()}}
 
 1;
