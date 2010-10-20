@@ -1092,7 +1092,7 @@ sub gen_entref_path {
 	}
       };
 
-      ($dont_call || ref $call) ? $call : sprintf q{%s(%s)}, $call, join ", "
+      ($dont_call || ref $call) ? $call : sprintf q{(%s(%s))}, $call, join ", "
 	, $trans->gen_entref_list($scope, $node, @args);
     } elsif (($name) = $trans->feed_array_if(var => \@_)) {
       unless ($var = $trans->find_var($scope, $name)) {
@@ -1468,6 +1468,7 @@ sub YATT::Translator::Perl::t_code::gen_call {
   (my t_code $argdecl, my MY $trans, my ($scope, $node)) = @_;
   my ($post, @args) = $trans->genargs_static
     ($scope, $node->open, $argdecl->arg_specs);
+  # XXX: こっちを () しなくて済むのはなぜ? => <yatt:tag/> の call だから?
   return \ sprintf '%1$s && %1$s->(%2$s)%3$s', $argdecl->as_lvalue
     , join(", ", @args), $post;
 }
