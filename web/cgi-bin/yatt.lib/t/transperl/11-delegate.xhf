@@ -78,3 +78,22 @@ PARAM[
 - 4
 ]
 OUT: 1 - 2 - 3 - 4
+
+
+TITLE: foo=[delegate] should not have argument 'foo'
+IN:
+ <yatt:bar />
+ <!yatt:widget foo foo>
+ <!yatt:widget bar foo=[delegate]>
+ERROR: delegate 'foo' hides argument 'foo' of widget foo
+
+TITLE: foo=[delegate] should not have argument 'foo'
+IN:
+ <yatt:bar />
+ <!yatt:widget foo foo>&yatt:foo;
+ <!yatt:widget bar baz=[delegate:foo]>
+ <yatt:baz foo="No error."/>
+OUT:
+ No error.
+ 
+ 

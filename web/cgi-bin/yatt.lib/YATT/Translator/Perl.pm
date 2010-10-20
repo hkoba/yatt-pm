@@ -236,10 +236,13 @@ sub generate_template {
       \%calling_conv;
     }
   };
+  my @script;
+  foreach my $widget (@{$tmpl->widget_list}) {
+    push @script, $gen->generate_widget($widget, $metainfo, \@file_scope);
+  }
   join("", q{package } . $gen->get_package($tmpl) . ';'
        , join("",@use)
-       , map {$gen->generate_widget($_, $metainfo, \@file_scope)}
-       @{$tmpl->widget_list});
+       , @script);
 }
 
 sub generate_lineinfo {
@@ -818,6 +821,11 @@ sub attr_declare_delegate {
   }
   if ($tmpl->{cf_nsid} != $base->template_nsid) {
     $trans->mark_delayed_target($base);
+  }
+
+  if ($base->{arg_dict}{$argname}) {
+    die $trans->node_error($args, q{delegate '%1$s' hides argument '%1$s' of widget %2$s}
+			   , $argname, join(":", @elempath));
   }
 
   # pass thru する変数名の一覧。
