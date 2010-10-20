@@ -17,6 +17,29 @@ GetOptions("s|server!" => \ my $is_server
 	  )
   or exit 1;
 
+{
+  package test_delta;
+  use Test::Builder ();
+  my $Test = Test::Builder->new;
+  sub is_delta_ok {
+    my ($delta, $got, $expect, $desc) = @_;
+    if (not defined $got and not defined $expect) {
+      $Test->ok(1, $desc);
+    } elsif (not defined $got) {
+      $Test->ok(0, $desc);
+      $Test->diag("got undef");
+    } elsif (not defined $expect) {
+      $Test->ok(0, $desc);
+      $Test->diag("got defined");
+    } elsif (abs(my $diff = $got - $expect) <= $delta) {
+      $Test->ok(1, $desc);
+    } else {
+      $Test->ok(0, $desc);
+      $Test->diag("expect $expect +- $delta, got $got");
+    }
+  }
+}
+
 if ($is_server and $is_client) {
   die "$0: -server and -client is exclusive\n";
 }
@@ -42,6 +65,11 @@ if ($is_server or (defined $is_client and not $is_client)
 
   plan(tests => 1);
 
+  unless (-w $sockfile) {
+    print "# waiting for socketfile $sockfile\n" if $verbose;
+    sleep 1;
+  }
+
   # First request.
   my @res = MY->send_request($fcgi, $sockfile, GET => '/');
   print "# ", join("|", @res), "\n" if $verbose;
@@ -54,7 +82,8 @@ if ($is_server or (defined $is_client and not $is_client)
     print "# ", join("|", @res), "\n" if $verbose;
   }
 
-  Test::More::is(MY->memsize($kid), $at_start, "memsize after $GOAL calls");
+  test_delta::is_delta_ok(4, MY->memsize($kid), $at_start
+			  , "memsize after $GOAL calls");
 
   kill TERM => $kid;
   waitpid($kid, 0);
@@ -76,7 +105,10 @@ if ($is_server or (defined $is_client and not $is_client)
   my $count = 0;
   while ($request->Accept() >= 0) {
     print ++$count; # Plaintext is enough because this is not talking to httpd.
-    FCGI::finish();
+    {
+      local $SIG{__DIE__} = 0;
+      FCGI::finish();
+    }
     # last if $count >= $GOAL;
   }
   # exit;
