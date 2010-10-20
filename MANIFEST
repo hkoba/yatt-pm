@@ -33,6 +33,7 @@ web/cgi-bin/yatt.lib/.htaccess
 web/cgi-bin/yatt.lib/t/covered-runtests.zsh
 web/cgi-bin/yatt.lib/t/dbsch.t
 web/cgi-bin/yatt.lib/t/entpath.t
+web/cgi-bin/yatt.lib/t/fcgi-memleak.t
 web/cgi-bin/yatt.lib/t/node.t
 web/cgi-bin/yatt.lib/t/parse.t
 web/cgi-bin/yatt.lib/t/registry.t
