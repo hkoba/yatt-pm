@@ -49,11 +49,10 @@ sub export_to {
 
   foreach my $name (keys %$vars) {
     my $value = $vars->{$name};
-    if ($failok and ref $value and UNIVERSAL::can($value, 'varname')
-	and UNIVERSAL::can($value, 'value')) {
-      # For $failok case (== from yatt)
-      my $glob = globref($destpkg, $value->varname($name));
-      (*$glob) = map {ref $_ ? $_ : \ $_} $value->value;
+    if ($failok and not ref $value) {
+      # For $failok case (== from yatt), nonref should become $html_ZZZ var.
+      my $glob = globref($destpkg, 'html_'.$name);
+      *$glob = \ $value;
     } else {
       my $glob = globref($destpkg, $name);
       *$glob = do {
@@ -93,14 +92,11 @@ sub build_scope_for {
     my $value = $vars->{$name};
     my $type = do {
       unless (ref $value) {
-	$gen->t_text;
+	$gen->t_html;
       } elsif (ref $value eq 'ARRAY') {
 	$gen->t_list
       } elsif (ref $value eq 'CODE') {
 	$gen->t_code
-      } elsif (UNIVERSAL::can($value, 'varname')
-	       and UNIVERSAL::can($value, 'value')) {
-	$gen->t_html;
       } else {
 	$gen->t_scalar;
       }
