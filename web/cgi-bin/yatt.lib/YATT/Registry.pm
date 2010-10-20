@@ -367,7 +367,7 @@ sub get_widget_from_dir {
   } elsif (@elempath == 1) {
     $dir->widget_by_name($root, @elempath);
   } else {
-    croak "empty element path";
+    return;
   }
 }
 
