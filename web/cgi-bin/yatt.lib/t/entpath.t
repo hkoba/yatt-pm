@@ -245,4 +245,9 @@ sub is_entpath {
   is_entpath q{:foo(=@bar)}
     , [[call => 'foo'
 	, [expr => '@bar']]];
+
+  my $chrs = q{|,@,$,-,+,*,/,<,>,!}; # XXX: % is ng for sprintf...
+  is_entpath qq{:foo($chrs)}
+    , [[call => 'foo'
+	, map {[text => $_]} split /,/, $chrs]];
 }

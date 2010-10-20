@@ -411,6 +411,24 @@ OUT:
  1
  
 
+TITLE: valueless flag arg -> 1
+IN:
+ <yatt:foo x/>
+ <!yatt:widget foo x=flag>
+ &yatt:x;
+OUT:
+ 1
+ 
+
+TITLE: valueless value arg -> 1
+IN:
+ <yatt:foo x/>
+ <!yatt:widget foo x=value>
+ &yatt:x;
+OUT:
+ 1
+ 
+
 TITLE: valueless arg other than scalar => error.
 IN:
  <yatt:foo x/>

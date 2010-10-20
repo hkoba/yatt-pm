@@ -1330,7 +1330,7 @@ use YATT::ArgTypes
    , -type_fmt => join("::", MY, 't_%s')
    , [text => -alias => '']
    , [html => \ lvalue_format => '$html_%s', \ early_escaped => 1]
-   , [scalar => -alias => 'value']
+   , [scalar => -alias => ['value', 'flag']]
    , ['list']
    , [attr => -base => 'text']
    , [code   => -alias => 'expr', \ can_call => 1

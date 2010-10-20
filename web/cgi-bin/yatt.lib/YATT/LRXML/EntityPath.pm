@@ -81,8 +81,8 @@ my %open_rest = qw| ( call [ aref  |;
 my %close_ch  = qw( ( ) [ ] { } );
 
 my $re_var  = qr{[:]+ (\w+) (\()?}x;
-my $re_other= qr{[\w\$\-\+\*/%<>\.=\@!:]}x;
-my $re_word = qr{[\w\$\-\+\*/%<>\.=\@] $re_other*}x;
+my $re_other= qr{[\w\$\-\+\*/%<>\.=\@\|!:]}x;
+my $re_word = qr{[\w\$\-\+\*/%<>\.=\@\|!] $re_other*}x;
 
 sub _parse_pipeline {
   my @pipe;

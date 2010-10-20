@@ -112,7 +112,9 @@ sub lookup_in {
 
 sub option_alias {
   (my MY $self, my ($class, $value)) = @_;
-  $self->{cf_type_map}{$value} = $class;
+  foreach my $alias (ref $value ? @$value : $value) {
+    $self->{cf_type_map}{$alias} = $class;
+  }
 }
 
 sub option_fields {
