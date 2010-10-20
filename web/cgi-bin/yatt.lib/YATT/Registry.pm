@@ -341,7 +341,7 @@ sub get_widget_from_template {
   (my Root $root, my Template $tmpl, my ($nsname)) = splice @_, 0, 3;
   my $widget;
 
-  # Relative lookup.
+  # Relative lookup. ($nsname case is for [delegate])
   $widget = $tmpl->lookup_widget($root, @_ ? @_ : $nsname)
     and return $widget;
 
