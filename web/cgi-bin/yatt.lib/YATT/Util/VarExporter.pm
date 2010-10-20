@@ -49,10 +49,11 @@ sub export_to {
 
   foreach my $name (keys %$vars) {
     my $value = $vars->{$name};
-    if ($failok and not ref $value) {
-      # For $failok case (== from yatt), nonref should become $html_ZZZ var.
-      my $glob = globref($destpkg, 'html_'.$name);
-      *$glob = \ $value;
+    if ($failok and ref $value and $value->can('varname')
+	and $value->can('value')) {
+      # For $failok case (== from yatt)
+      my $glob = globref($destpkg, $value->varname($name));
+      (*$glob) = map {ref $_ ? $_ : \ $_} $value->value;
     } else {
       my $glob = globref($destpkg, $name);
       *$glob = do {
@@ -92,11 +93,13 @@ sub build_scope_for {
     my $value = $vars->{$name};
     my $type = do {
       unless (ref $value) {
-	$gen->t_html;
+	$gen->t_text;
       } elsif (ref $value eq 'ARRAY') {
 	$gen->t_list
       } elsif (ref $value eq 'CODE') {
 	$gen->t_code
+      } elsif ($value->can('varname') and $value->can('value')) {
+	$gen->t_html;
       } else {
 	$gen->t_scalar;
       }
