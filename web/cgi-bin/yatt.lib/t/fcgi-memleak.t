@@ -51,6 +51,11 @@ unless (mkdir $sessdir, 0700) {
   die "Can't mkdir $sessdir: $!";
 }
 
+unless (eval {require FCGI and require CGI::Fast}) {
+  require Test::More; import Test::More;
+  plan(skip_all => 'FCGI.pm is not installed');
+}
+
 if ($is_server or (defined $is_client and not $is_client)
     or my $kid = fork) {
   # parent
