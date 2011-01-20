@@ -1,6 +1,6 @@
 ---
 name: YATT
-version: 0.0.4
+version: v0.0.5
 author:
   - '"KOBAYASI, Hiroaki" <hkoba@cpan.org>'
 abstract: Yet Another Template Toolkit
@@ -10,16 +10,18 @@ requires:
   List::Util: 0
   Test::Differences: 0
   Test::More: 0
-  perl: 5.7.2
+  perl: v5.7.2
   version: 0
-generated_by: Module::Build version 0.32
+configure_requires:
+  Module::Build: 0.35
+generated_by: Module::Build version 0.35
 meta-spec:
-  url: http://module-build.sourceforge.net/META-spec-v1.2.html
-  version: 1.2
+  url: http://module-build.sourceforge.net/META-spec-v1.4.html
+  version: 1.4
 provides:
   YATT:
     file: web/cgi-bin/yatt.lib/YATT.pm
-    version: 0.0.4
+    version: v0.0.5
   YATT::ArgMacro:
     file: web/cgi-bin/yatt.lib/YATT/ArgMacro.pm
   YATT::ArgTypes:
@@ -109,4 +111,4 @@ provides:
   YATT::XHF:
     file: web/cgi-bin/yatt.lib/YATT/XHF.pm
 resources:
-  license: ~
+  license: http://dev.perl.org/licenses/
