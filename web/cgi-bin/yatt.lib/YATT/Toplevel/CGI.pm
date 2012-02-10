@@ -3,7 +3,10 @@ package YATT::Toplevel::CGI;
 use strict;
 use warnings FATAL => qw(all);
 
-BEGIN {require Exporter; *import = \&Exporter::import}
+BEGIN {
+  require Exporter; *import = \&Exporter::import;
+  $INC{'YATT/Toplevel/CGI.pm'} = __FILE__;
+}
 
 use base qw(File::Spec);
 use File::Basename;

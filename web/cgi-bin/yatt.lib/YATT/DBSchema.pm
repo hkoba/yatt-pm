@@ -554,7 +554,7 @@ sub select {
   if ($is_text) {
     # Debugging aid.
     my $null = $schema->NULL;
-    my $header = $schema->format_line($sth->{NAME}, $separator, $null)
+    my $header; $header = $schema->format_line($sth->{NAME}, $separator, $null)
       if $schema->{cf_no_header};
     my $res = $sth->fetchall_arrayref
       or return;

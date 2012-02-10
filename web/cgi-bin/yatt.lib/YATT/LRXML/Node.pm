@@ -382,7 +382,7 @@ sub create_attlist {
 	 $parser->parse_entities($values[$found]));
       }
     };
-    my @typed = split /:/, $attname if defined $attname;
+    my @typed; @typed = split /:/, $attname if defined $attname;
     # DEPEND_ALIGNMENT: SET_NLINES:
     push @result, [ATTRIBUTE_TYPE, $subtype, 0, undef
 		   , @typed > 1 ? \@typed : $attname

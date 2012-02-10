@@ -401,7 +401,7 @@ sub YATT::Translator::Perl::queued_joiner::add {
 sub YATT::Translator::Perl::queued_joiner::emit_to {
   (my queued_joiner $me, my ($result)) = @_;
   if ($me->{printable}) {
-    my $ws = pop @{$me->{queue}} if $me->{last_ws};
+    my $ws; $ws = pop @{$me->{queue}} if $me->{last_ws};
     push @$result, $me->joiner('print ', @{$me->{queue}}) if @{$me->{queue}};
     $result->[-1] .= $ws if $me->{last_ws};
   } else {
@@ -777,7 +777,7 @@ sub consume_arm {
   }
   # $cond[0] は undef かもしれない。 ex. <:else/>
 
-  my $cond = $trans->fake_cursor_from($arm, $cond[0]) if defined $cond[0];
+  my $cond; $cond = $trans->fake_cursor_from($arm, $cond[0]) if defined $cond[0];
   ($cond, $arm);
 }
 

@@ -3,6 +3,7 @@ package YATT::Test;
 use strict;
 use warnings FATAL => qw(all);
 use base qw(Test::More);
+BEGIN {$INC{'YATT/Test.pm'} = __FILE__}
 
 use File::Basename;
 use Cwd;
@@ -283,8 +284,8 @@ sub xhf_do_sections {
       );
 
     foreach my TestDesc $test (@test) {
-      my @widget_path = split /:/, $test->{cf_WIDGET} if $test->{cf_WIDGET};
-      my ($param) = map {ref $_ ? $_ : 'main'->checked_eval($_)}
+      my @widget_path; @widget_path = split /:/, $test->{cf_WIDGET} if $test->{cf_WIDGET};
+      my ($param); ($param) = map {ref $_ ? $_ : 'main'->checked_eval($_)}
 	$test->{cf_PARAM} if $test->{cf_PARAM};
 
     SKIP: {
