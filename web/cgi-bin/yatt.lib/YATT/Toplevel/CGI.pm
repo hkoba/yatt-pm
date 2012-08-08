@@ -274,6 +274,9 @@ sub dispatch {
   } elsif (not $found) {
     # XXX: これも。
     $top->dispatch_not_found($root, $file, @param);
+  } elsif (not defined $renderer) {
+    $top->dispatch_error($root, "Can't compile: $file"
+			 , {phase => 'get_handler', target => $file});
   } else {
     unless ($CONFIG->{cf_no_chdir}) {
       # XXX: これもエラー処理を
