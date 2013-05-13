@@ -90,15 +90,15 @@ sub is_rendered ($$$) {
   };
   Test::More::is $error, undef, "$title - compiled.";
   eval {
-    if (!$error && $sub) {
+    if ($sub) {
       my $out = capture {
 	&YATT::break_handler;
 	$sub->($pkg, @args);
       };
       $out =~ s{\r}{}g if defined $out;
       eq_or_diff($out, $cmp, $title);
-    } else {
-      Test::More::fail "skipped. $title";
+    } elsif ($error) {
+      Test::More::fail "skipped, because of previous compile error for [$title]: $error";
     }
   };
   if ($@) {

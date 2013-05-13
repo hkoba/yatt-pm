@@ -133,7 +133,8 @@ sub tokenize {
     }
 
     unless ($token =~ s{^($cc_name*) ($cc_sigil) (?:($cc_tabsp)|(\n|$))}{}x) {
-      croak "Invalid XHF token: $token in $record"
+      croak "Invalid XHF token: $token"
+	. (defined $reader->{cf_filename} ? " in $reader->{cf_filename}" : "");
     }
     my ($name, $sigil, $tabsp, $eol) = ($1, $2, $3, $4);
 

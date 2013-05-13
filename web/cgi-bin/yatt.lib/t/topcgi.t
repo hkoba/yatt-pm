@@ -7,13 +7,14 @@ use warnings FATAL => qw(all);
 use FindBin;
 use lib "$FindBin::Bin/..";
 use YATT::Test qw(no_plan);
+use File::Temp qw/tempdir/;
 
 use File::stat;
 
 require_ok(my $class = 'YATT::Toplevel::CGI');
 &YATT::break_translator;
 
-my $TMPDIR = tmpbuilder(rootname($0) . ".tmp");
+my $TMPDIR = tmpbuilder(tempdir(CLEANUP => 0));
 
 my $SESSION = 1;
 {
@@ -23,7 +24,8 @@ my $SESSION = 1;
 		      );
 
   my ($instpkg, $trans, $config)
-    = $class->create_toplevel($DIR, auto_reload => 1);
+    = $class->create_toplevel($DIR, auto_reload => 1
+			      , find_root_upward => 0);
   isnt $instpkg, '', 'instpkg';
   isnt $instpkg->can('dispatch'), '', 'instpkg->can dispatch';
   isnt $trans, '', 'trans';

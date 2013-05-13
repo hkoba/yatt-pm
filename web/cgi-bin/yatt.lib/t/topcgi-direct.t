@@ -12,7 +12,8 @@ unless (eval {require WWW::Mechanize}) {
   plan skip_all => 'WWW::Mechanized is not installed.'; exit;
 }
 
-my $mech = new WWW::Mechanize(agent => "YATT UnitTest by $ENV{USER}");
+my $mech = new WWW::Mechanize(agent => "YATT UnitTest by "
+			      . ($ENV{USER} // "(unknown user)"));
 
 # XXX: Hard coded.
 # /var/www/html/yatt/cgi-bin

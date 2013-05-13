@@ -150,7 +150,9 @@ Entity bar => sub {'baz'};
 }
 
 # [6] Reload should not occur during initialization.
-{
+SKIP: {
+  skip "touch is missing"
+    unless grep {-x $_} qw!/usr/bin/touch /bin/touch!;
   #
   # TEST_NO_RELOAD_DIR=app:lib1/normal
   #
@@ -195,6 +197,10 @@ Entity bar => sub {'baz'};
     }
     # XXX: 
     is system("touch", $fn), 0, "touch $fn";
+    my $retry = $ENV{RETRY} // 3;
+    while (stat($fn)->mtime == $old and $retry-- > 0) {
+      sleep 1;
+    }
     isnt stat($fn)->mtime, $old
       , "[$SESSION] mtime should be changed $fn"
 	. " (now=@{[Time::HiRes::time, ($old + 1) - Time::HiRes::time]}).";
