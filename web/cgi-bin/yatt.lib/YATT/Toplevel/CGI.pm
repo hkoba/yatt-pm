@@ -462,7 +462,7 @@ sub try_load_config {
 
   $config->configure(docs => $dir);
 
-  return unless -r $file;
+  return unless -f $file and -r $file;
 
   # XXX: configure_by_file
   my @param = do {
