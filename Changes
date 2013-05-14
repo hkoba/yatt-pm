@@ -1,8 +1,9 @@
 Revision history for YATT
 
-0.0_6  2013-05-13
+0.0.6  2013-05-14
 
 - Just to reduce test failures.
+- Fixed: https://rt.cpan.org/Public/Bug/Display.html?id=82756
 
 0.0.5  2010-10-20
 

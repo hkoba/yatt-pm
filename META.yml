@@ -1,10 +1,153 @@
 ---
-name: YATT
-version: v0.0.5
+abstract: 'Yet Another Template Toolkit'
 author:
-  - '"KOBAYASI, Hiroaki" <hkoba@cpan.org>'
-abstract: Yet Another Template Toolkit
+  - "\"KOBAYASI, Hiroaki\" <hkoba@cpan.org>"
+build_requires: {}
+configure_requires:
+  Module::Build: 0
+dynamic_config: 1
+generated_by: 'Module::Build version 0.4004, CPAN::Meta::Converter version 2.120921'
 license: perl
+meta-spec:
+  url: http://module-build.sourceforge.net/META-spec-v1.4.html
+  version: 1.4
+name: YATT
+provides:
+  YATT:
+    file: web/cgi-bin/yatt.lib/YATT.pm
+    version: v0.0.6
+  YATT::ArgMacro:
+    file: web/cgi-bin/yatt.lib/YATT/ArgMacro.pm
+    version: 0
+  YATT::ArgTypes:
+    file: web/cgi-bin/yatt.lib/YATT/ArgTypes.pm
+    version: 0
+  YATT::Class::ArrayScanner:
+    file: web/cgi-bin/yatt.lib/YATT/Class/ArrayScanner.pm
+    version: 0
+  YATT::Class::Configurable:
+    file: web/cgi-bin/yatt.lib/YATT/Class/Configurable.pm
+    version: 0
+  YATT::Class::Tcl:
+    file: web/cgi-bin/yatt.lib/YATT/Class/Tcl.pm
+    version: 0
+  YATT::DBSchema:
+    file: web/cgi-bin/yatt.lib/YATT/DBSchema.pm
+    version: 0
+  YATT::Exception:
+    file: web/cgi-bin/yatt.lib/YATT/Exception.pm
+    version: 0
+  YATT::Fields:
+    file: web/cgi-bin/yatt.lib/YATT/Fields.pm
+    version: 0
+  YATT::Inc:
+    file: web/cgi-bin/yatt.lib/YATT/Inc.pm
+    version: 0
+  YATT::LRXML:
+    file: web/cgi-bin/yatt.lib/YATT/LRXML.pm
+    version: 0
+  YATT::LRXML::Builder:
+    file: web/cgi-bin/yatt.lib/YATT/LRXML.pm
+    version: 0
+  YATT::LRXML::EntityPath:
+    file: web/cgi-bin/yatt.lib/YATT/LRXML/EntityPath.pm
+    version: 0
+  YATT::LRXML::MetaInfo:
+    file: web/cgi-bin/yatt.lib/YATT/LRXML/MetaInfo.pm
+    version: 0
+  YATT::LRXML::Node:
+    file: web/cgi-bin/yatt.lib/YATT/LRXML/Node.pm
+    version: 0
+  YATT::LRXML::NodeCursor:
+    file: web/cgi-bin/yatt.lib/YATT/LRXML/NodeCursor.pm
+    version: 0
+  YATT::LRXML::NodeCursor::Path:
+    file: web/cgi-bin/yatt.lib/YATT/LRXML/NodeCursor.pm
+    version: 0
+  YATT::LRXML::Parser:
+    file: web/cgi-bin/yatt.lib/YATT/LRXML/Parser.pm
+    version: 0
+  YATT::LRXML::Scanner:
+    file: web/cgi-bin/yatt.lib/YATT/LRXML.pm
+    version: 0
+  YATT::Registry:
+    file: web/cgi-bin/yatt.lib/YATT/Registry.pm
+    version: 0
+  YATT::Registry::Loader:
+    file: web/cgi-bin/yatt.lib/YATT/Registry.pm
+    version: 0
+  YATT::Registry::Loader::DIR:
+    file: web/cgi-bin/yatt.lib/YATT/Registry.pm
+    version: 0
+  YATT::Registry::NS:
+    file: web/cgi-bin/yatt.lib/YATT/Registry.pm
+    version: 0
+  YATT::Test:
+    file: web/cgi-bin/yatt.lib/YATT/Test.pm
+    version: 0
+  YATT::Toplevel::CGI:
+    file: web/cgi-bin/yatt.lib/YATT/Toplevel/CGI.pm
+    version: 0
+  YATT::Toplevel::CGI::Batch:
+    file: web/cgi-bin/yatt.lib/YATT/Toplevel/CGI.pm
+    version: 0
+  YATT::Toplevel::FCGI:
+    file: web/cgi-bin/yatt.lib/YATT/Toplevel/FCGI.pm
+    version: 0
+  YATT::Toplevel::Server:
+    file: web/cgi-bin/yatt.lib/YATT/Toplevel/Server.pm
+    version: 0
+  YATT::Translator::Perl:
+    file: web/cgi-bin/yatt.lib/YATT/Translator/Perl.pm
+    version: 0
+  YATT::Translator::Perl::macro_dbfetch:
+    file: web/cgi-bin/yatt.lib/YATT/Translator/Perl/macro_dbfetch.pm
+    version: 0
+  YATT::Types:
+    file: web/cgi-bin/yatt.lib/YATT/Types.pm
+    version: 0
+  YATT::Util:
+    file: web/cgi-bin/yatt.lib/YATT/Util.pm
+    version: 0
+  YATT::Util::CmdLine:
+    file: web/cgi-bin/yatt.lib/YATT/Util/CmdLine.pm
+    version: 0
+  YATT::Util::DictOrder:
+    file: web/cgi-bin/yatt.lib/YATT/Util/DictOrder.pm
+    version: 0
+  YATT::Util::DirTreeBuilder:
+    file: web/cgi-bin/yatt.lib/YATT/Util/DirTreeBuilder.pm
+    version: 0
+  YATT::Util::Enum:
+    file: web/cgi-bin/yatt.lib/YATT/Util/Enum.pm
+    version: 0
+  YATT::Util::Finalizer:
+    file: web/cgi-bin/yatt.lib/YATT/Util/Finalizer.pm
+    version: 0
+  YATT::Util::RLimit:
+    file: web/cgi-bin/yatt.lib/YATT/Util/RLimit.pm
+    version: 0
+  YATT::Util::Symbol:
+    file: web/cgi-bin/yatt.lib/YATT/Util/Symbol.pm
+    version: 0
+  YATT::Util::SymbolHash:
+    file: web/cgi-bin/yatt.lib/YATT/Util/SymbolHash.pm
+    version: 0
+  YATT::Util::Taint:
+    file: web/cgi-bin/yatt.lib/YATT/Util/Taint.pm
+    version: 0
+  YATT::Util::VarExporter:
+    file: web/cgi-bin/yatt.lib/YATT/Util/VarExporter.pm
+    version: 0
+  YATT::Util::attr:
+    file: web/cgi-bin/yatt.lib/YATT/Util.pm
+    version: 0
+  YATT::Widget:
+    file: web/cgi-bin/yatt.lib/YATT/Widget.pm
+    version: 0
+  YATT::XHF:
+    file: web/cgi-bin/yatt.lib/YATT/XHF.pm
+    version: 0
 requires:
   File::Remove: 0
   List::Util: 0
@@ -12,103 +155,6 @@ requires:
   Test::More: 0
   perl: v5.7.2
   version: 0
-configure_requires:
-  Module::Build: 0.35
-generated_by: Module::Build version 0.35
-meta-spec:
-  url: http://module-build.sourceforge.net/META-spec-v1.4.html
-  version: 1.4
-provides:
-  YATT:
-    file: web/cgi-bin/yatt.lib/YATT.pm
-    version: v0.0.5
-  YATT::ArgMacro:
-    file: web/cgi-bin/yatt.lib/YATT/ArgMacro.pm
-  YATT::ArgTypes:
-    file: web/cgi-bin/yatt.lib/YATT/ArgTypes.pm
-  YATT::Class::ArrayScanner:
-    file: web/cgi-bin/yatt.lib/YATT/Class/ArrayScanner.pm
-  YATT::Class::Configurable:
-    file: web/cgi-bin/yatt.lib/YATT/Class/Configurable.pm
-  YATT::Class::Tcl:
-    file: web/cgi-bin/yatt.lib/YATT/Class/Tcl.pm
-  YATT::DBSchema:
-    file: web/cgi-bin/yatt.lib/YATT/DBSchema.pm
-  YATT::Exception:
-    file: web/cgi-bin/yatt.lib/YATT/Exception.pm
-  YATT::Fields:
-    file: web/cgi-bin/yatt.lib/YATT/Fields.pm
-  YATT::Inc:
-    file: web/cgi-bin/yatt.lib/YATT/Inc.pm
-  YATT::LRXML:
-    file: web/cgi-bin/yatt.lib/YATT/LRXML.pm
-  YATT::LRXML::Builder:
-    file: web/cgi-bin/yatt.lib/YATT/LRXML.pm
-  YATT::LRXML::EntityPath:
-    file: web/cgi-bin/yatt.lib/YATT/LRXML/EntityPath.pm
-  YATT::LRXML::MetaInfo:
-    file: web/cgi-bin/yatt.lib/YATT/LRXML/MetaInfo.pm
-  YATT::LRXML::Node:
-    file: web/cgi-bin/yatt.lib/YATT/LRXML/Node.pm
-  YATT::LRXML::NodeCursor:
-    file: web/cgi-bin/yatt.lib/YATT/LRXML/NodeCursor.pm
-  YATT::LRXML::NodeCursor::Path:
-    file: web/cgi-bin/yatt.lib/YATT/LRXML/NodeCursor.pm
-  YATT::LRXML::Parser:
-    file: web/cgi-bin/yatt.lib/YATT/LRXML/Parser.pm
-  YATT::LRXML::Scanner:
-    file: web/cgi-bin/yatt.lib/YATT/LRXML.pm
-  YATT::Registry:
-    file: web/cgi-bin/yatt.lib/YATT/Registry.pm
-  YATT::Registry::Loader:
-    file: web/cgi-bin/yatt.lib/YATT/Registry.pm
-  YATT::Registry::Loader::DIR:
-    file: web/cgi-bin/yatt.lib/YATT/Registry.pm
-  YATT::Registry::NS:
-    file: web/cgi-bin/yatt.lib/YATT/Registry.pm
-  YATT::Test:
-    file: web/cgi-bin/yatt.lib/YATT/Test.pm
-  YATT::Toplevel::CGI:
-    file: web/cgi-bin/yatt.lib/YATT/Toplevel/CGI.pm
-  YATT::Toplevel::CGI::Batch:
-    file: web/cgi-bin/yatt.lib/YATT/Toplevel/CGI.pm
-  YATT::Toplevel::FCGI:
-    file: web/cgi-bin/yatt.lib/YATT/Toplevel/FCGI.pm
-  YATT::Toplevel::Server:
-    file: web/cgi-bin/yatt.lib/YATT/Toplevel/Server.pm
-  YATT::Translator::Perl:
-    file: web/cgi-bin/yatt.lib/YATT/Translator/Perl.pm
-  YATT::Translator::Perl::macro_dbfetch:
-    file: web/cgi-bin/yatt.lib/YATT/Translator/Perl/macro_dbfetch.pm
-  YATT::Types:
-    file: web/cgi-bin/yatt.lib/YATT/Types.pm
-  YATT::Util:
-    file: web/cgi-bin/yatt.lib/YATT/Util.pm
-  YATT::Util::CmdLine:
-    file: web/cgi-bin/yatt.lib/YATT/Util/CmdLine.pm
-  YATT::Util::DictOrder:
-    file: web/cgi-bin/yatt.lib/YATT/Util/DictOrder.pm
-  YATT::Util::DirTreeBuilder:
-    file: web/cgi-bin/yatt.lib/YATT/Util/DirTreeBuilder.pm
-  YATT::Util::Enum:
-    file: web/cgi-bin/yatt.lib/YATT/Util/Enum.pm
-  YATT::Util::Finalizer:
-    file: web/cgi-bin/yatt.lib/YATT/Util/Finalizer.pm
-  YATT::Util::RLimit:
-    file: web/cgi-bin/yatt.lib/YATT/Util/RLimit.pm
-  YATT::Util::Symbol:
-    file: web/cgi-bin/yatt.lib/YATT/Util/Symbol.pm
-  YATT::Util::SymbolHash:
-    file: web/cgi-bin/yatt.lib/YATT/Util/SymbolHash.pm
-  YATT::Util::Taint:
-    file: web/cgi-bin/yatt.lib/YATT/Util/Taint.pm
-  YATT::Util::VarExporter:
-    file: web/cgi-bin/yatt.lib/YATT/Util/VarExporter.pm
-  YATT::Util::attr:
-    file: web/cgi-bin/yatt.lib/YATT/Util.pm
-  YATT::Widget:
-    file: web/cgi-bin/yatt.lib/YATT/Widget.pm
-  YATT::XHF:
-    file: web/cgi-bin/yatt.lib/YATT/XHF.pm
 resources:
   license: http://dev.perl.org/licenses/
+version: v0.0.6

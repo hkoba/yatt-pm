@@ -20,6 +20,9 @@ my $builder = Module::Build->new(
         'Test::More' => 0,
 	'Test::Differences' => 0,
     },
+    configure_requires => {
+        'Module::Build' => 0,
+    },
     pm_files => \%pm_files,
     test_files => Module::Build->rscan_dir('web/cgi-bin/yatt.lib/t', qr{\.t}),
     script_files => {

@@ -8,6 +8,10 @@ use IO::Socket::UNIX;
 use Fcntl;
 # use POSIX qw(:sys_wait_h);
 
+use FindBin;
+use lib "$FindBin::Bin/../";
+use YATT::Util::Finalizer;
+
 use Getopt::Long;
 
 GetOptions("s|server!" => \ my $is_server
@@ -59,6 +63,15 @@ unless (eval {require FCGI and require CGI::Fast}) {
 if ($is_server or (defined $is_client and not $is_client)
     or my $kid = fork) {
   # parent
+
+  my $scope = finally {
+    kill TERM => $kid;
+    waitpid($kid, 0);
+
+    unlink $sockfile if -e $sockfile;
+    rmdir $sessdir;
+  };
+
   require Test::More;
   import Test::More;
 
@@ -89,13 +102,6 @@ if ($is_server or (defined $is_client and not $is_client)
 
   test_delta::is_delta_ok(4, MY->memsize($kid), $at_start
 			  , "memsize after $GOAL calls");
-
-  kill TERM => $kid;
-  waitpid($kid, 0);
-
-  unlink $sockfile if -e $sockfile;
-  rmdir $sessdir;
-
 } else {
   die "Can't fork: $!" if not defined $is_client and not defined $kid;
 
