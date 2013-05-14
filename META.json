@@ -33,7 +33,7 @@
    "provides" : {
       "YATT" : {
          "file" : "web/cgi-bin/yatt.lib/YATT.pm",
-         "version" : "v0.0.6"
+         "version" : "v0.0_7"
       },
       "YATT::ArgMacro" : {
          "file" : "web/cgi-bin/yatt.lib/YATT/ArgMacro.pm",
@@ -212,11 +212,11 @@
          "version" : 0
       }
    },
-   "release_status" : "stable",
+   "release_status" : "testing",
    "resources" : {
       "license" : [
          "http://dev.perl.org/licenses/"
       ]
    },
-   "version" : "v0.0.6"
+   "version" : "v0.0_7"
 }

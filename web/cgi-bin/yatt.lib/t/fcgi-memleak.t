@@ -70,6 +70,7 @@ if ($is_server or (defined $is_client and not $is_client)
 
     unlink $sockfile if -e $sockfile;
     rmdir $sessdir;
+    exit 0;
   };
 
   require Test::More;
