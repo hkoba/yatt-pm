@@ -10,6 +10,9 @@ use Test::More;
 unless (eval {require BSD::Resource}) {
   plan skip_all => 'BSD::Resource is not installed'; exit;
 }
+if ($^O eq "darwin") {
+  plan skip_all => 'rlimit_vmem may not work on this platform';
+}
 
 plan tests => 4;
 

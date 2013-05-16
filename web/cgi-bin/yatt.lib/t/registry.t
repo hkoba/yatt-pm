@@ -151,8 +151,6 @@ Entity bar => sub {'baz'};
 
 # [6] Reload should not occur during initialization.
 SKIP: {
-  skip "touch is missing"
-    unless grep {-x $_} qw!/usr/bin/touch /bin/touch!;
   #
   # TEST_NO_RELOAD_DIR=app:lib1/normal
   #
@@ -178,6 +176,11 @@ SKIP: {
   my %no_reload; $no_reload{$_} = 1 for split ":"
     , ($ENV{TEST_NO_RELOAD_DIR} || '');
   my %prevDepth;
+  sub touch {
+    my ($fn) = @_;
+    my $time = time;
+    utime undef, undef, $fn
+  }
   sub wait_and_touch {
     my ($key) = @_;
     return if $no_reload{$key};
@@ -190,20 +193,27 @@ SKIP: {
 
     my $fn = "$DIR/$key";
     my $old = stat($fn)->mtime;
-    print STDERR "# before check, now=@{[Time::HiRes::time]}\n"
+    my $before = Time::HiRes::time;
+    print STDERR "# before check, now=$before\n"
       if $ENV{VERBOSE};
     if (my $slept = wait_for_time($old + 1)) {
       print STDERR "# slept $slept sec for $fn\n" if $ENV{VERBOSE};
     }
-    # XXX: 
-    is system("touch", $fn), 0, "touch $fn";
-    my $retry = $ENV{RETRY} // 3;
-    while (stat($fn)->mtime == $old and $retry-- > 0) {
-      sleep 1;
+    ok touch($fn), "touch $fn";
+    if (stat($fn)->mtime == $old) {
+      # XXX: In rare case(I think), touch failed.
+      my $max_retry = $ENV{RETRY} // 3;
+      my $retry = 0;
+      while (stat($fn)->mtime == $old and $retry < $max_retry) {
+	sleep 1;
+	ok touch($fn), "touch $fn retry $retry";
+      } continue { $retry++ }
+      my $now = Time::HiRes::time;
+      my $diff = ($old + 1) - $now;
+      isnt stat($fn)->mtime, $old
+	, "[$SESSION] mtime should be changed $fn after $retry retries"
+	  . " (now=$now, diff=$diff).";
     }
-    isnt stat($fn)->mtime, $old
-      , "[$SESSION] mtime should be changed $fn"
-	. " (now=@{[Time::HiRes::time, ($old + 1) - Time::HiRes::time]}).";
     print STDERR "#caller: ", call_depth(), "\n" if $ENV{VERBOSE};
   }
 

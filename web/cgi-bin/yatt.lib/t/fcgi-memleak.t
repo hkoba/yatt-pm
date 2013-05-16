@@ -48,6 +48,20 @@ if ($is_server and $is_client) {
   die "$0: -server and -client is exclusive\n";
 }
 
+sub do_skip_all ($) {
+  my ($reason) = @_;
+  require Test::More;
+  Test::More::plan(skip_all => $reason);
+}
+
+unless (-r "/proc/$$/status") {
+  do_skip_all '/proc/$pid/status is not available for your system';
+}
+
+unless (MY->which('cgi-fcgi')) {
+  do_skip_all "cgi-fcgi is not installed";
+}
+
 my $sessdir  = MY->tmpdir . "/fcgitest$$";
 my $sockfile = "$sessdir/socket";
 
@@ -56,8 +70,7 @@ unless (mkdir $sessdir, 0700) {
 }
 
 unless (eval {require FCGI and require CGI::Fast}) {
-  require Test::More; import Test::More;
-  plan(skip_all => 'FCGI.pm is not installed');
+  do_skip_all 'FCGI.pm is not installed';
 }
 
 if ($is_server or (defined $is_client and not $is_client)
@@ -76,13 +89,9 @@ if ($is_server or (defined $is_client and not $is_client)
   require Test::More;
   import Test::More;
 
-  MY->procfile($kid)
-    or plan(skip_all => '/proc/$pid/status is not available for your system');
+  plan(tests => 2);
 
-  my $fcgi = MY->which('cgi-fcgi')
-    or plan(skip_all => "cgi-fcgi is not installed");
-
-  plan(tests => 1);
+  ok(my $fcgi = MY->which('cgi-fcgi'), "cgi-fcgi is available");
 
   unless (-w $sockfile) {
     print "# waiting for socketfile $sockfile\n" if $verbose;
