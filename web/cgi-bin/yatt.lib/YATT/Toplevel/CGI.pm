@@ -15,8 +15,7 @@ use UNIVERSAL;
 
 #----------------------------------------
 use YATT;
-use YATT::Types -alias =>
-  [MY => __PACKAGE__
+use YATT::Types -alias =>  [MY => __PACKAGE__
    , Translator => 'YATT::Translator::Perl'];
 
 require YATT::Inc;
@@ -666,7 +665,7 @@ sub new_translator {
 
 sub use_env_vars {
   my ($env) = @_;
-  $env //= \%ENV;
+  $env = \%ENV unless defined $env;
   foreach my $vn (our @env_vars) {
     *{globref(MY, $vn)} = do {
       $env->{$vn} = '' unless defined $env->{$vn};

@@ -8,7 +8,7 @@ use FindBin;
 use lib "$FindBin::Bin/..";
 use YATT::Test qw(no_plan);
 use YATT::LRXML::Node;
-use YATT::Util qw(catch);
+use YATT::Util qw(catch default);
 
 use File::stat;
 
@@ -202,7 +202,7 @@ SKIP: {
     ok touch($fn), "touch $fn";
     if (stat($fn)->mtime == $old) {
       # XXX: In rare case(I think), touch failed.
-      my $max_retry = $ENV{RETRY} // 3;
+      my $max_retry = default($ENV{RETRY}, 3);
       my $retry = 0;
       while (stat($fn)->mtime == $old and $retry < $max_retry) {
 	sleep 1;
