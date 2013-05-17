@@ -1,3 +1,6 @@
 /_build
 *.gz
 /Build
+blib
+.perl-version
+MANIFEST.bak

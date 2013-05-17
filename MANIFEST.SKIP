@@ -9,3 +9,6 @@
 \.rej$
 \.gz$
 ^.git(ignore)?$
+^MYMETA\.yml$
+^MYMETA\.json$
+^\.perl-version$

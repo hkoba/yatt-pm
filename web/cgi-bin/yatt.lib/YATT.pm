@@ -5,7 +5,7 @@ require 5.007_001; # For sprintf reordering.
 
 use strict;
 use warnings FATAL => qw(all);
-use version; our $VERSION = qv('0.0_7');
+use version; our $VERSION = qv('0.0_8');
 use File::Basename;
 
 BEGIN {

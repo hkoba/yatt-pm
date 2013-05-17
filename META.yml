@@ -6,7 +6,7 @@ build_requires: {}
 configure_requires:
   Module::Build: 0
 dynamic_config: 1
-generated_by: 'Module::Build version 0.4004, CPAN::Meta::Converter version 2.120921'
+generated_by: 'Module::Build version 0.38, CPAN::Meta::Converter version 2.120921'
 license: perl
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
@@ -15,7 +15,7 @@ name: YATT
 provides:
   YATT:
     file: web/cgi-bin/yatt.lib/YATT.pm
-    version: v0.0_7
+    version: v0.0_8
   YATT::ArgMacro:
     file: web/cgi-bin/yatt.lib/YATT/ArgMacro.pm
     version: 0
@@ -157,4 +157,4 @@ requires:
   version: 0
 resources:
   license: http://dev.perl.org/licenses/
-version: v0.0_7
+version: v0.0_8

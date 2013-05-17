@@ -4,7 +4,7 @@
       "\"KOBAYASI, Hiroaki\" <hkoba@cpan.org>"
    ],
    "dynamic_config" : 1,
-   "generated_by" : "Module::Build version 0.4004, CPAN::Meta::Converter version 2.120921",
+   "generated_by" : "Module::Build version 0.38, CPAN::Meta::Converter version 2.120921",
    "license" : [
       "perl_5"
    ],
@@ -33,7 +33,7 @@
    "provides" : {
       "YATT" : {
          "file" : "web/cgi-bin/yatt.lib/YATT.pm",
-         "version" : "v0.0_7"
+         "version" : "v0.0_8"
       },
       "YATT::ArgMacro" : {
          "file" : "web/cgi-bin/yatt.lib/YATT/ArgMacro.pm",
@@ -218,5 +218,5 @@
          "http://dev.perl.org/licenses/"
       ]
    },
-   "version" : "v0.0_7"
+   "version" : "v0.0_8"
 }
