@@ -167,11 +167,6 @@ sub create_toplevel {
 #
 sub prepare_dispatch {
   (my ($pack, $cgi), my Config $config) = @_;
-
-  if (my $sub = $cgi->can('charset')) {
-    $sub->($cgi, $config->{cf_charset} || 'utf-8');
-  }
-
   my ($rootdir, $file, $loader, $param) = do {
     if (not $config->{cf_registry} and $config->{cf_docs}) {
       # $config->try_load_config($config->{cf_docs});
@@ -213,6 +208,11 @@ END
 	$PATH_INFO = substr($PATH_TRANSLATED, length($rootdir));
       }
     }
+  }
+
+  if (my $sub = $cgi->can('charset')) {
+    # print "\n\n", YATT::Util::terse_dump(CONFIG => $config);
+    $sub->($cgi, $config->{cf_charset} || 'utf-8');
   }
 
   my $instpkg = $pack->get_instpkg($config);
