@@ -34,6 +34,7 @@ use YATT::Types -base => __PACKAGE__
 		   cf_driver
 		   cf_docs cf_tmpl
 		   cf_charset
+		   cf_language
 		   cf_debug_allowed_ip
 		   cf_translator_param
 		   cf_user_config
