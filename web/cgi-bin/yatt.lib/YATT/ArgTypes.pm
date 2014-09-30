@@ -12,7 +12,6 @@ use YATT::Fields qw(cf_callpack
 use YATT::Util;
 use YATT::Util::Symbol;
 use Carp;
-use mro ();
 
 sub import {
   my $pack = shift;
@@ -21,8 +20,6 @@ sub import {
   my $opts = $pack->new(callpack => $callpack
 			, $pack->parse_args(\@_, \@types));
   $opts->add_type($_) for @types;
-
-  $opts->method_changed;
 }
 
 sub parse_args {
@@ -53,7 +50,7 @@ sub add_type {
   if $self->{cf_type_name};
 
   # t_zzz typealias.
-  $self->add_constant("t_$type", $fullclass);
+  *{globref($self->{cf_callpack}, "t_$type")} = sub () { $fullclass };
 
   my $fields = fields_hash($self);
 
@@ -105,31 +102,6 @@ sub add_type {
     my ($sub, $value) = @$rec;
     $sub->($self, $fullclass, $value, \%config);
   }
-}
-
-sub add_constant {
-  (my MY $self, my ($name, $value)) = @_;
-  my $symbol = globref($self->{cf_callpack}, $name);
-  if ($] >= 5.019003) {
-    Internals::SvREADONLY($value, 1);
-    my $symtab_glob = globref($self->{cf_callpack}, "");
-    my $symtab = *{$symtab_glob}{HASH};
-    if ($symtab and not exists $symtab->{$name}) {
-      $symtab->{$name} = \ $value;
-    } else {
-      my $ourSymtab = *{globref(__PACKAGE__, "")}{HASH};
-      local $ourSymtab->{_dummy} = \ $value;
-      *$symbol = do {no strict 'refs'; \&{"_dummy"}};
-      # *$symbol = *{$ourSymtab->{_dummy}}{CODE};
-    }
-  }  else {
-    *$symbol = sub () { $value }
-  }
-}
-
-sub method_changed {
-  (my MY $self) = @_;
-  mro::method_changed_in($self->{cf_callpack});
 }
 
 sub lookup_in {
