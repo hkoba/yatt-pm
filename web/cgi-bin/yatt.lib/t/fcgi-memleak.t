@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 use strict;
 use warnings FATAL => qw(all);
 use base qw(File::Spec);
@@ -69,8 +69,11 @@ unless (mkdir $sessdir, 0700) {
   die "Can't mkdir $sessdir: $!";
 }
 
-unless (eval {require FCGI and require CGI::Fast}) {
+unless (eval {require FCGI}) {
   do_skip_all 'FCGI.pm is not installed';
+}
+unless (eval {require CGI::Fast}) {
+  do_skip_all 'CGI::Fast is not installed';
 }
 
 if ($is_server or (defined $is_client and not $is_client)
@@ -130,7 +133,7 @@ if ($is_server or (defined $is_client and not $is_client)
       # To avoid "Use of uninitialized value in numeric eq (==) at /usr/lib64/perl5/FCGI.pm line 59."
       local $SIG{__DIE__} = sub {}; local $SIG{__WARN__} = sub {};
 
-      FCGI::finish();
+      $request->Finish();
     }
     # last if $count >= $GOAL;
   }

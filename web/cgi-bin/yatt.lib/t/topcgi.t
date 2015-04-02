@@ -8,6 +8,7 @@ use FindBin;
 use lib "$FindBin::Bin/..";
 use YATT::Test qw(no_plan);
 use File::Temp qw/tempdir/;
+use CGI;
 
 use File::stat;
 
@@ -34,4 +35,12 @@ my $SESSION = 1;
   isnt $config->can('configure'), '', 'config->can configure';
 
   is_rendered [$trans, [qw(foo bar)]], $BAR, 'foo:bar';
+
+  {
+    is_deeply
+      [sort {$$a[0] cmp $$b[0]} $instpkg->force_parameter_convention
+       (CGI->new({"*foo" => "bar", ".baz" => "qux"}))]
+	, [["*foo" => "bar"], [".baz" => "qux"]]
+	  , "parameter convention is properly enforced";
+  }
 }

@@ -139,7 +139,7 @@ sub reorder_cgi_params {
   foreach my $name ($cgi->param) {
     my $argdecl = $widget->{arg_dict}{$name}
       or die "Unknown args for widget '$widget->{cf_name}': $name";
-    my @value = $cgi->param($name);
+    my @value = $cgi->multi_param($name);
     $list->[$argdecl->argno] = $argdecl->type_name eq 'list'
       ? \@value : $value[0];
   }

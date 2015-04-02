@@ -236,7 +236,7 @@ sub force_parameter_convention {
   my @deleted;
   foreach my $name ($cgi->param) {
     next if $name =~ $PARAM_CONVENTION;
-    push @deleted, [$name => $cgi->param($name)];
+    push @deleted, [$name => $cgi->multi_param($name)];
     $cgi->delete($name);
   }
   @deleted;
@@ -530,6 +530,11 @@ sub new_cgi {
   }
   unless ($class) {
     die "Can't load any of cgi classes";
+  }
+
+  if ($class eq "CGI" and not $class->can("multi_param")) {
+    require YATT::Util::CGICompat;
+    import YATT::Util::CGICompat;
   }
 
   # 1. To make sure passing 'public' parameters only.
