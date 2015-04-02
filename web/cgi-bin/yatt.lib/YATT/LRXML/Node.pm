@@ -198,6 +198,7 @@ sub stringify_node {
     $desc->($node, @_);
   } else {
     my ($fmt, $prefix, $suffix) = @$desc;
+    use YATT::Util::redundant_sprintf;
     sprintf($fmt
 	    , stringify_each_by($node)
 	    , node_nsname($node, '')

@@ -206,6 +206,7 @@ sub xhf_load_sections {
 	&& $prev->{cf_FILE} =~ m{%d} ? $prev->{cf_FILE} : undef;
 
       if ($test->{cf_IN}) {
+	use YATT::Util::redundant_sprintf;
 	$test->{realfile} = sprintf($test->{cf_FILE} ||= "doc/f%d.html", $n);
 	$test->{cf_WIDGET} ||= do {
 	  my $widget = $test->{realfile};
