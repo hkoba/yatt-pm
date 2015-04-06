@@ -46,11 +46,11 @@ sub add_type {
 
   $self->{cf_type_map}{$type} = $fullclass;
 
-  *{globref($fullclass, "type_name")} = sub () { $type }
+  define_const(globref($fullclass, "type_name"), $type)
   if $self->{cf_type_name};
 
   # t_zzz typealias.
-  *{globref($self->{cf_callpack}, "t_$type")} = sub () { $fullclass };
+  define_const(globref($self->{cf_callpack}, "t_$type"), $fullclass);
 
   my $fields = fields_hash($self);
 

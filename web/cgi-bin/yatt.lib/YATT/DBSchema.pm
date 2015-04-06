@@ -88,7 +88,7 @@ sub export_and_rebless_with {
 
   my $glob = globref($classFullName, "SCHEMA");
   *{$glob} = \ $schema;
-  *{$glob} = sub () { $schema };
+  define_const($glob, $schema);
 
   $schema->export_to($callpack);
 
@@ -99,7 +99,7 @@ sub export_and_rebless_with {
 sub export_to {
   (my MY $schema, my ($callpack)) = @_;
   # Install to caller
-  *{globref($callpack, $schema->name)} = sub () { $schema };
+  define_const(globref($callpack, $schema->name), $schema);
   # XXX: special new for singleton. (for schema->new->run)
   *{globref($callpack, 'new')} = sub {
     shift;

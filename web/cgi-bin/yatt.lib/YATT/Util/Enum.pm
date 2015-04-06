@@ -3,6 +3,8 @@ package YATT::Util::Enum;
 use strict;
 use warnings FATAL => qw(all);
 
+use YATT::Util::Symbol qw/define_const/;
+
 sub import {
   my ($pack) = shift;
   my $callpack = caller;
@@ -25,8 +27,7 @@ sub import {
   foreach my $item (@_) {
     my $full_name = $callpack . "::" . $prefix . $item;
     {
-      no strict 'refs';
-      *$full_name = sub () { $offset };
+      define_const($full_name, $offset);
       push @{$export}, $full_name if $export;
       push @{$export_ok}, $full_name if $export_ok;
     }

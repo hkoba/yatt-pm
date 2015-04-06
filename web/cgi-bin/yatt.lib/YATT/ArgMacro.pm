@@ -6,7 +6,7 @@ use base qw(YATT::Class::Configurable);
 use Carp;
 
 use YATT::Util qw(checked_eval);
-use YATT::Util::Symbol qw(globref fields_hash_of_class);
+use YATT::Util::Symbol qw(globref fields_hash_of_class define_const);
 use YATT::LRXML::Node qw(copy_array copy_node_renamed_as
 			 create_node_from node_name node_size);
 
@@ -120,7 +120,7 @@ END
   # print STDERR $script;
   $pack->checked_eval($script);
 
-  *{globref($class_name, 'macro_spec')} = sub () { $spec };
+  define_const(globref($class_name, 'macro_spec'), $spec);
 }
 
 #

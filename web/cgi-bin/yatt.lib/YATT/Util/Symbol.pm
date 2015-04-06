@@ -9,6 +9,7 @@ BEGIN {
 		      fields_hash fields_hash_of_class
 		      add_isa lift_isa_to
 		      declare_alias
+		      define_const
 		      rebless_with
 		    );
   our @EXPORT    = @EXPORT_OK;
@@ -22,9 +23,9 @@ sub class {
 }
 
 sub globref {
-  my ($thing, $name) = @_;
+  my ($thing, @name) = @_;
   no strict 'refs';
-  \*{class($thing) . "::$name"};
+  \*{join("::", class($thing), @name)};
 }
 
 sub stash {
@@ -35,6 +36,12 @@ sub declare_alias ($$) {
   my ($name, $sub, $pack) = @_;
   $pack ||= caller;
   *{globref($pack, $name)} = $sub;
+}
+
+sub define_const {
+  my ($name_or_glob, $value) = @_;
+  my $glob = ref $name_or_glob ? $name_or_glob : globref($name_or_glob);
+  *$glob = sub () { $value };
 }
 
 sub fields_hash_of_class {
