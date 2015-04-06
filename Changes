@@ -1,6 +1,12 @@
 Revision history for YATT
 
-0.0.7  2013-05-14
+0.0_9  2015-04-07
+    * Fixes
+         - [GH #3] [RT #95311] sub () {$const}
+         - [GH #2] CGI->multi_param
+         - [GH #1] avoid "Redundant argument in sprintf" warning
+
+0.0.8  2013-05-18
 
 - Just to reduce test failures.
 - Fixed: https://rt.cpan.org/Public/Bug/Display.html?id=82756
