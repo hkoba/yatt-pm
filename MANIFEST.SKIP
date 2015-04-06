@@ -11,4 +11,4 @@
 ^.git(ignore)?$
 ^MYMETA\.yml$
 ^MYMETA\.json$
-^\.perl-version$
+(^|/)\.perl-version$
