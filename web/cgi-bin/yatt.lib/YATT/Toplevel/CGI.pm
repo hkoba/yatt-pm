@@ -24,6 +24,7 @@ use YATT::Util::Finalizer;
 use YATT::Util::Taint qw(untaint_any);
 use YATT::Util::Symbol;
 use YATT::Util::CmdLine;
+use YATT::Util::CGICompat;
 
 use YATT::Exception;
 
