@@ -24,7 +24,6 @@ use YATT::Util::Finalizer;
 use YATT::Util::Taint qw(untaint_any);
 use YATT::Util::Symbol;
 use YATT::Util::CmdLine;
-use YATT::Util::CGICompat;
 
 use YATT::Exception;
 
@@ -536,6 +535,12 @@ sub new_cgi {
   if ($class eq "CGI" and not $class->can("multi_param")) {
     require YATT::Util::CGICompat;
     import YATT::Util::CGICompat;
+  }
+  if ($class eq "CGI::Simple" and not $class->can("multi_param")) {
+    *{globref($class, "multi_param")} = $class->can("param");
+  }
+  unless ($class->can("multi_param")) {
+    croak "cgi class($class) doesn't have multi_param method!";
   }
 
   # 1. To make sure passing 'public' parameters only.

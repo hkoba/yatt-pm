@@ -39,7 +39,7 @@ my $SESSION = 1;
   {
     is_deeply
       [sort {$$a[0] cmp $$b[0]} $instpkg->force_parameter_convention
-       (CGI->new({"*foo" => "bar", ".baz" => "qux"}))]
+       ($instpkg->new_cgi({"*foo" => "bar", ".baz" => "qux"}))]
 	, [["*foo" => "bar"], [".baz" => "qux"]]
 	  , "parameter convention is properly enforced";
   }
