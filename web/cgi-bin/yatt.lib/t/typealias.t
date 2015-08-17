@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 use strict;
-use warnings FATAL => qw(FATAL all NONFATAL misc);
+use warnings qw(FATAL all NONFATAL misc);
 
 sub make_type_alias {
   my $callpack = caller;

@@ -4,7 +4,7 @@ package YATT::LRXML::Node;
 # To cooperate with JSON easily, Nodes should not rely on OO style.
 
 use strict;
-use warnings FATAL => qw(FATAL all NONFATAL misc);
+use warnings qw(FATAL all NONFATAL misc);
 use YATT::Util::Symbol;
 use YATT::Util;
 use Carp;

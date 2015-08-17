@@ -1,6 +1,6 @@
 package YATT::Class::Tcl;
 use strict;
-use warnings FATAL => qw(FATAL all NONFATAL misc);
+use warnings qw(FATAL all NONFATAL misc);
 use Tcl;
 
 use base qw(YATT::Class::Configurable);

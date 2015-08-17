@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 use strict;
-use warnings FATAL => qw(FATAL all NONFATAL misc);
+use warnings qw(FATAL all NONFATAL misc);
 
 use FindBin;
 use lib "$FindBin::Bin/..";
@@ -64,7 +64,8 @@ foreach my $mod (@modules) {
     require_ok($mod);
     ok scalar fgrep(qr/^use strict;$/, $modules{$mod})
       , "is strict: $mod";
-    ok scalar fgrep(qr/^use warnings FATAL/, $modules{$mod})
+    ok scalar fgrep(qr{^use warnings qw\(FATAL all NONFATAL misc}
+		    , $modules{$mod})
       , "is warnings $mod";
   }
 }

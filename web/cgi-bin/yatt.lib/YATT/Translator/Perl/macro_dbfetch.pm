@@ -1,6 +1,6 @@
 package YATT::Translator::Perl::macro_dbfetch;
 use strict;
-use warnings FATAL => qw(FATAL all NONFATAL misc);
+use warnings qw(FATAL all NONFATAL misc);
 require YATT::Translator::Perl;
 
 YATT::Translator::Perl::make_arg_spec

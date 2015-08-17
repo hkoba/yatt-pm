@@ -1,6 +1,6 @@
 package YATT::Util::DictOrder;
 use strict;
-use warnings FATAL => qw(FATAL all NONFATAL misc);
+use warnings qw(FATAL all NONFATAL misc);
 use base qw/Exporter/;
 
 our @EXPORT_OK = qw(&dict_order &dict_sort);

@@ -1,7 +1,7 @@
 # -*- mode: perl; coding: utf-8 -*-
 package YATT::LRXML;
 use strict;
-use warnings FATAL => qw(FATAL all NONFATAL misc);
+use warnings qw(FATAL all NONFATAL misc);
 
 use YATT::Util qw(call_type);
 
@@ -40,7 +40,7 @@ sub read {
 
 package YATT::LRXML::Scanner; # To scan tokens.
 use strict;
-use warnings FATAL => qw(FATAL all NONFATAL misc);
+use warnings qw(FATAL all NONFATAL misc);
 use base qw(YATT::Class::ArrayScanner);
 use YATT::Fields
   (['^cf_linenum' => 1]
@@ -96,7 +96,7 @@ sub token_error {
 #========================================
 package YATT::LRXML::Builder; # To build tree.
 use strict;
-use warnings FATAL => qw(FATAL all NONFATAL misc);
+use warnings qw(FATAL all NONFATAL misc);
 use base qw(YATT::Class::Configurable);
 use YATT::Fields qw(^product ^parent ^is_switched
 		    cf_endtag cf_startpos cf_startline cf_linenum);

@@ -2,7 +2,7 @@
 package YATT::Util;
 use base qw(Exporter);
 use strict;
-use warnings FATAL => qw(FATAL all NONFATAL misc);
+use warnings qw(FATAL all NONFATAL misc);
 
 use Carp;
 use File::Basename;

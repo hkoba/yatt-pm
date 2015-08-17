@@ -1,7 +1,7 @@
 # -*- mode: perl; coding: utf-8 -*-
 package YATT::Class::Configurable;
 use strict;
-use warnings FATAL => qw(FATAL all NONFATAL misc);
+use warnings qw(FATAL all NONFATAL misc);
 
 our %FIELDS;
 use fields;

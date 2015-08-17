@@ -1,7 +1,7 @@
 # -*- mode: perl; coding: utf-8 -*-
 package YATT::Test;
 use strict;
-use warnings FATAL => qw(FATAL all NONFATAL misc);
+use warnings qw(FATAL all NONFATAL misc);
 use base qw(Test::More);
 BEGIN {$INC{'YATT/Test.pm'} = __FILE__}
 

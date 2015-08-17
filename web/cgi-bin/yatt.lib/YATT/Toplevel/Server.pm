@@ -1,6 +1,6 @@
 package YATT::Toplevel::Server;
 use strict;
-use warnings FATAL => qw(FATAL all NONFATAL misc);
+use warnings qw(FATAL all NONFATAL misc);
 
 use YATT::Toplevel::CGI qw(*PATH_INFO rootname capture Config);
 

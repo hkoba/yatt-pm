@@ -7,7 +7,7 @@ YATT::XHF - Extended Header Fields format.
 =cut
 
 use strict;
-use warnings FATAL => qw(FATAL all NONFATAL misc);
+use warnings qw(FATAL all NONFATAL misc);
 
 use base qw(YATT::Class::Configurable);
 use YATT::Fields qw(cf_FH cf_filename cf_tokens);

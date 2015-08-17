@@ -1,7 +1,7 @@
 #!/usr/bin/perl -w
 # -*- mode: perl; coding: utf-8 -*-
 use strict;
-use warnings FATAL => qw(FATAL all NONFATAL misc);
+use warnings qw(FATAL all NONFATAL misc);
 use Test::More qw(no_plan);
 
 use FindBin;

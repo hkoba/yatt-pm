@@ -1,7 +1,7 @@
 # -*- mode: perl; coding: utf-8 -*-
 package YATT::Types;
 use strict;
-use warnings FATAL => qw(FATAL all NONFATAL misc);
+use warnings qw(FATAL all NONFATAL misc);
 use Carp;
 use YATT::Util::Symbol;
 use YATT::Util qw(terse_dump);

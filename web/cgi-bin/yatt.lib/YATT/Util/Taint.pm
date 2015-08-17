@@ -2,7 +2,7 @@
 package YATT::Util::Taint;
 use base qw(Exporter);
 use strict;
-use warnings FATAL => qw(FATAL all NONFATAL misc);
+use warnings qw(FATAL all NONFATAL misc);
 
 BEGIN {
   our @EXPORT_OK = qw(&untaint_any &is_tainted);
