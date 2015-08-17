@@ -1,7 +1,7 @@
 # -*- mode: perl; coding: utf-8 -*-
 package YATT::LRXML::Parser;
 use strict;
-use warnings FATAL => qw(all);
+use warnings FATAL => qw(FATAL all NONFATAL misc);
 use base qw(YATT::Class::Configurable);
 use YATT::Fields
   (qw(^tokens

@@ -1,6 +1,6 @@
 package YATT::Exception;
 use strict;
-use warnings FATAL => qw(all);
+use warnings FATAL => qw(FATAL all NONFATAL misc);
 use base qw(YATT::Class::Configurable);
 BEGIN {require Exporter; *import = \&Exporter::import}
 

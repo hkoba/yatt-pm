@@ -1,9 +1,9 @@
 #!/usr/bin/perl -w
 # -*- mode: perl; coding: utf-8 -*-
 use strict;
-use warnings FATAL => qw(all);
+use warnings FATAL => qw(FATAL all NONFATAL misc);
 use strict;
-use warnings FATAL => qw(all);
+use warnings FATAL => qw(FATAL all NONFATAL misc);
 use FindBin;
 use lib "$FindBin::Bin/..";
 use YATT::Test qw(no_plan);

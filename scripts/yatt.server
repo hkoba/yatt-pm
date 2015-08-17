@@ -2,7 +2,7 @@
 # Currently, this doesn't work.
 
 use strict;
-use warnings FATAL => 'all';
+use warnings FATAL => qw(FATAL all NONFATAL misc);
 no warnings 'redefine';
 
 #----------------------------------------

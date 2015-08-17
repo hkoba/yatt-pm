@@ -1,7 +1,7 @@
 # -*- mode: perl; coding: utf-8 -*-
 package YATT::LRXML::EntityPath;
 use strict;
-use warnings FATAL => qw(all);
+use warnings FATAL => qw(FATAL all NONFATAL misc);
 BEGIN {require Exporter; *import = \&Exporter::import}
 our @EXPORT_OK = qw(parse_entpath is_nested_entpath);
 our @EXPORT = @EXPORT_OK;

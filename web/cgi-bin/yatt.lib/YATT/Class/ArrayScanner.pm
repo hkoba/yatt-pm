@@ -1,7 +1,7 @@
 # -*- mode: perl; coding: utf-8 -*-
 package YATT::Class::ArrayScanner;
 use strict;
-use warnings FATAL => qw(all);
+use warnings FATAL => qw(FATAL all NONFATAL misc);
 use base qw(YATT::Class::Configurable);
 use YATT::Fields qw(^cf_array cf_index);
 

@@ -2,7 +2,7 @@
 package YATT::Util::Symbol;
 use base qw(Exporter);
 use strict;
-use warnings FATAL => qw(all);
+use warnings FATAL => qw(FATAL all NONFATAL misc);
 
 BEGIN {
   our @EXPORT_OK = qw(class globref stash

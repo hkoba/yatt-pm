@@ -4,7 +4,7 @@ package YATT;
 require 5.007_001; # For sprintf reordering.
 
 use strict;
-use warnings FATAL => qw(all);
+use warnings FATAL => qw(FATAL all NONFATAL misc);
 our $VERSION = '0.0_9';
 use File::Basename;
 
