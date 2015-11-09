@@ -1,7 +1,7 @@
 Revision history for YATT
 
-0.0.9  2015-11-09
-    * Maintainance release.
+0.0.10  2015-11-09
+    * Maintainance release. (0.0.9 was failed to be indexed correctly)
     * Fixes
          - [GH #5] [RT #108540] Specify CGI.pm as a prerequisite (or skip tests) 
          - [GH #3] [RT #95311] sub () {$const}
