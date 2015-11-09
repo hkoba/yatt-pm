@@ -8,6 +8,7 @@ cpanfile
 MANIFEST
 META.json
 META.yml			# Will be created by "make dist"
+misc/cpan/MyBuilder.pm
 README
 scripts/yatt-driver.zsh
 scripts/yatt-install-here.zsh

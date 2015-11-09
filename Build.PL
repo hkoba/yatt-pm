@@ -1,13 +1,15 @@
 use strict;
 use warnings;
-use Module::Build;
+use FindBin;
+use lib "$FindBin::Bin/misc/cpan";
+use MyBuilder;
 
 my %pm_files = (
   map {my ($std) = $_; $std =~ s{^web/cgi-bin/yatt.lib/}{lib/}; $_ => $std}
-  @{Module::Build->rscan_dir('web/cgi-bin/yatt.lib', qr{\.pm})}
+  @{MyBuilder->rscan_dir('web/cgi-bin/yatt.lib', qr{\.pm})}
 );
 
-my $builder = Module::Build->new(
+my $builder = MyBuilder->new(
     module_name         => 'YATT',
     license             => 'perl',
     dist_author         => '"KOBAYASI, Hiroaki" <hkoba@cpan.org>',
