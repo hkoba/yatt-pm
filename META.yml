@@ -15,7 +15,7 @@ name: YATT
 provides:
   YATT:
     file: web/cgi-bin/yatt.lib/YATT.pm
-    version: 0.0_9
+    version: v0.0.9
   YATT::ArgMacro:
     file: web/cgi-bin/yatt.lib/YATT/ArgMacro.pm
   YATT::ArgTypes:
@@ -109,6 +109,7 @@ provides:
   YATT::XHF:
     file: web/cgi-bin/yatt.lib/YATT/XHF.pm
 requires:
+  CGI: '0'
   File::Remove: '0'
   List::Util: '0'
   Test::Differences: '0'
@@ -117,4 +118,4 @@ requires:
   version: '0'
 resources:
   license: http://dev.perl.org/licenses/
-version: 0.0_9
+version: v0.0.9

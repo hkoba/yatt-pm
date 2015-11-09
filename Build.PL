@@ -18,7 +18,8 @@ my $builder = Module::Build->new(
         'File::Remove' => 0, # Should be replaced to File::Path.
         'List::Util' => 0,
         'Test::More' => 0,
-	'Test::Differences' => 0,
+        'Test::Differences' => 0,
+        'CGI' => 0,
     },
     configure_requires => {
         'Module::Build' => 0,

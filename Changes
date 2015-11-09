@@ -1,7 +1,9 @@
 Revision history for YATT
 
-0.0_9  2015-04-07
+0.0.9  2015-11-09
+    * Maintainance release.
     * Fixes
+         - [GH #5] [RT #108540] Specify CGI.pm as a prerequisite (or skip tests) 
          - [GH #3] [RT #95311] sub () {$const}
          - [GH #2] CGI->multi_param
          - [GH #1] avoid "Redundant argument in sprintf" warning

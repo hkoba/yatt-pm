@@ -21,6 +21,7 @@
       },
       "runtime" : {
          "requires" : {
+            "CGI" : "0",
             "File::Remove" : "0",
             "List::Util" : "0",
             "Test::Differences" : "0",
@@ -33,7 +34,7 @@
    "provides" : {
       "YATT" : {
          "file" : "web/cgi-bin/yatt.lib/YATT.pm",
-         "version" : "0.0_9"
+         "version" : "v0.0.9"
       },
       "YATT::ArgMacro" : {
          "file" : "web/cgi-bin/yatt.lib/YATT/ArgMacro.pm"
@@ -174,11 +175,11 @@
          "file" : "web/cgi-bin/yatt.lib/YATT/XHF.pm"
       }
    },
-   "release_status" : "testing",
+   "release_status" : "stable",
    "resources" : {
       "license" : [
          "http://dev.perl.org/licenses/"
       ]
    },
-   "version" : "0.0_9"
+   "version" : "v0.0.9"
 }
