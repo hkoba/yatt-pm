@@ -118,6 +118,7 @@ sub lookup_handler_to {
 	    , 'use warnings FATAL => qw(all)'
 	    # XXX: 何が redefine されるかは分からないから…
 	    , 'no warnings "redefine"'
+	    , ($trans->{cf_utf8} ? "use utf8" : ())
 	    , untaint_any($script)));
 
   }

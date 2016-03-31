@@ -34,6 +34,7 @@ use YATT::Types -base => __PACKAGE__
 		   cf_driver
 		   cf_docs cf_tmpl
 		   cf_charset
+		   cf_utf8
 		   cf_language
 		   cf_debug_allowed_ip
 		   cf_translator_param
@@ -374,12 +375,22 @@ sub dispatch_action {
   if ($CONFIG && $CONFIG->{cf_no_header}) {
     $action->($pkg, @param);
   } else {
-    my $html = capture { $action->($pkg, @param) };
+    # confess(terse_dump("encoding=",$top->get_encoding));
+    my $html = capture { $action->($pkg, @param) } $top->get_encoding;
     # XXX: SESSION, COOKIE, HEADER...
     print $SESSION ? $SESSION->header : $CGI->header;
     print $html;
   }
   $top->bye;
+}
+
+sub get_encoding {
+  return unless $CONFIG;
+  if ($CONFIG->{cf_utf8}) {
+    ":encoding(utf8)"; # XXX: $CONFIG->{cf_charset} ???
+  } else {
+    ();
+  }
 }
 
 sub plain_error {
@@ -602,7 +613,19 @@ END
 
   $config->{cf_driver} = $0;
 
+  $config->ensure_output_encoding;
+
   $config;
+}
+
+sub ensure_output_encoding {
+  (my Config $config, my @fhs) = @_;
+  return unless $config->{cf_utf8}
+    and $config->{cf_charset}
+    and $config->{cf_charset} =~ /^utf-?8$/;
+
+  @fhs = (\*STDOUT, \*STDERR) unless @fhs;
+  binmode *{$_}, ":encoding(utf8)" for @fhs;
 }
 
 sub heavy_configure {
@@ -832,8 +855,9 @@ sub widget_path_in {
 sub YATT::Toplevel::CGI::Config::translator_param {
   my Config $config = shift;
   # print "translator_param: ", terse_dump($config), "\n";
-  map($_ ? (ref $_ eq 'ARRAY' ? @$_ : %$_) : ()
-      , $config->{cf_translator_param})
+  ((utf8 => $config->{cf_utf8})
+   , map($_ ? (ref $_ eq 'ARRAY' ? @$_ : %$_) : ()
+	 , $config->{cf_translator_param}));
 }
 
 

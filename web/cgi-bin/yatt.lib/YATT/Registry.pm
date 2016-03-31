@@ -19,6 +19,7 @@ use YATT::Exception;
 		      cf_pkg cf_special_entities
 		      cf_name cf_vpath cf_loadkey
 		      cf_mtime cf_age
+		      cf_utf8
 		      ^is_loaded
 		    );
   # When fields is empty, %FIELDS doesn't blessed.

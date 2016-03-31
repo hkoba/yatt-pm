@@ -33,11 +33,13 @@ sub cancel {
 }
 
 sub with_select {
-  # newfh, body, [strref]
+  # newfh, body, [layer]
+  # require Carp; Carp::confess("HERE!");
   my $strref;
   unless (defined $_[0]) {
-    $strref = $_[2] || do {my $str = ""; \$str};
-    open $_[0], '>', $strref or die "Can't open strref: $!";
+    $strref = do {my $str = ""; \$str};
+    my $layer = $_[2] // '';
+    open $_[0], ">$layer", $strref or die "Can't open strref: $!";
   }
   my $finalizer = finally {
     select($_[0]);
@@ -48,7 +50,7 @@ sub with_select {
 }
 
 sub capture (&@) {
-  with_select my ($fh), $_[0];
+  with_select my ($fh), @_;
 }
 
 1;
