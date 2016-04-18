@@ -46,6 +46,7 @@ sub with_select {
   } select;
   select($_[0]);
   $_[1]->($finalizer);
+  close $_[0];
   defined $strref && $$strref;
 }
 
