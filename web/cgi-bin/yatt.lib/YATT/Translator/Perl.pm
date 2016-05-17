@@ -997,7 +997,7 @@ sub gen_pass_through_arg_typed {
 sub try_pass_through {
   (my MY $trans, my ($scope, $cursor, $rawNode, $defaultFlag)) = @_;
   if (node_size($rawNode) == 1 and node_flag($rawNode) == 0
-     and (my $nm = node_body($rawNode)) =~ /^\w+$/) {
+     and (my $nm = node_body($rawNode)) =~ /^[A-Za-z]\w*$/) {
 
     # [name=bareword_ident]
     # Must be an existing variable.
