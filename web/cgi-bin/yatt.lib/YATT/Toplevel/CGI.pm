@@ -572,7 +572,9 @@ sub prepare_cgi_class_for_config {
   }
 
   if ($config->{cf_utf8}) {
-    if ($class eq "CGI" or $class eq "CGI::Simple") {
+    if ($class eq "CGI::Simple") {
+      *{globref($class, 'PARAM_UTF8')} = \ (my $dup = 1);
+    } elsif ($class eq "CGI") {
       $class->import(-utf8);
     }
   }
