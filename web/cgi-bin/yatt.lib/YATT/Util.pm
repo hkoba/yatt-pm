@@ -7,6 +7,8 @@ use warnings qw(FATAL all NONFATAL misc);
 use Carp;
 use File::Basename;
 
+use constant DEBUG_CHECKED_EVAL => $ENV{DEBUG_CHECKED_EVAL};
+
 use YATT::Util::Taint;
 
 BEGIN {
@@ -267,6 +269,7 @@ sub checked_eval {
   # XXX: local @_ = do { eval $_[1] }; を使えないか？
   die "Undefined expression" unless defined $_[1];
   croak "Tainted expression" if is_tainted($_[1]);
+  print STDERR "$_[1]\n" if DEBUG_CHECKED_EVAL;
   my @___result;
   &YATT::break_eval;
   if (wantarray) {
