@@ -379,6 +379,6 @@ END
   my $parser = new YATT::LRXML::Parser;
   my $html = q{<yatt:foo>bar};
 
-  YATT::Test::raises([$parser => parse_string => $html]
+  YATT::Test::raises([undef, $parser => parse_string => $html]
 		     , qr{^Missing close tag 'foo'}, "missing close tag");
 }

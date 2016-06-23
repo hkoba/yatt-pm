@@ -21,6 +21,7 @@ use YATT::Util::Symbol;
 use YATT::Util::Finalizer;
 use YATT::Util::DirTreeBuilder qw(tmpbuilder);
 use YATT::Util::DictOrder;
+use YATT::Toplevel::CGI qw(*CONFIG);
 
 #========================================
 
@@ -78,9 +79,14 @@ sub is_can ($$$) {
   }
 }
 
+sub encoding_for {
+  my ($toplevel) = @_;
+  ($toplevel ? $toplevel->get_encoding : ());
+}
+
 sub is_rendered ($$$) {
   my ($desc, $cmp, $title) = @_;
-  my ($trans, $path, @args) = @$desc;
+  my ($toplevel, $trans, $path, @args) = @$desc;
   my $error;
   local $SIG{__DIE__} = sub {$error = @_ > 1 ? [@_] : shift};
   local $SIG{__WARN__} = sub {$error = @_ > 1 ? [@_] : shift};
@@ -94,7 +100,7 @@ sub is_rendered ($$$) {
       my $out = capture {
 	&YATT::break_handler;
 	$sub->($pkg, @args);
-      };
+      } encoding_for($toplevel);
       $out =~ s{\r}{}g if defined $out;
       eq_or_diff($out, $cmp, $title);
     } elsif ($error) {
@@ -108,8 +114,8 @@ sub is_rendered ($$$) {
 
 sub raises ($$$) {
   my ($desc, $cmp, $title) = @_;
-  my ($trans, $method, @args) = @$desc;
-  my $result = eval {capture {$trans->$method(@args)}};
+  my ($toplevel, $trans, $method, @args) = @$desc;
+  my $result = eval {capture {$trans->$method(@args)} encoding_for($toplevel)};
   Test::More::like $@, $cmp, $title;
   $result;
 }
@@ -135,6 +141,7 @@ use YATT::Types -base => __PACKAGE__
 		     cf_IN cf_PARAM cf_OUT cf_ERROR)]]
   , [Config => [['^cf_translator' => 'YATT::Translator::Perl']
 		, '^cf_toplevel'
+		, qw/cf_utf8/
 		, '^TMPDIR', 'gen'
 	       ]]
   , [Toplevel => []]
@@ -152,7 +159,8 @@ Config->define(new_translator => sub {
 Config->define(configure_DIR => sub {
   ;#
   (my Config $global, my ($dir)) = @_;
-  $global->{TMPDIR} = tmpbuilder($dir);
+  $global->{TMPDIR} = tmpbuilder($dir
+				 , ($global->{cf_utf8} ? (encoding => "utf8") : ()));
 });
 
 sub ntests {
@@ -166,8 +174,11 @@ sub ntests {
 }
 
 sub xhf_test {
+  my $pack = shift;
+  my $opts = (defined $_[0] && ref $_[0]) ? shift : +{};
+  my $DIR  = shift;
   my Config $global = do {
-    shift->Config->new(DIR => shift);
+    $pack->Config->new(DIR => $DIR, %$opts);
   };
 
   if (@_ == 1 and -d $_[0]) {
@@ -192,7 +203,9 @@ sub xhf_load_sections {
 
   my @sections;
   foreach my $testfile (@_) {
-    my $parser = new YATT::XHF(filename => $testfile);
+    my $parser = new YATT::XHF(filename => $testfile
+			       , ($global->{cf_utf8} ? (encoding => "utf8") : ())
+			     );
     my TestDesc $prev;
     my ($n, @test, %uniq) = (0);
     while (my $rec = $parser->read_as_hash) {
@@ -270,6 +283,10 @@ sub xhf_do_sections {
       }
     };
 
+    # toplevel への config
+    local $CONFIG = +{cf_utf8 => $global->{cf_utf8}};
+
+    # translator への config
     my %config;
     if (-r (my $fn = "$DIR/doc/.htyattroot")) {
       %config = YATT::XHF->new(filename => $fn)->read_as('pairlist');
@@ -281,6 +298,7 @@ sub xhf_do_sections {
        , app_prefix => "MyApp$SECTION"
        , debug_translator => $ENV{DEBUG}
        , no_lineinfo => YATT::Util::no_lineinfo()
+       , ($global->{cf_utf8} ? (utf8 => 1) : ())
        , %config
       );
 
@@ -319,13 +337,14 @@ sub xhf_runtest_desc {
     }
 
     &YATT::breakpoint if $test->{cf_BREAK};
-    is_rendered [$global->{gen}, $widget_path, $param]
+    is_rendered [$toplevel, $global->{gen}, $widget_path, $param]
       , $test->{cf_OUT}, $title;
   } elsif ($test->{cf_ERROR}) {
     Test::More::skip("($test->{cf_SKIP}) $title", 1)
 	if $test->{cf_SKIP};
     &YATT::breakpoint if $test->{cf_BREAK};
-    raises [$global->{gen}, call_handler => render => $widget_path, $param]
+    raises [$toplevel
+	    , $global->{gen}, call_handler => render => $widget_path, $param]
       , qr{$test->{cf_ERROR}}s, $title;
   }
 }

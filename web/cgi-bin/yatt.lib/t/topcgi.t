@@ -34,13 +34,14 @@ my $SESSION = 1;
   isnt $config, '', 'config';
   isnt $config->can('configure'), '', 'config->can configure';
 
-  is_rendered [$trans, [qw(foo bar)]], $BAR, 'foo:bar';
+  is_rendered [$instpkg, $trans, [qw(foo bar)]], $BAR, 'foo:bar';
 
+  YATT::Toplevel::CGI::with_config($config, sub
   {
     is_deeply
       [sort {$$a[0] cmp $$b[0]} $instpkg->force_parameter_convention
        ($instpkg->new_cgi({"*foo" => "bar", ".baz" => "qux"}))]
 	, [["*foo" => "bar"], [".baz" => "qux"]]
 	  , "parameter convention is properly enforced";
-  }
+  });
 }
