@@ -7,18 +7,20 @@ use base qw(YATT::Class::Configurable File::Spec);
 BEGIN {require Exporter; *import = \&Exporter::import}
 our @EXPORT_OK = qw(tmpbuilder);
 
-use YATT::Fields qw(^cf_DIR cf_TESTNO cf_AUTO_REMOVE);
+use YATT::Fields qw(^cf_DIR cf_TESTNO cf_AUTO_REMOVE cf_encoding);
 use overload '&{}' => 'as_sub';
 use File::Remove qw(remove);
 use Carp;
 
 sub tmpbuilder {
-  my ($tmpdir) = @_;
+  my ($tmpdir, %opts) = @_;
   unless (-d $tmpdir) {
     mkdir $tmpdir or die "Can't mkdir $tmpdir: $!";
   }
   MY->new(DIR => $tmpdir, TESTNO => 0
-	  , AUTO_REMOVE => !$ENV{DEBUG_TMP});
+	  , AUTO_REMOVE => !$ENV{DEBUG_TMP}
+	  , %opts
+	);
 }
 
 sub DESTROY {
@@ -66,7 +68,8 @@ sub build_DIR {
 sub build_FILE {
   my ($self, $basedir, $name, @body) = @_;
   my $fn = "$basedir/$name";
-  open(my $out, '>', $fn), "file  $fn" or die "Can't create $fn: $!";
+  my $enc = $self->{cf_encoding} ? ":encoding($self->{cf_encoding})" : "";
+  open(my $out, ">$enc", $fn), "file  $fn" or die "Can't create $fn: $!";
   print $out @body;
 }
 

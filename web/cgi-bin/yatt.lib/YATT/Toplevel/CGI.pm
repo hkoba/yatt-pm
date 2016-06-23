@@ -35,6 +35,8 @@ use YATT::Types -base => __PACKAGE__
 		   cf_docs cf_tmpl
 		   cf_charset
 		   cf_utf8
+                   cf_cgi_class
+                   _cgi_class
 		   cf_language
 		   cf_debug_allowed_ip
 		   cf_translator_param
@@ -80,6 +82,14 @@ push our @EXPORT_OK, (@EXPORT, map {'*'.$_} rc_global);
 sub ROOT_CONFIG () {'.htyattroot'}
 
 #----------------------------------------
+
+sub with_config {
+  local $CONFIG = shift;
+  my ($sub, @args) = @_;
+  $sub->(@args);
+}
+
+#----------------------------------------
 # run -> run_zzz -> dispatch(handler) -> dispatch_zzz(handler) -> handler
 
 # run は環境変数を整えるためのエントリー関数。
@@ -96,9 +106,11 @@ sub run {
 
 sub run_cgi {
   my $pack = shift;
-  my $cgi = $pack->new_cgi(shift);
+  my $oldcgi = shift;
 
   local $CONFIG = my Config $config = $pack->new_config(shift);
+
+  my $cgi = $pack->new_cgi($oldcgi);
 
   my ($root, $file, $error, $param);
   if (catch {
@@ -529,10 +541,15 @@ sub param_for_redirect {
 
 sub cgi_classes () { qw(CGI::Simple CGI) }
 
-sub new_cgi {
-  my ($pack, $oldcgi) = @_;
+sub prepare_cgi_class_for_config {
+  (my $pack, my Config $config) = @_;
+
+  return $config->{_cgi_class} if defined $config->{_cgi_class};
+
   my $class;
-  foreach my $c ($pack->cgi_classes) {
+  foreach my $c ($config->{cf_cgi_class}
+                 ? $config->{cf_cgi_class}
+                 : $pack->cgi_classes) {
     eval qq{require $c};
     unless ($@) {
       $class = $c;
@@ -554,6 +571,20 @@ sub new_cgi {
     croak "cgi class($class) doesn't have multi_param method!";
   }
 
+  if ($config->{cf_utf8}) {
+    if ($class eq "CGI" or $class eq "CGI::Simple") {
+      $class->import(-utf8);
+    }
+  }
+
+  $config->{_cgi_class} = $class;
+}
+
+sub new_cgi_for_config {
+  (my $pack, my Config $config, my $oldcgi) = @_;
+
+  my $class = $pack->prepare_cgi_class_for_config($config);
+
   # 1. To make sure passing 'public' parameters only.
   # 2. To avoid CGI::Simple eval()
   if (UNIVERSAL::isa($oldcgi, $class)) {
@@ -561,6 +592,14 @@ sub new_cgi {
   } else {
     $class->new(defined $oldcgi ? $oldcgi : ());
   }
+}
+
+sub new_cgi {
+  my ($pack, $oldcgi) = @_;
+  unless (defined $CONFIG) {
+    croak "\$CONFIG is empty!";
+  }
+  $pack->new_cgi_for_config($CONFIG, $oldcgi);
 }
 
 sub new_session {

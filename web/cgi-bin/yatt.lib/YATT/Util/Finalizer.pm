@@ -2,6 +2,7 @@
 package YATT::Util::Finalizer;
 use strict;
 use warnings qw(FATAL all NONFATAL misc);
+use Encode ();
 
 use base qw(Exporter);
 BEGIN {
@@ -36,9 +37,9 @@ sub with_select {
   # newfh, body, [layer]
   # require Carp; Carp::confess("HERE!");
   my $strref;
+  my $layer = $_[2] // '';
   unless (defined $_[0]) {
     $strref = do {my $str = ""; \$str};
-    my $layer = $_[2] // '';
     open $_[0], ">$layer", $strref or die "Can't open strref: $!";
   }
   my $finalizer = finally {
@@ -47,6 +48,7 @@ sub with_select {
   select($_[0]);
   $_[1]->($finalizer);
   close $_[0];
+  Encode::_utf8_on($$strref) if defined $strref && $layer;
   defined $strref && $$strref;
 }
 

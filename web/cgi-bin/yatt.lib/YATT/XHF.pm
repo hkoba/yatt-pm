@@ -10,7 +10,7 @@ use strict;
 use warnings qw(FATAL all NONFATAL misc);
 
 use base qw(YATT::Class::Configurable);
-use YATT::Fields qw(cf_FH cf_filename cf_tokens);
+use YATT::Fields qw(cf_FH cf_filename cf_tokens cf_encoding);
 use Carp;
 
 use YATT::Util::Enum -prefix => '_', qw(NAME VALUE SIGIL);
@@ -23,7 +23,8 @@ our %OPN = qw([ array { hash);
 
 sub configure_filename {
   (my MY $self, my ($fn)) = @_;
-  open $self->{cf_FH}, '<', $fn
+  my $enc = $self->{cf_encoding} ? ":encoding($self->{cf_encoding})" : "";
+  open $self->{cf_FH}, "<$enc", $fn
     or croak "Can't open file '$fn': $!";
   $self->{cf_filename} = $fn;
   $self;
