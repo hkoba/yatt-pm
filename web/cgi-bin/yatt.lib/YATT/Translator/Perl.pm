@@ -341,10 +341,17 @@ sub as_block {
 
 sub as_join {
   my MY $gen = shift;
+  my $enc = do {
+    if (my $e = $gen->get_encoding_string) {
+      qq{q($e)};
+    } else {
+      '';
+    }
+  };
   my (@result);
   foreach my $trans (@_) {
     if (ref $trans) {
-      push @result, qq(YATT::capture {$$trans});
+      push @result, qq{(YATT::capture {$$trans} $enc)};
     } else {
       push @result, $trans;
     }
@@ -711,7 +718,7 @@ sub genargs_static {
       } elsif (defined $args->node_body) {
 	$argdecl->gen_assignable_node($trans, $scope, $args);
       } elsif ($argdecl->isa($trans->t_scalar)) {
-	$argdecl->quote_assignable(my $copy = 1);
+	$argdecl->quote_assignable($trans, my $copy = 1);
       } else {
 	die $trans->node_error($args, "valueless arg '%s'", $name);
       }
@@ -1292,7 +1299,8 @@ sub YATT::Translator::Perl::VarType::gen_assignable_node {
   # early escaped な変数への代入値は、代入前に escape される。
   my $escaped = $var->early_escaped;
   $var->quote_assignable
-    ($trans->mark_vars($scope, $escaped, $is_opened ? $node : $node->open));
+    ($trans
+     , $trans->mark_vars($scope, $escaped, $is_opened ? $node : $node->open));
 }
 
 sub YATT::Translator::Perl::VarType::is_required {
@@ -1357,6 +1365,7 @@ $calling_conv{_} = t_scalar->new(varname => '_');
 
 sub YATT::Translator::Perl::t_text::quote_assignable {
   shift;
+  (my MY $trans) = shift;
   my ($nvars);
   my @items = map {
     if (ref $_) {
@@ -1370,14 +1379,15 @@ sub YATT::Translator::Perl::t_text::quote_assignable {
   if (@items == 1 && !$nvars) {
     $items[0];
   } else {
-    MY->as_join(@items);
+    $trans->as_join(@items);
   }
 }
 
 # XXX: 本当に良いのか?
 sub YATT::Translator::Perl::t_html::quote_assignable {
   shift;
-  sprintf q{YATT::escape(%s)}, t_text->quote_assignable(@_);
+  (my MY $trans) = shift;
+  sprintf q{YATT::escape(%s)}, t_text->quote_assignable($trans, @_);
 }
 
 sub YATT::Translator::Perl::t_html::escaped_format {shift->lvalue_format}
@@ -1387,7 +1397,7 @@ sub YATT::Translator::Perl::t_html::gen_assignable_node {
   # XXX: フラグがダサい。
   my $n = $is_opened ? $node : $node->open;
   if (my $expr = $trans->has_single_bare_varexpr($scope, $n)) {
-    t_scalar->quote_assignable($expr);
+    t_scalar->quote_assignable($trans, $expr);
   } else {
     $trans->as_join($trans->generate_body($scope, $n));
   }
@@ -1427,11 +1437,13 @@ sub YATT::Translator::Perl::t_attr::as_escaped {
 
 sub YATT::Translator::Perl::t_scalar::quote_assignable {
   shift;
+  (my MY $trans) = shift;
   'scalar(do {'.join("", map { ref $_ ? $$_ : $_ } @_).'})';
 }
 
 sub YATT::Translator::Perl::t_list::quote_assignable {
   shift;
+  (my MY $trans) = shift;
   '['.join("", map { ref $_ ? $$_ : $_ } @_).']';
 }
 

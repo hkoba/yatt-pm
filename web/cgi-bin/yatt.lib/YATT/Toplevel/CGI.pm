@@ -579,6 +579,8 @@ sub prepare_cgi_class_for_config {
     }
   }
 
+  $config->ensure_output_encoding;
+
   $config->{_cgi_class} = $class;
 }
 
@@ -653,8 +655,6 @@ END
   });
 
   $config->{cf_driver} = $0;
-
-  $config->ensure_output_encoding;
 
   $config;
 }

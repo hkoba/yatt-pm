@@ -104,6 +104,11 @@ sub after_configure {
   $root->{nspattern} = qr{^(?:$nspat)$};
 }
 
+sub get_encoding_string {
+  (my Root $root) = @_;
+  $root->{cf_utf8} ? ":encoding(utf8)" : "";
+}
+
 #========================================
 # use YATT::Registry ** => ** 系.
 
@@ -1067,7 +1072,8 @@ sub create_var {
        , special_entities => $root->{cf_special_entities});
     local $root->{current_parser}[0] = $parser;
 
-    open my $fh, '<', $path or die "Can't open $path";
+    my $enc = $root->get_encoding_string;
+    open my $fh, "<$enc", $path or die "Can't open $path";
 
     $tmpl->{cf_metainfo} = $parser->configure_metainfo
       (nsid => $tmpl->{cf_nsid}
