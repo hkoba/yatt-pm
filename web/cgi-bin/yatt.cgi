@@ -53,6 +53,8 @@ use lib prog_libdirs(__FILE__);
 use YATT;
 
 #----------------------------------------
+my %config = (charset => 'utf-8', utf8 => 1);
+
 if ($0 =~ /\.fcgi$/) {
   my $age = -M $0;
   my $load_error;
@@ -74,7 +76,7 @@ if ($0 =~ /\.fcgi$/) {
     exit 1;
   }
   else {
-    YATT::Toplevel::FCGI->run;
+    YATT::Toplevel::FCGI->run(undef, \%config);
   }
 }
 elsif ($ENV{LOCAL_COOKIE}) {
@@ -92,7 +94,7 @@ else {
     }
     else {
       breakpoint_run;
-      $class->run(cgi => @ARGV);
+      $class->run(cgi => (@ARGV ? @ARGV : (undef, \%config)));
     }
   }
   else {
