@@ -800,6 +800,7 @@ sub entity_join {
 
 sub entity_format {
   my ($this, $format) = (shift, shift);
+  use YATT::Util::redundant_sprintf;
   sprintf $format, @_;
 }
 

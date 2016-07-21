@@ -1819,7 +1819,7 @@ sub feed_arg_spec {
 
     $args->next;
 
-    sprintf(q|sprintf(%s, %s)|
+    sprintf(q|do {use YATT::Util::redundant_sprintf; sprintf(%s, %s)}|
 	    , $format
 	    , $trans->as_join($trans->generate_body([{}, $scope], $args)));
   }
