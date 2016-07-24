@@ -284,7 +284,14 @@ sub xhf_do_sections {
     };
 
     # toplevel への config
-    local $CONFIG = +{cf_utf8 => $global->{cf_utf8}};
+    local $CONFIG = do {
+      # XXX: This is very patchy.
+      if (my $top = $global->toplevel) {
+	$top->new_config(+{utf8 => $global->{cf_utf8}});
+      } else {
+	+{cf_utf8 => $global->{cf_utf8}};
+      }
+    };
 
     # translator への config
     my %config;
