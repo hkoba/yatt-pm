@@ -8,6 +8,7 @@ use lib grep(-d
 	     , "$FindBin::Bin/yatt.lib", "$FindBin::Bin/lib"
 	     , grep {defined} $ENV{YATT_LIB});
 
+use open ();
 use File::Basename;
 use YATT::Util;
 use YATT::Exception qw(Exception);
