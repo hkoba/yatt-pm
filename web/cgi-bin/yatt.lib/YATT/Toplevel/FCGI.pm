@@ -31,6 +31,12 @@ sub run {
   }
 }
 
+sub emit_content {
+  # my ($pkg, $content);
+  use Encode;
+  print encode(utf8 => $_[1]);
+}
+
 sub plain_exit { shift->bye }
 
 1;

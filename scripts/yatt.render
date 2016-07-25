@@ -88,11 +88,11 @@ foreach my $cmd (@command) {
     } ($REQUEST_URI, $PATH_INFO);
     # XXX: $instpkg にしたい。prepare_dispatch に頼るべきか?
     eval {
-      $instpkg->dispatch_action($registry, $sub, @args);
+      $instpkg->dispatch_action(MY, $registry, $sub, @args);
     };
     if (my ($file, $cgi) = can_retry($@)) {
       print "INTERNAL REDIRECT: $file\n";
-      $instpkg->run_retry_max(3, $registry, $file, $cgi);
+      MY->run_retry_max(3, $instpkg, $registry, $file, $cgi);
     } elsif (not is_normal_end($@)) {
       $file ||= "(null)";
       print "\nERROR $file\n($@)\n\n";
