@@ -362,7 +362,7 @@ sub dispatch_error {
     $top->printenv_html($info, id => 'error_info') if $info;
     $top->printenv_html;
   } elsif (catch {
-    $html = capture {$renderer->($pkg, [$error, $info])};
+    $html = capture {$renderer->($pkg, [$error, $info])} $top->get_encoding;
   } \ my Exception $error2) {
     unless (ref $error2) {
       print $ERR "\n\nerror in error page($error2), original_error=($error)";
