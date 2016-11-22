@@ -375,6 +375,13 @@ sub dispatch_error {
     }
   } else {
     print $ERR $CGI ? $CGI->header : "Content-type: text/html\n\n";
+    {
+      # XXX: To avoid FCGI::Stream::PRINT widechar warnings.
+      use Encode;
+      if (Encode::is_utf8($html)) {
+        Encode::_utf8_off($html);
+      }
+    }
     print $ERR $html;
   }
 
