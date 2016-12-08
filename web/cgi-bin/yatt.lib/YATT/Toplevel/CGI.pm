@@ -410,6 +410,10 @@ sub emit_header {
 sub emit_content {
   # my ($runpack, $content) = @_;
   # print map {"$_=$ENV{$_}<br>\n"} sort keys %ENV;
+  use Encode;
+  if (Encode::is_utf8($_[1])) {
+    Encode::_utf8_off($_[1]);
+  }
   print $_[1];
 }
 
@@ -596,7 +600,7 @@ sub prepare_cgi_class_for_config {
     }
   }
 
-  $config->ensure_output_encoding;
+  # $config->ensure_output_encoding;
 
   $config->{_cgi_class} = $class;
 }
@@ -676,6 +680,7 @@ END
   $config;
 }
 
+# XXX: ensure_output_encoding is not used anymore.
 sub ensure_output_encoding {
   (my Config $config, my @fhs) = @_;
   return unless $config->{cf_utf8}
