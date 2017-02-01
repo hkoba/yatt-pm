@@ -9,6 +9,8 @@ use lib "$FindBin::Bin/..";
 use YATT::Test;
 use base qw(YATT::Test);
 
+use YATT::Translator::Perl ();
+
 my $ROOTNAME = rootname($0);
 
 __PACKAGE__->xhf_test("$ROOTNAME.tmp"

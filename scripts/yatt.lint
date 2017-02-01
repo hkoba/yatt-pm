@@ -12,8 +12,10 @@ use open ();
 use File::Basename;
 use YATT::Util;
 use YATT::Exception qw(Exception);
+use YATT::Translator::Perl ();
 use base qw(YATT::Toplevel::CGI);
 sub MY () { __PACKAGE__ }
+BEGIN {$INC{'main.pm'} = 1;}
 
 MY->parse_opts(\@ARGV, \ my %opts);
 MY->parse_params(\@ARGV, \ my %common);
