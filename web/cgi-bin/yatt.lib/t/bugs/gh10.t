@@ -40,7 +40,7 @@ use YATT::Exception qw(Exception);
 
     like $error
       , qr{^No such widget \(<yatt:dirx:foo:barrr />\), at file \S+ line 1\n$}
-      , "Error diag shoud report root of cause";
+      , "Error diag should report root of the error";
 
   } else {
     BAILOUT("Can't find testee widget");
