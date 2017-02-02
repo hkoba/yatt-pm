@@ -416,6 +416,10 @@ sub get_widget_from_dir {
 	}
       };
 
+      unless ($ns) {
+	next; # possibly directory name typos.
+      }
+
       my $found = do {
 	if (@elempath == 2) {
 	  $ns->widget_by_nsname($root, @elempath);
