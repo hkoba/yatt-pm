@@ -42,6 +42,21 @@ use YATT::Exception qw(Exception);
       , qr{^No such widget \(<yatt:dirx:foo:barrr />\), at file \S+ line 1\n$}
       , "Error diag for widget name typo in subdir";
   }
+
+  {
+    my @wpath = MY->widget_path_in($docroot, MY->rel2abs('index2'));
+
+    my $widget = $top->get_widget(@wpath)
+      or BAILOUT("Can't find testee widget");
+
+    my Exception $error = catch {
+      $top->ensure_widget_is_generated($widget);
+    };
+
+    like $error
+      , qr{^No such widget \(<yatt:diry:foo:bar />\), at file \S+ line 1\n$}
+      , "Error diag for dirname typo";
+  }
 }
 
 done_testing();
