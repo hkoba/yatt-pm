@@ -172,6 +172,16 @@ SKIP: {
 	 , [FILE => '.htyattrc'
 	    , q{sub baz {"BAZ"}}]]]);
 
+  # app/           (inherits lib1/normal/. So bar.html can be visible if compiled)
+  #   index.html
+  #
+  # lib1/normal/   (inherits lib1/common/)
+  #   bar.html     (has compilation error initially)
+  #
+  # lib1/common/
+  #   (initially empty)
+
+  #========================================
   use File::stat;
   my %no_reload; $no_reload{$_} = 1 for split ":"
     , ($ENV{TEST_NO_RELOAD_DIR} || '');
@@ -222,18 +232,25 @@ SKIP: {
     $depth++ while caller($depth);
     $depth;
   }
+  #========================================
 
   my $root = new YATT::Registry
     (loader => [DIR => "$DIR/app", LIB => "$DIR/lib1"]
      , app_prefix => "MyApp$SESSION"
      , auto_reload => 1);
+
   is_deeply [sort $root->list_ns], [qw(common index normal)]
     , "[$SESSION] base => /normal";
 
+  # app1/index.html is ok (no error)
   isnt my $index = $root->get_ns(['index']), undef, "[$SESSION] index";
+
+  # But when you edit app1/index.html and add a call to <yatt:bar/>,
+  # it is error because bar can't be compiled.
   my $w;
-  like(catch {$w = $root->get_widget_from_template($index, qw(yatt bar))}
-       , qr{^\QUnknown declarator (<!yatt:baz >)}, "[$SESSION] bar");
+  like(catch {
+    $w = $root->get_widget_from_template($index, qw(yatt bar));
+  }, qr{^\QUnknown declarator (<!yatt:baz >)}, "[$SESSION] bar");
 
   is $root->get_ns(['bar'])->{is_loaded}
     , undef, "[$SESSION] yatt bar is not yet loaded";
@@ -251,8 +268,9 @@ SKIP: {
   $root->mark_load_failure;
 
   undef $w;
-  like(catch {$w = $root->get_widget_from_template($index, qw(yatt bar))}
-       , qr{^$}, "[$SESSION] bar, reload, noerror");
+  like(catch {
+    $w = $root->get_widget_from_template($index, qw(yatt bar));
+  }, qr{^$}, "[$SESSION] yatt:bar can be looked up without errors");
 
   is $root->get_ns(['bar'])->{is_loaded}
     , 1, "[$SESSION] yatt bar *is* loaded";
