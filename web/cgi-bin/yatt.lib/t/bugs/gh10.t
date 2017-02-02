@@ -30,21 +30,16 @@ use YATT::Exception qw(Exception);
 
   my @wpath = MY->widget_path_in($docroot, MY->rel2abs('index'));
 
-  if (my $widget = $top->get_widget(@wpath)) {
-    my Exception $error;
-    my $rc = catch {
-      $top->ensure_widget_is_generated($widget);
-    } \$error;
+  my $widget = $top->get_widget(@wpath)
+    or BAILOUT("Can't find testee widget");
 
-    isnt $rc, '', "Error should be raised";
+  my Exception $error = catch {
+    $top->ensure_widget_is_generated($widget);
+  };
 
-    like $error
-      , qr{^No such widget \(<yatt:dirx:foo:barrr />\), at file \S+ line 1\n$}
-      , "Error diag should report root of the error";
-
-  } else {
-    BAILOUT("Can't find testee widget");
-  }
+  like $error
+    , qr{^No such widget \(<yatt:dirx:foo:barrr />\), at file \S+ line 1\n$}
+    , "Error diag should report root of the error";
 }
 
 done_testing();
