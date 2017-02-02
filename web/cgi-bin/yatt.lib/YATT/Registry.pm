@@ -372,7 +372,7 @@ sub get_widget_from_dir {
   my @elempath = @_;
   $dir = $dir->vivify_ns($root, splice @elempath, 0, @elempath - 2);
   unless ($dir) {
-    croak "Can't find widget: ", join(":", @_);
+    return; # Too early to raise an error. It is caller's task.
   }
   if (@elempath == 2) {
     $dir->widget_by_nsname($root, @elempath);
@@ -516,9 +516,11 @@ sub get_widget_from_dir {
 	  $d = $root->nsobj($d->{cf_base_nsid});
 	  $root->refresh($d);
 	}
+
 	unless ($nsid) {
-	  croak "No such ns '$ns': " . join ":", @orig;
+	  return;
 	}
+
 	my $o = $root->nsobj($nsid);
 	return $dir unless $o->is_dir;
 	$o;
