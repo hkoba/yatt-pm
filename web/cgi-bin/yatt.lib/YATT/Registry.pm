@@ -6,6 +6,8 @@ use warnings qw(FATAL all NONFATAL misc);
 use Carp;
 use UNIVERSAL;
 
+use constant DEBUG => $ENV{DEBUG_YATT_REGISTRY};
+
 # Debugging aid.
 require YATT;
 use YATT::Exception;
@@ -378,6 +380,9 @@ sub get_widget_from_dir {
 }
 
 {
+  sub YATT::Registry::NS::Dir::is_dir {1}
+  sub YATT::Registry::NS::Template::is_dir {0}
+
   sub YATT::Registry::NS::list_declared_widget_names {
     (my NS $tmpl) = @_;
     my @result;
@@ -493,6 +498,9 @@ sub get_widget_from_dir {
       $dir = do {
 	my $ns = shift @nspath;
 	my Dir $d = $dir;
+	if (DEBUG) {
+	  print "dir=$dir\n";
+	}
 	my $nsid;
 	while (not($nsid = $d->{Dir}{$ns})
 	       and not($nsid = $d->{Template}{$ns})
@@ -503,7 +511,9 @@ sub get_widget_from_dir {
 	unless ($nsid) {
 	  croak "No such ns '$ns': " . join ":", @orig;
 	}
-	$root->nsobj($nsid);
+	my $o = $root->nsobj($nsid);
+	return $dir unless $o->is_dir;
+	$o;
       };
     }
     $dir;
