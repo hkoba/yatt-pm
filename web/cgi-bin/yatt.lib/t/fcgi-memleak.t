@@ -105,7 +105,11 @@ if ($is_server or (defined $is_client and not $is_client)
   my @res = MY->send_request($fcgi, $sockfile, GET => '/');
   print "# ", join("|", @res), "\n" if $verbose;
 
-  # Memory size after processing of first request.
+  for (1..4) {
+    MY->send_request($fcgi, $sockfile, GET => '/');
+  }
+
+  # Memory size after processing of first 5 request.
   my $at_start = MY->memsize($kid);
 
   for (my $cnt = 1; $cnt < $GOAL; $cnt++) {
