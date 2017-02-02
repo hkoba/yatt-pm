@@ -320,7 +320,11 @@ sub mark_load_failure {
 
 sub get_ns {
   (my Root $root, my ($elempath)) = @_;
-  $root->vivify_ns($root, @$elempath);
+  my @elempath = ref $elempath ? @$elempath : $elempath;
+  my $tail = pop @elempath;
+  my NS $ns = @elempath ? $root->lookup_dir($root, @elempath) : $root;
+  # XXX: Bit odd API naming.
+  $ns->lookup_template($root, $tail);
 }
 
 sub get_package_from_node {
