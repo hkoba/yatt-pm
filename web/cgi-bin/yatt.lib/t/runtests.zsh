@@ -7,7 +7,7 @@ cd $0:h
 if ((ARGC)); then
     files=("$@")
 else
-    files=(*.t(N))
+    files=(**/*.t(N))
 fi
 
 if (($+PERL)) && [[ -d $PERL:h/lib ]]; then
