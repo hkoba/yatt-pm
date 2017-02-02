@@ -28,18 +28,20 @@ use YATT::Exception qw(Exception);
 			       , MY->new_config->translator_param
 			       , mode => 'render');
 
-  my @wpath = MY->widget_path_in($docroot, MY->rel2abs('index'));
+  {
+    my @wpath = MY->widget_path_in($docroot, MY->rel2abs('index'));
 
-  my $widget = $top->get_widget(@wpath)
-    or BAILOUT("Can't find testee widget");
+    my $widget = $top->get_widget(@wpath)
+      or BAILOUT("Can't find testee widget");
 
-  my Exception $error = catch {
-    $top->ensure_widget_is_generated($widget);
-  };
+    my Exception $error = catch {
+      $top->ensure_widget_is_generated($widget);
+    };
 
-  like $error
-    , qr{^No such widget \(<yatt:dirx:foo:barrr />\), at file \S+ line 1\n$}
-    , "Error diag should report root of the error";
+    like $error
+      , qr{^No such widget \(<yatt:dirx:foo:barrr />\), at file \S+ line 1\n$}
+      , "Error diag for widget name typo in subdir";
+  }
 }
 
 done_testing();
