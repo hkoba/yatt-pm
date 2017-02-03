@@ -25,7 +25,7 @@ use YATT::Exception;
 		      cf_no_refresh
 		      ^is_loaded
 		    );
-  # When fields is empty, %FIELDS doesn't blessed.
+  # When fields->import gets empty args, %FIELDS doesn't blessed.
   # This causes "Pseudo-hashes are deprecated"
 
   use YATT::Types
