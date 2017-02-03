@@ -22,6 +22,7 @@ use YATT::Exception;
 		      cf_name cf_vpath cf_loadkey
 		      cf_mtime cf_age
 		      cf_utf8
+		      cf_no_refresh
 		      ^is_loaded
 		    );
   # When fields is empty, %FIELDS doesn't blessed.
@@ -293,6 +294,7 @@ sub refresh {
   (my Root $root, my NS $node) = @_;
   $node ||= $root;
   return unless $node->{cf_loadkey};
+  return if $node->{cf_no_refresh};
   return if $node->{cf_age} and not $root->{cf_auto_reload};
   return unless $root->{Loader};
 
