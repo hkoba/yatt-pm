@@ -46,11 +46,11 @@ my ($rootdir, $top) = do {
 
 {
   my $count;
-  foreach my $file (@ARGV) {
+  foreach my $srcFile (@ARGV) {
     my Exception $error;
     if (catch {
       my $widget = $top->get_widget(MY->widget_path_in
-				    ($rootdir, MY->rel2abs($file)));
+				    ($rootdir, MY->rel2abs($srcFile)));
       $top->ensure_widget_is_generated($widget) if $widget;
     } \ $error or do {
       if (my $script = $top->emit) {
@@ -77,6 +77,9 @@ my ($rootdir, $top) = do {
 	  $str =~ s/\n/\n /g;
 	  $str
 	} $simple, $node;
+      if (defined $file and $file ne $srcFile) {
+        print " (Detected from $srcFile)\n";
+      }
 
       exit 1
     }
