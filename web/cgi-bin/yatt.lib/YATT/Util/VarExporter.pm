@@ -45,7 +45,7 @@ sub instance {
 sub export_to {
   (my MY $self, my ($destpkg, $page, $failok)) = @_;
   my $vars = $self->find_vars($page ||= $self->page_name)
-    or $failok or die "No such page: $page";
+    or $failok or Carp::croak("No such page: $page");
 
   foreach my $name (keys %$vars) {
     my $value = $vars->{$name};
