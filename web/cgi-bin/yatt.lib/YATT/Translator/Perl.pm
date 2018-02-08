@@ -822,7 +822,11 @@ sub attr_declare_delegate {
   (my MY $trans, my ($widget, $args, $argname, $subtype, @param)) = @_;
   my @elempath = $subtype ? @$subtype : $argname;
   my Template $tmpl = $trans->get_template_from_node($args);
-  my Widget $base = $trans->get_widget_from_template($tmpl, @elempath);
+
+  # Note: This undef is intentional. It indicates $nsname is empty
+  # (because this is delegate type).
+  #
+  my Widget $base = $trans->get_widget_from_template($tmpl, undef, @elempath);
   unless ($base) {
     die $trans->node_error($args, "No such widget %s"
 			   , join(":", @elempath));
