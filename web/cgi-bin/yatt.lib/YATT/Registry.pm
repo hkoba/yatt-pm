@@ -355,12 +355,16 @@ sub get_widget_from_template {
   (my Root $root, my Template $tmpl, my ($nsname)) = splice @_, 0, 3;
   my $widget;
 
+  # Note: $nsname is primary namespace like 'yatt'.
+  # Special case is delegate type var=[delegate:name:name...].
+  # In delegate type, undefined $nsname is given.
+
   # Relative lookup. ($nsname case is for [delegate])
   $widget = $tmpl->lookup_widget($root, @_ ? @_ : $nsname)
     and return $widget;
 
   # Absolute, ns-specific lookup.
-  if ($root->has_ns($root, $nsname)) {
+  if (defined $nsname and $root->has_ns($root, $nsname)) {
     $widget = $root->get_widget_from_dir($root, $nsname, @_)
       and return $widget;
   }
