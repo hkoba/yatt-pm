@@ -105,6 +105,8 @@ sub is_rendered ($$$) {
       eq_or_diff($out, $cmp, $title);
     } elsif ($error) {
       Test::More::fail "skipped, because of previous compile error for [$title]: $error";
+    } elsif (not $@) {
+      Test::More::fail "$title: Can't compile: empty result.";
     }
   };
   if ($@) {
