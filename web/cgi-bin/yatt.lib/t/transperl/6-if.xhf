@@ -40,7 +40,6 @@ OUT:
 
 
 TITLE: if else
-BREAK: 1
 IN:
  <!yatt:args x>
  <h2>Hello</h2>

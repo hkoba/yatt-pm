@@ -52,7 +52,6 @@ IN:
  <!yatt:widget pace>pace<!yatt:widget hello>
  <h2>Hello</h2>
  &yatt:body();
-BREAK: 1
 PARAM[
 - 1
 ]

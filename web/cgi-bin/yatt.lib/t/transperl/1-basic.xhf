@@ -84,7 +84,6 @@ ERROR: Misplaced yatt:widget in: \([^\)]+\), at file \S+ line 4
 
 
 TITLE: widget -> args ordering.
-BREAK: 1
 IN:
  <!yatt:widget hello x y>
  &yatt:x; - &yatt:y;
@@ -383,7 +382,6 @@ OUT:
  
 
 TITLE: bareword argument as pass thru.
-BREAK: 1
 IN:
  <!yatt:args x=text>
  <yatt:foo y=x/>

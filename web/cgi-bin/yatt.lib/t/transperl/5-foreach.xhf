@@ -64,7 +64,6 @@ OUT:
 
 
 TITLE: foreach list pass through, type mismatch.
-BREAK: 1
 IN:
  <!yatt:args x>
  <ul>
