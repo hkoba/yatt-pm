@@ -88,8 +88,12 @@ sub is_rendered ($$$) {
   my ($desc, $cmp, $title) = @_;
   my ($toplevel, $trans, $path, @args) = @$desc;
   my $error;
-  local $SIG{__DIE__} = sub {$error = @_ > 1 ? [@_] : shift};
-  local $SIG{__WARN__} = sub {$error = @_ > 1 ? [@_] : shift};
+  local $SIG{__DIE__} = sub {
+    $error = @_ > 1 ? [@_] : shift;
+  };
+  local $SIG{__WARN__} = sub {
+    $error = @_ > 1 ? [@_] : shift;
+  };
   my ($sub, $pkg) = eval {
     &YATT::break_translator;
     $trans->get_handler_to(render => @$path)
