@@ -97,3 +97,22 @@ OUT:
  No error.
  
  
+
+FILE: doc/other1.html
+IN:
+ <!yatt:widget samename1>
+ <h2>This is samename1 in other1.html</h2>
+
+FILE: doc/samename1.html
+IN:
+ <h2>This is samename1.html</h2>
+
+TITLE: delegate:other1:samename1 should be correctly resolved.
+BREAK: 1
+IN:
+ <!yatt:args w=[delegate:other1:samename1]>
+ w: <yatt:w/>
+OUT:
+ w: <h2>This is samename1 in other1.html</h2>
+ 
+
