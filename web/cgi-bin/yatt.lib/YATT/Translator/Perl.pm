@@ -1555,6 +1555,9 @@ sub YATT::Translator::Perl::t_delegate::gen_call {
   # XXX: テストを書け。body が code か html か、だ。
   # my $body_dict = $argdecl->{cf_base_widget}->get_arg_spec(body => undef);
   my $body_spec = $argdecl->{cf_base_widget}->{arg_dict}->{body};
+  unless ($body_spec) {
+    die $trans->node_error($node, "body_spec is empty for $func");
+  }
   my $body_scope = do {
     if ($body_spec->type_name eq 'code') {
       [$body_spec->{arg_dict}, $scope]
