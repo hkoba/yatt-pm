@@ -36,6 +36,7 @@ find sub {
   $name =~ s{/}{::}g;
   $name =~ s{\.pm$}{}g;
   return if $ignore{$name};
+  return if $name =~ m{^YATT::Lite};
   print "$File::Find::name => $name\n" if $ENV{VERBOSE};
   $modules{$name} = $File::Find::name;
   push @modules, $name;
