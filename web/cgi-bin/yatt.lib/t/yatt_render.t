@@ -2,11 +2,14 @@
 # -*- mode: perl; coding: utf-8 -*-
 use strict;
 use warnings qw(FATAL all NONFATAL misc);
-use strict;
-use warnings qw(FATAL all NONFATAL misc);
 use FindBin;
 use lib "$FindBin::Bin/..";
 use YATT::Test;
+
+# Note: This test relies actual vmem size of perl5 and yatt,
+# so this may fail for perl versions and/or OS releases.
+
+use File::stat;
 
 #----------------------------------------
 my $SCRIPT = "$FindBin::Bin/../../../../scripts/yatt.render";
@@ -25,6 +28,15 @@ my $tester = sub {
   $out
 };
 
+my $limit_meg = 100 + do {
+  my $locale_archive = '/usr/lib/locale/locale-archive';
+  if (-e $locale_archive) {
+    int(stat($locale_archive)->size / (1024 * 1024));
+  } else {
+    0;
+  }
+};
+
 #----------------------------------------
 plan 'no_plan';
 
@@ -33,9 +45,9 @@ my $TMPDIR = tmpbuilder(rootname($0) . ".tmp");
 {
   my $DIR = $TMPDIR->([FILE => 'bar.html'
 		       , my $BAR = q{<h2>bar.html</h2>}]
-		      , [FILE => '.htyattroot', <<'END']
+		      , [FILE => '.htyattroot', <<"END"]
 rlimit{
-vmem: 200
+vmem: $limit_meg
 }
 END
 		      , [FILE => 'baz.html'
@@ -44,5 +56,5 @@ END
 
   is $tester->("$DIR/bar.html"), $BAR, "yatt.render: normal";
   like $tester->("$DIR/baz.html"), qr{^Out of memory}
-    , "yatt.render: error exit";
+    , "yatt.render should die with 'Out of memory!' when rlimit.vmem=$limit_meg";
 }
