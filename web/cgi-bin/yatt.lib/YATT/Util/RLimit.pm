@@ -11,7 +11,15 @@ our @EXPORT = qw(rlimit_vmem);
 
 sub rlimit_vmem {
   my ($limit_meg) = @_;
-  rlimit(RLIMIT_VMEM, $limit_meg * 1024 * 1024);
+  my $limit_bytes = do {
+    if ($limit_meg > 0) {
+      $limit_meg * 1024 * 1024;
+    } else {
+      # Allow passing -1 (unlimited)
+      $limit_meg;
+    }
+  };
+  rlimit(RLIMIT_VMEM, $limit_bytes);
 }
 
 sub rlimit {
