@@ -350,6 +350,13 @@ sub dispatch_error {
   my $ERR = \*STDOUT;
   my ($found, $renderer, $pkg, $html);
 
+  if ($top->get_encoding
+        and Encode::is_utf8($error)
+        and not utf8::valid($error)) {
+    $error = Encode::encode('utf-8', $error, Encode::FB_PERLQQ);
+    Encode::_utf8_on($error);
+  }
+
   unless ($root) {
     print $ERR "\n\nroot_load_error($error)";
   } elsif (catch {
