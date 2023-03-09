@@ -57,7 +57,7 @@ Config->define(create => \&create_toplevel);
 
 #----------------------------------------
 
-use vars map {'$'.$_} our @env_vars
+use vars map {"\$".$_} our @env_vars
   = qw(DOCUMENT_ROOT
        PATH_INFO
        PATH_TRANSLATED
@@ -207,7 +207,7 @@ END
 
   unless ($loader) {
     $runpack->plain_error($cgi, <<END);
-Can't find loader.
+Can\'t find loader.
 END
   }
 
