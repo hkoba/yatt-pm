@@ -47,6 +47,7 @@ use YATT::Types -base => __PACKAGE__
 		   cf_no_chdir
 		   cf_rlimit
 		   cf_use_session
+                   cf_suppress_stderr
 		 )
 		, ['^cf_app_prefix' => 'YATT']
 		, ['^cf_find_root_upward' => 2]
@@ -390,6 +391,8 @@ sub dispatch_error {
       }
     }
     print $ERR $html;
+    print STDERR "YATT: $error\n"
+      unless $CONFIG and $CONFIG->{cf_suppress_stderr};
   }
 
   $top->bye;
