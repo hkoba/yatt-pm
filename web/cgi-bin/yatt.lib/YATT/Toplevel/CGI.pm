@@ -396,8 +396,12 @@ sub dispatch_error {
       }
     }
     print $ERR $html;
-    print STDERR "YATT: $error\n"
-      unless $CONFIG and $CONFIG->{cf_suppress_stderr};
+    unless ($CONFIG and $CONFIG->{cf_suppress_stderr}) {
+      if (Encode::is_utf8($error)) {
+        Encode::_utf8_off($error);
+      }
+      print STDERR "YATT: $error\n";
+    }
   }
 
   $top->bye;
