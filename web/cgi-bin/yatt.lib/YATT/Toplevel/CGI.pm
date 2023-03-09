@@ -49,6 +49,7 @@ use YATT::Types -base => __PACKAGE__
 		   cf_use_session
                    cf_suppress_stderr
 		 )
+                , ['cf_error_status' => 500]
 		, ['^cf_app_prefix' => 'YATT']
 		, ['^cf_find_root_upward' => 2]
 	       ]]
@@ -382,7 +383,11 @@ sub dispatch_error {
       print $ERR "\n\nerror in error page($error2->{cf_error}), original_error=($error)";
     }
   } else {
-    print $ERR $CGI ? $CGI->header : "Content-type: text/html\n\n";
+    my @opts;
+    if ($CONFIG and $CONFIG->{cf_error_status}) {
+      push @opts, (-status => $CONFIG->{cf_error_status});
+    }
+    print $ERR $CGI ? $CGI->header(@opts) : "Content-type: text/html\n\n";
     {
       # XXX: To avoid FCGI::Stream::PRINT widechar warnings.
       use Encode;
