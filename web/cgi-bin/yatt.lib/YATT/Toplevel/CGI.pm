@@ -52,6 +52,7 @@ use YATT::Types -base => __PACKAGE__
                 , ['cf_error_status' => 500]
 		, ['^cf_app_prefix' => 'YATT']
 		, ['^cf_find_root_upward' => 2]
+                , ['cf_warning_with_prefix' => 1]
 	       ]]
   , qw(:export_alias);
 
@@ -323,6 +324,16 @@ sub dispatch {
     $top->dispatch_error($root, "Can't compile: $file"
 			 , {phase => 'get_handler', target => $file});
   } else {
+    local $SIG{__WARN__} = $CONFIG->{cf_warning_with_prefix} ? do {
+      my $prefix =
+        $PATH_TRANSLATED ? "PATH_TRANSLATED=$PATH_TRANSLATED" :
+        $REQUEST_URI     ? "REQUEST_URI=$REQUEST_URI" :
+        "PATH_INFO=".($PATH_INFO // "");
+      sub {
+        print STDERR "warn[$prefix] ", $_[0];
+      }
+    } : 'DEFAULT';
+
     unless ($CONFIG->{cf_no_chdir}) {
       # XXX: これもエラー処理を
       my $dir = untaint_any(dirname($widget->filename));
