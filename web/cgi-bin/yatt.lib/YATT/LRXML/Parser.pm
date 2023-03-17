@@ -229,7 +229,7 @@ sub build_tag {
   my $element = $self->create_node([$nodetype, $qflag]
 				   , $html
 				   ? $html
-				   : [$ns, split /[:\.]/, $tagname]);
+				   : [$ns, split /:/, $tagname]);
   $self->parse_attlist($attlist, $element);
 
   unless ($is_ee) {
@@ -459,7 +459,7 @@ sub re_ns {
 
 sub re_nsname {
   my ($self, $capture) = @_;
-  my $body = q{[\w\-\.:]+};
+  my $body = q{(?:\w+|\.\.)(?:\:(?:\w+|\.\.))*};
   $capture ? qr{($body)} : qr{$body};
 }
 

@@ -278,3 +278,29 @@ SKIP: {
   eq_or_diff stringify_node($w->root)
     , $new_bar, "[$SESSION] bar, reloaded";
 }
+
+# [7] GH-14 - .. in widget path refers to parent directory
+{
+  $SESSION++;
+  my $DIR = $TMPDIR->
+    ([DIR => 'app',
+      [DIR => 'sub',
+       [FILE => 'index.html', q{<!yatt:widget logo><h2>ACME Inc</h2>}],
+       [DIR => 'subapp',
+        [FILE => 'foo.html', q{<yatt:..:index:logo />}]
+      ],
+     ],
+    ]);
+
+  my $root = new YATT::Registry
+    (loader => [DIR => "$DIR/app"]
+     , app_prefix => "MyApp$SESSION"
+     , auto_reload => 1);
+
+  isnt my $index = $root->get_ns([qw(sub subapp foo)]), undef, "[$SESSION] subapp/foo";
+  my $logo;
+  isnt $logo = $root->get_widget_from_template($index, qw(yatt .. index logo)), undef
+    , "[$SESSION] <yatt:..:index:logo/>";
+
+  is $logo->{cf_name}, "logo", "[$SESSION] widget name";
+}

@@ -480,7 +480,13 @@ sub get_widget_from_dir {
     $root->refresh($dir);
     while ($dir and defined (my $ns = shift @nspath)) {
       $dir = $root and next if $ns eq '';
-      my $nsid = $dir->{Dir}{$ns};
+      my $nsid = do {
+        if ($ns eq "..") {
+          $dir->{cf_parent_nsid};
+        } else {
+          $dir->{Dir}{$ns};
+        }
+      };
       unless ($nsid) {
 	return $start->{cf_base_nsid}
 	  ? $root->nsobj($start->{cf_base_nsid})->lookup_dir($root, @orig)

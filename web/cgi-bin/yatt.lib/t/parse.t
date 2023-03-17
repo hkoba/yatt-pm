@@ -382,3 +382,15 @@ END
   YATT::Test::raises([undef, $parser => parse_string => $html]
 		     , qr{^Missing close tag 'foo'}, "missing close tag");
 }
+
+{
+  my $parser = new YATT::LRXML::Parser;
+  my $html
+    = q{<yatt:..:index:logo />};
+
+  my $elem = $parser->parse_string($html)->open;
+  is_deeply [$elem->node_path], [qw(yatt .. index logo)]
+    , 'parent directory in node path';
+
+  eq_or_diff $elem->stringify, $html, "round trip of the tag";
+}
