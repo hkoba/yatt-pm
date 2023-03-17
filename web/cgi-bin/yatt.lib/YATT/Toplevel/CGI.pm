@@ -325,10 +325,7 @@ sub dispatch {
 			 , {phase => 'get_handler', target => $file});
   } else {
     local $SIG{__WARN__} = $CONFIG->{cf_warning_with_prefix} ? do {
-      my $prefix =
-        $PATH_TRANSLATED ? "PATH_TRANSLATED=$PATH_TRANSLATED" :
-        $REQUEST_URI     ? "REQUEST_URI=$REQUEST_URI" :
-        "PATH_INFO=".($PATH_INFO // "");
+      my $prefix = $top->log_prefix;
       sub {
         print STDERR "warn[$prefix] ", $_[0];
       }
@@ -348,6 +345,13 @@ sub dispatch {
       $top->dispatch_action($runpack, $root, $renderer, $pkg, @param);
     }
   }
+}
+
+sub log_prefix {
+  my ($top) = @_;
+  $PATH_TRANSLATED ? "PATH_TRANSLATED=$PATH_TRANSLATED" :
+    $REQUEST_URI   ? "REQUEST_URI=$REQUEST_URI" :
+      "PATH_INFO=".($PATH_INFO // "");
 }
 
 sub dispatch_not_found {
@@ -402,16 +406,20 @@ sub dispatch_error {
     {
       # XXX: To avoid FCGI::Stream::PRINT widechar warnings.
       use Encode;
-      if (Encode::is_utf8($html)) {
+      if (not grep {$_ eq "utf8"} PerlIO::get_layers($ERR)
+            and Encode::is_utf8($html)) {
         Encode::_utf8_off($html);
       }
     }
     print $ERR $html;
     unless ($CONFIG and $CONFIG->{cf_suppress_stderr}) {
-      if (Encode::is_utf8($error)) {
-        Encode::_utf8_off($error);
+      if (not grep {$_ eq "utf8"} PerlIO::get_layers(\*STDERR)
+            and Encode::is_utf8($error)) {
+        $error = Encode::encode_utf8($error);
       }
-      print STDERR "YATT: $error\n";
+      my $prefix = $top->log_prefix;
+      print STDERR "YATT[$prefix]: $error\n";
+      print STDERR terse_dump($info), "\n";
     }
   }
 
