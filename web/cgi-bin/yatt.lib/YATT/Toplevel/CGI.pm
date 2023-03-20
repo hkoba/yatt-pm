@@ -374,35 +374,39 @@ sub dispatch_error {
     Encode::_utf8_on($error);
   }
 
+  my $http_status = $CONFIG ? ($CONFIG->{cf_error_status} || 500) : 500;
+  my @opts = (-status => $http_status);
+
   unless ($root) {
-    print $ERR "\n\nroot_load_error($error)";
+    print $ERR "Status: $http_status\n\n";
+    print $ERR "root_load_error($error)";
   } elsif (catch {
     $found = ($renderer, $pkg) = $root->lookup_handler_to(render => 'error')
   } \ my $load_error) {
-    print $ERR "\n\nload_error($load_error), original_error=($error)";
+    print $ERR "Status: $http_status\n\n";
+    print $ERR "load_error($load_error), original_error=($error)";
   } elsif (not $found) {
-    print $ERR $CGI ? $CGI->header : "\n\n";
+    print $ERR $CGI ? $CGI->header(@opts) : "Status: $http_status\n\n";;
     print $ERR $error;
     $top->printenv_html($info, id => 'error_info') if $info;
     $top->printenv_html;
   } elsif (catch {
     $html = capture {$renderer->($pkg, [$error, $info])} $top->get_encoding;
   } \ my Exception $error2) {
-    unless (ref $error2) {
-      print $ERR "\n\nerror in error page($error2), original_error=($error)";
+    if (not ref $error2) {
+      print $ERR "Status: $http_status\n\n";
+      print $ERR "error in error page($error2), original_error=($error)";
     } elsif (not UNIVERSAL::isa($error2, Exception)) {
-      print $ERR "\n\nUnknown error in error page($error2), original_error=($error)";
+      print $ERR "Status: $http_status\n\n";
+      print $ERR "Unknown error in error page($error2), original_error=($error)";
     } elsif ($error2->is_normal) {
       # should be ignored
     } else {
-      print $ERR "\n\nerror in error page($error2->{cf_error}), original_error=($error)";
+      print $ERR "Status: $http_status\n\n";
+      print $ERR "error in error page($error2->{cf_error}), original_error=($error)";
     }
   } else {
-    my @opts;
-    if ($CONFIG and $CONFIG->{cf_error_status}) {
-      push @opts, (-status => $CONFIG->{cf_error_status});
-    }
-    print $ERR $CGI ? $CGI->header(@opts) : "Content-type: text/html\n\n";
+    print $ERR $CGI ? $CGI->header(@opts) : "Status: $http_status\nContent-type: text/html\n\n";
     {
       # XXX: To avoid FCGI::Stream::PRINT widechar warnings.
       use Encode;
@@ -418,8 +422,8 @@ sub dispatch_error {
         $error = Encode::encode_utf8($error);
       }
       my $prefix = $top->log_prefix;
-      print STDERR "YATT[$prefix]: $error\n";
-      print STDERR terse_dump($info), "\n";
+      print STDERR "YATT[$prefix]: $error, info=";
+      print STDERR terse_dump(@opts, $info), "\n";
     }
   }
 
