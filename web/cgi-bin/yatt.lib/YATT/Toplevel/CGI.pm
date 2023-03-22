@@ -368,6 +368,7 @@ sub dispatch_error {
   my ($found, $renderer, $pkg, $html);
 
   if ($top->get_encoding
+        and not ref $error
         and Encode::is_utf8($error)
         and not utf8::valid($error)) {
     $error = Encode::encode('utf-8', $error, Encode::FB_PERLQQ);
