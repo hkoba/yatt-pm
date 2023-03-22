@@ -114,6 +114,7 @@ sub run_cgi {
   local $CONFIG = my Config $config = $runpack->new_config(shift);
 
   my $cgi = $runpack->new_cgi($oldcgi);
+  local $CGI = $cgi;
 
   my ($top, $root, $file, $error, $param);
   if (catch {
