@@ -391,7 +391,6 @@ sub dispatch_error {
     print $ERR $CGI ? $CGI->header(@opts) : "Status: $http_status\n\n";;
     print $ERR $error;
     $top->printenv_html($info, id => 'error_info') if $info;
-    $top->printenv_html;
   } elsif (catch {
     $html = capture {$renderer->($pkg, [$error, $info])} $top->get_encoding;
   } \ my Exception $error2) {
@@ -490,7 +489,7 @@ sub printenv_html {
   $env ||= \%ENV;
   print $ERR "<table id='$opts{id}'>\n";
   foreach my $k (sort keys %$env) {
-    print $ERR "<tr><td>", $k, "</td><td>", $env->{$k}, "</td></tr>\n";
+    print $ERR "<tr><td>", $k, "</td><td>", $env->{$k} // '(undef)', "</td></tr>\n";
   }
   print $ERR "</table>\n";
 }
