@@ -18,8 +18,12 @@ sub run {
   my ($pack, $request) = splice @_, 0, 2;
   my $config = $pack->new_config(@_);
   my $age = -M $0;
+  my $need_shutdown = 0;
   $request = FCGI::Request() unless defined $request;
   while ($request->Accept >= 0) {
+    local $SIG{TERM} = sub {
+      ++$need_shutdown;
+    };
     my $rc = catch {
       $pack->SUPER::run('cgi', undef, $config);
     } \ my $error;
@@ -27,6 +31,7 @@ sub run {
       $pack->run_retry_max(3, $config, $file, $newcgi);
     }
     $request->Finish;
+    last if $need_shutdown;
     last if -e $0 and -M $0 < $age;
   }
 }
