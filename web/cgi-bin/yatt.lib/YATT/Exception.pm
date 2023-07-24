@@ -22,6 +22,7 @@ use YATT::Fields qw(cf_normal cf_error
 		    cf_error_fmt
 		    cf_error_param
 		    cf_original_error
+                    cf_status
 		  );
 # cf_phase cf_target
 

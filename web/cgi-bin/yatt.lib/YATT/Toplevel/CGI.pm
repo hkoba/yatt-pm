@@ -53,10 +53,13 @@ use YATT::Types -base => __PACKAGE__
 		, ['^cf_app_prefix' => 'YATT']
 		, ['^cf_find_root_upward' => 2]
                 , ['cf_warning_with_prefix' => 1]
+                , 'cf_allow_unknown_params'
 	       ]]
   , qw(:export_alias);
 
 Config->define(create => \&create_toplevel);
+
+sub default_cf_allow_unknown_params { 0 }
 
 #----------------------------------------
 
@@ -338,7 +341,7 @@ sub dispatch {
       chdir($dir);
     }
     if (not defined $param[0] and $widget->public) {
-      $param[0] = $widget->reorder_cgi_params($cgi);
+      $param[0] = $widget->reorder_cgi_params($cgi, [], $CONFIG->{cf_allow_unknown_params});
     }
     if (my $handler = $pkg->can('dispatch_action')) {
       $handler->($top, $runpack, $root, $renderer, $pkg, @param);

@@ -134,11 +134,19 @@ sub reorder_params {
 }
 
 sub reorder_cgi_params {
-  (my Widget $widget, my ($cgi, $list)) = @_;
+  (my Widget $widget, my ($cgi, $list, $allowUnknownParams)) = @_;
   $list ||= [];
   foreach my $name ($cgi->param) {
-    my $argdecl = $widget->{arg_dict}{$name}
-      or die "Unknown args for widget '$widget->{cf_name}': $name";
+    my $argdecl = $widget->{arg_dict}{$name} or do {
+      if (not $allowUnknownParams) {
+        die YATT::Exception->new(
+          status => 400,
+          error => "Unknown args for widget '$widget->{cf_name}': $name",
+        );
+      } else {
+        next;
+      }
+    };
     my @value = $cgi->multi_param($name);
     $list->[$argdecl->argno] = $argdecl->type_name eq 'list'
       ? \@value : $value[0];

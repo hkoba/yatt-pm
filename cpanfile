@@ -9,6 +9,7 @@ requires 'File::Remove'; # Should be replaced to File::Path.
 requires 'List::Util';
 requires 'Test::More';
 requires 'Test::Differences';
+requires 'Test::WWW::Mechanize::CGI';
 
 requires 'FCGI';
 requires 'CGI::Fast';
