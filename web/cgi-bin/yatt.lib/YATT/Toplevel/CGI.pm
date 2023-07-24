@@ -379,7 +379,13 @@ sub dispatch_error {
     Encode::_utf8_on($error);
   }
 
-  my $http_status = $CONFIG ? ($CONFIG->{cf_error_status} || 500) : 500;
+  my $http_status = do {
+    if (UNIVERSAL::isa($error, Exception) and $error->{cf_status}) {
+      $error->{cf_status}
+    } else {
+      $CONFIG ? ($CONFIG->{cf_error_status} || 500) : 500
+    }
+  };
   my @opts = (-status => $http_status);
 
   unless ($root) {
@@ -394,6 +400,7 @@ sub dispatch_error {
     print $ERR $CGI ? $CGI->header(@opts) : "Status: $http_status\n\n";;
     print $ERR $error;
     $top->printenv_html($info, id => 'error_info') if $info;
+    return if $http_status < 500;
   } elsif (catch {
     $html = capture {$renderer->($pkg, [$error, $info])} $top->get_encoding;
   } \ my Exception $error2) {
