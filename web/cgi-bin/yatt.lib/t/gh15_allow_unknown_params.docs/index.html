@@ -1,0 +1,22 @@
+<!yatt:args>
+<yatt:layout title="test">
+  <yatt:foo title>
+    hello!
+  </yatt:foo>
+</yatt:layout>
+
+<!yatt:widget foo title>
+<div>
+<h2>&yatt:title;</h2>
+<yatt:body/>
+</div>
+
+<!yatt:widget layout title body=[code title]>
+<html>
+  <head>
+    <title>&yatt:title;</title>
+  </head>
+  <body>
+    <yatt:body title/>
+  </body>
+</html>
