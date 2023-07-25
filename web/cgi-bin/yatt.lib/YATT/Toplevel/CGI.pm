@@ -202,9 +202,18 @@ sub prepare_dispatch {
 				 , $REDIRECT_STATUS == 404
 				));
     } elsif ($PATH_INFO and $SCRIPT_FILENAME) {
-      (untaint_any(dirname($SCRIPT_FILENAME))
+      my $driver = $runpack->driver_for_script($SCRIPT_FILENAME, $config);
+      my $dir = do {
+        if (-e (my $docs = "$driver.docs")) {
+          untaint_any($docs);
+        }
+        else {
+          $DOCUMENT_ROOT
+        }
+      };
+      ($dir
        , untaint_any($PATH_INFO)
-       , $runpack->loader_for_script($SCRIPT_FILENAME, $config));
+       , [DIR => $dir, $runpack->tmpl_for_driver($driver)]);
     } else {
       $runpack->plain_error($cgi, <<END);
 None of PATH_TRANSLATED and PATH_INFO is given.
@@ -218,8 +227,12 @@ Can\'t find loader.
 END
   }
 
-  unless (chdir($rootdir)) {
+  unless ($rootdir and chdir($rootdir)) {
     $runpack->plain_error($cgi, "Can't chdir to $rootdir: $!");
+  }
+
+  if (not $config->{cf_registry}) {
+    $config->try_load_config($rootdir);
   }
 
   unless ($PATH_INFO) {
@@ -506,12 +519,9 @@ sub printenv_html {
 
 #========================================
 
-sub loader_for_script {
+sub driver_for_script {
   my ($runpack, $script_filename) = @_;
-  my $driver = untaint_any(rootname($script_filename));
-  my @loader = (DIR => untaint_any("$driver.docs")
-		, $runpack->tmpl_for_driver($driver));
-  \@loader;
+  untaint_any(rootname($script_filename));
 }
 
 sub tmpl_for_driver {
