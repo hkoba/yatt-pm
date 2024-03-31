@@ -20,10 +20,10 @@ sub run {
   my $age = -M $0;
   my $need_shutdown = 0;
   $request = FCGI::Request() unless defined $request;
+  local $SIG{TERM} = sub {
+    ++$need_shutdown;
+  };
   while ($request->Accept >= 0) {
-    local $SIG{TERM} = sub {
-      ++$need_shutdown;
-    };
     my $rc = catch {
       $pack->SUPER::run('cgi', undef, $config);
     } \ my $error;
