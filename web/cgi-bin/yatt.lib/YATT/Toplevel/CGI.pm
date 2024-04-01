@@ -395,7 +395,11 @@ sub dispatch_error {
   my $http_status = do {
     if (UNIVERSAL::isa($error, Exception) and $error->{cf_status}) {
       $error->{cf_status}
-    } else {
+    }
+    elsif (ref $info and $info->{status}) {
+      $info->{status};
+    }
+    else {
       $CONFIG ? ($CONFIG->{cf_error_status} || 500) : 500
     }
   };
