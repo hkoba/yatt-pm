@@ -459,7 +459,7 @@ sub re_ns {
 
 sub re_nsname {
   my ($self, $capture) = @_;
-  my $body = q{(?:\w+|\.\.)(?:\:(?:\w+|\.\.))*};
+  my $body = q{(?:\w+(?:[-]\w+)?|\.\.)(?:\:(?:\w+|\.\.))*};
   $capture ? qr{($body)} : qr{$body};
 }
 
