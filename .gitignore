@@ -4,3 +4,4 @@
 blib
 .perl-version
 MANIFEST.bak
+/web/cgi-bin/yatt.lib/cover_db
