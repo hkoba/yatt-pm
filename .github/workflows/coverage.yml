@@ -17,7 +17,7 @@ jobs:
       - name: Install Devel::Cover
         run: ./cpm install -g App::Yath Devel::Cover Devel::Cover::Report::Coveralls
       - name: Run tests (with coverage)
-        run: PERL5OPT=-MDevel::Cover yath test --qvf web/cgi-bin/yatt.lib/t
+        run: PERL5OPT=-MDevel::Cover="-ignore,^web/cgi-bin/yatt.lib/t/,-ignore,^/usr" yath test --qvf web/cgi-bin/yatt.lib/t
       - name: push coverage report
         run: cover -report coveralls
         env:
