@@ -1,4 +1,4 @@
-YATT version 0.0.2
+YATT version 0.0.10 [![Coverage Status](https://coveralls.io/repos/github/hkoba/yatt-pm/badge.svg)](https://coveralls.io/github/hkoba/yatt-pm)
 ==================
 
   YATT is Yet Another Template Toolkit. Like PHP (and unlike HTML::Template),
